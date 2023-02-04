@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/rent-vs-buy/static/css/main.e6c13ad2.css",
+    "main.js": "/rent-vs-buy/static/js/main.42c6de67.js",
+    "index.html": "/rent-vs-buy/index.html",
+    "main.e6c13ad2.css.map": "/rent-vs-buy/static/css/main.e6c13ad2.css.map",
+    "main.42c6de67.js.map": "/rent-vs-buy/static/js/main.42c6de67.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.42c6de67.js"
+  ]
+}
