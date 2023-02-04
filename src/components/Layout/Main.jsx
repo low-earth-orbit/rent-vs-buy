@@ -111,7 +111,7 @@ const Main = () => {
               htmlFor="price"
               title="Property price refers to the monetary value of a real estate property. It is the amount that a buyer is willing to pay for a property, or the amount that a seller is asking for the property."
             >
-              Property price <i  className="bi bi-question-circle"></i>
+              Property price <i className="bi bi-question-circle"></i>
             </label>
             <div className="input-group mb-3">
               <div className="input-group-prepend">
@@ -139,9 +139,9 @@ const Main = () => {
             htmlFor="propertyTax"
             title="Property tax is a tax imposed by the government on real estate property and is typically based on the value of the property."
           >
-            Property tax <i  className="bi bi-question-circle"></i>
+            Property tax <i className="bi bi-question-circle"></i>
           </label>
-          <div id="propertyTaxHelp"  className="form-text">
+          <div id="propertyTaxHelp" className="form-text">
             Enter the property tax rate for the area where the property is
             located. Tax rates can vary depending on the jurisdiction.
           </div>
@@ -167,9 +167,9 @@ const Main = () => {
             htmlFor="maintenanceCosts"
             title="Maintenance costs of a real estate property refers to the expenses incurred in keeping the property in good condition, such as condo fees, renovation, home insurance, among others."
           >
-            Maintenance cost <i  className="bi bi-question-circle"></i>
+            Maintenance costs <i className="bi bi-question-circle"></i>
           </label>
-          <div id=" maintenanceCostsHelp"  className="form-text">
+          <div id=" maintenanceCostsHelp" className="form-text">
             As a rough estimate, you can use 1% of the property value for homes
             worth over $500,000, or 1.5% for homes worth less.
           </div>
@@ -195,7 +195,7 @@ const Main = () => {
             htmlFor="downPayment"
             title="Down payment is money you pay right away when you buy a home. The rest of the cost is paid later with monthly mortgage payments."
           >
-            Down payment <i  className="bi bi-question-circle"></i>
+            Down payment <i className="bi bi-question-circle"></i>
           </label>
           <div className="input-group mb-3">
             <input
@@ -220,9 +220,9 @@ const Main = () => {
             htmlFor="mortgageRate"
             title="Mortgage rate is the interest rate charged on a mortgage loan, which is a type of loan used to finance the purchase of a property."
           >
-            Mortgage rate <i  className="bi bi-question-circle"></i>
+            Mortgage rate <i className="bi bi-question-circle"></i>
           </label>
-          <div id="mortgageRateHelp"  className="form-text">
+          <div id="mortgageRateHelp" className="form-text">
             As a suggestion, enter the annual percentage rate (APR) for a 5-year
             fixed mortgage rate.
           </div>
@@ -245,11 +245,11 @@ const Main = () => {
         <div className="form-group">
           <label
             htmlFor="stockMarketReturn"
-            title="The stock market return is the rate of profit or loss on investments in the stock market. Investing a portion of your down payment in stocks can be an option."
+            title="The stock market return is the rate of profit or loss on investments in the stock market. Investing your down payment in stocks can be an option."
           >
-            Stock market return <i  className="bi bi-question-circle"></i>
+            Stock market return <i className="bi bi-question-circle"></i>
           </label>
-          <div id="stockMarketReturnRateHelp"  className="form-text">
+          <div id="stockMarketReturnRateHelp" className="form-text">
             The long-term real return on stocks from 1870-2015 is 6.82%.
           </div>
           <div className="input-group mb-3">
@@ -273,9 +273,9 @@ const Main = () => {
             htmlFor="realEstatePriceReturn"
             title="The home price growth rate is how much the value of a home increases over time. It's usually shown as a percentage."
           >
-            Home price growth rate <i  className="bi bi-question-circle"></i>
+            Home price growth rate <i className="bi bi-question-circle"></i>
           </label>
-          <div id="realEstatePriceReturnHelp"  className="form-text">
+          <div id="realEstatePriceReturnHelp" className="form-text">
             The long-term real capital return on real estate investments from
             1870-2015 is 1.61%.
           </div>
@@ -300,9 +300,10 @@ const Main = () => {
             htmlFor="opportunityCosts"
             title="The opportunity cost of the down payment not being invested in similarly risky assets such as stocks."
           >
-            Opportunity costs of buying <i  className="bi bi-question-circle"></i>
+            Opportunity costs of buying{" "}
+            <i className="bi bi-question-circle"></i>
           </label>
-          <div id="opportunityCosts"  className="form-text">
+          <div id="opportunityCosts" className="form-text">
             Automatically calculated.
           </div>
           <div className="input-group mb-3">
@@ -322,40 +323,91 @@ const Main = () => {
           </div>
         </div>
       </form>
-      <div id="conclusion">
+      <div id="result">
+        <h2>Result</h2>
         {isRentSelected ? (
-          <strong>
-            If you can purchase a similar property for less than $
-            {Math.round(
-              calculateFairPrice(
-                rent,
-                propertyTax,
-                maintenanceCosts,
-                downPayment,
-                mortgageRate,
-                stockMarketReturn,
-                realEstatePriceReturn
-              )
-            )}
+          <p>
+            If you can purchase a similar property for less than{" "}
+            <strong>
+              $
+              {Math.round(
+                calculateFairPrice(
+                  rent,
+                  propertyTax,
+                  maintenanceCosts,
+                  downPayment,
+                  mortgageRate,
+                  stockMarketReturn,
+                  realEstatePriceReturn
+                )
+              )}
+            </strong>
             , then owning is better.
-          </strong>
+          </p>
         ) : (
-          <strong>
+          <p>
             If you can rent a similar property for less than $
-            {Math.round(
-              calculateFairRent(
-                price,
-                propertyTax,
-                maintenanceCosts,
-                downPayment,
-                mortgageRate,
-                stockMarketReturn,
-                realEstatePriceReturn
-              )
-            )}{" "}
+            <strong>
+              {Math.round(
+                calculateFairRent(
+                  price,
+                  propertyTax,
+                  maintenanceCosts,
+                  downPayment,
+                  mortgageRate,
+                  stockMarketReturn,
+                  realEstatePriceReturn
+                )
+              )}
+            </strong>{" "}
             per month, then renting is better.
-          </strong>
+          </p>
         )}
+      </div>
+      <div id="Method">
+        <h2>Methodology</h2>
+        <p>
+          This calculator is based on the{" "}
+          <a
+            href="https://www.pwlcapital.com/rent-or-own-your-home-5-rule/"
+            title="Learn more about the Five Percent Rule by Ben Felix"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Five Percent Rule by Ben Felix
+          </a>
+          . Although the results may not always be 5%. When people decide to
+          rent or buy a home, they often only compare the monthly mortgage
+          payment with the monthly rent. This is not a complete picture because
+          because mortgage payments contribute to the value of the property and
+          the down payment has an opportunity cost as it could have been
+          invested in stocks.
+        </p>
+        <p>
+          It's important to know that the Five Percent Rule has its limits.
+          Taking a mortgage means borrowing money to invest and can lead to
+          long-term returns as long as the mortgage interest rate is lower than
+          the return from real estate investments. The calculator also doesn't
+          include the fees for buying and selling the home. So, it may
+          incorrectly state that renting is better even if you plan to stay for
+          more than 10 years.
+        </p>
+        <p>
+          However, if you're not planning a long stay, this calculator makes it
+          easy to compare renting vs buying. You don't have to enter complicated
+          financial assumptions. For a more accurate comparison considering
+          investment length, the cash flow method is more accurate. You can find
+          a helpful spreadsheet{" "}
+          <a
+            href="http://www.holypotato.net/?p=1073"
+            title="A rent vs buy spreadsheet based on cash flow method"
+            target="_blank"
+            rel="noreferrer"
+          >
+            here
+          </a>
+          .
+        </p>
       </div>
     </main>
   );
