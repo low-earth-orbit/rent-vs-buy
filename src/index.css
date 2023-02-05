@@ -1,13 +1,33 @@
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: "Libre Franklin", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
+}
+
+/* Header */
+#header {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+/* Footer */
+#footer {
+  padding-top: 2rem;
+}
+
+/* Contact */
+#github-logo {
+  max-width: 5rem;
+  padding-bottom: 1rem;
+}
+
+@media only screen and (max-width: 992px) {
+  [class*="col-"] {
+    width: 100%;
+  }
 }
