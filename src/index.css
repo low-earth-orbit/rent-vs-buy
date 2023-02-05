@@ -15,6 +15,10 @@ code {
   padding-bottom: 2rem;
 }
 
+/* Main */
+#start {
+  margin-bottom: 1rem;
+}
 /* Footer */
 #footer {
   padding-top: 2rem;
