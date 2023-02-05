@@ -58,28 +58,42 @@ const Main = () => {
       <div className="row gx-5">
         <div className="col-7">
           <div id="start">
-            <p>
-              Start with{" "}
-              <button
-                onClick={() => {
-                  setIsRentSelected(true);
-                }}
-                className="btn btn-outline-dark"
+            Start with{" "}
+            <div
+              className="btn-group"
+              role="group"
+              aria-label="Select an option to start with"
+            >
+              <input
+                type="radio"
+                className="btn-check"
+                name="btnradio"
+                id="rentOption"
+                autoComplete="off"
+                onClick={() => setIsRentSelected(true)}
+                checked={isRentSelected}
                 title="Select this option if you know the monthly rent of the property. You can also estimate the amount of rent by properties with similar conditions."
-              >
+                readOnly
+              />
+              <label className="btn btn-outline-dark" htmlFor="rentOption">
                 monthly rent
-              </button>{" "}
-              or{" "}
-              <button
-                onClick={() => {
-                  setIsRentSelected(false);
-                }}
-                className="btn btn-outline-dark"
+              </label>
+
+              <input
+                type="radio"
+                className="btn-check"
+                name="btnradio"
+                id="priceOption"
+                autoComplete="off"
+                onClick={() => setIsRentSelected(false)}
+                checked={!isRentSelected}
                 title="Select this option if you know the property price. You can also estimate the price by similar units nearby."
-              >
+                readOnly
+              />
+              <label className="btn btn-outline-dark" htmlFor="priceOption">
                 property price
-              </button>
-            </p>
+              </label>
+            </div>
           </div>
           <form id="form">
             {isRentSelected ? (
@@ -382,7 +396,7 @@ const Main = () => {
                 >
                   5% Rule by Ben Felix
                 </a>
-                . Although the sum may not always be 5%. When people decide to
+                , although the sum may not always be 5%. When people decide to
                 rent or buy a home, they often only compare the monthly mortgage
                 payment with the monthly rent. This is not a complete picture
                 because mortgage payments can be recovered when the property is
@@ -395,15 +409,17 @@ const Main = () => {
                 long-term returns as long as the mortgage interest rate is lower
                 than the return from real estate investments. The calculator
                 also doesn't include the fees for buying and selling the home.
-                So, it may <mark>incorrectly state that renting is better</mark>{" "}
-                even if you plan to stay for more than 10 years.
+                Therefore, it may{" "}
+                <mark>incorrectly state that renting is better</mark> even if
+                you plan to stay for more than 10 years.
               </p>
               <p>
                 However, if you're not planning a long stay, this calculator
-                makes it easy to compare renting vs buying. You don't have to
+                makes it easy to compare renting vs buying as you don't have to
                 enter complicated financial assumptions. For a more accurate
                 comparison considering investment length, the cash flow method
-                is more accurate. You can find a helpful spreadsheet{" "}
+                is preferred and more accurate. You can find a helpful
+                spreadsheet{" "}
                 <a
                   href="http://www.holypotato.net/?p=1073"
                   title="A rent vs buy spreadsheet based on cash flow method"
