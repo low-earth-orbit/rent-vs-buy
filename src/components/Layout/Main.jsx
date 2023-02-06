@@ -200,8 +200,8 @@ const Main = () => {
                   className="form-control"
                   onChange={(event) => setMaintenanceCosts(event.target.value)}
                   value={maintenanceCosts}
-                  placeholder="Enter maintenance cost as a percentage of property price"
-                  aria-label="Enter maintenance cost as a percentage of property price"
+                  placeholder="Enter maintenance costs as a percentage of property price"
+                  aria-label="Enter maintenance costs as a percentage of property price"
                   required="required"
                 />
                 <div className="input-group-append">
@@ -252,8 +252,8 @@ const Main = () => {
                   className="form-control"
                   onChange={(event) => setMortgageRate(event.target.value)}
                   value={mortgageRate}
-                  placeholder="Enter the mortgage rate in percentage"
-                  aria-label="Enter the mortgage rate in percentage"
+                  placeholder="Enter the mortgage rate"
+                  aria-label="Enter the mortgage rate"
                   required="required"
                 />
                 <div className="input-group-append">
@@ -290,9 +290,10 @@ const Main = () => {
             <div className="form-group">
               <label
                 htmlFor="realEstatePriceReturn"
-                title="The home price growth rate is how much the value of a home increases over time. It's usually shown as a percentage."
+                title="The investment return from the change in home price over a specific period of time."
               >
-                Home price growth rate <i className="bi bi-question-circle"></i>
+                Real estate price return{" "}
+                <i className="bi bi-question-circle"></i>
               </label>
               <div id="realEstatePriceReturnHelp" className="form-text">
                 The long-term real capital return on real estate investments
@@ -333,8 +334,7 @@ const Main = () => {
                   type="number"
                   className="form-control"
                   value={(stockMarketReturn - realEstatePriceReturn).toFixed(2)}
-                  placeholder="Enter real estate price return"
-                  aria-label="Enter real estate price return"
+                  aria-label="Automatically calculated opportunity cost of the down payment"
                   required="required"
                   disabled
                 />
@@ -404,22 +404,32 @@ const Main = () => {
                 have been invested in stocks.
               </p>
               <p>
-                It's important to know that the 5% Rule has its limits. Taking a
-                mortgage means borrowing money to invest and can lead to
-                long-term returns as long as the mortgage interest rate is lower
-                than the return from real estate investments. The calculator
-                also doesn't include the fees for buying and selling the home.
-                Therefore, it may{" "}
-                <mark>incorrectly state that renting is better</mark> even if
-                you plan to stay for more than 10 years.
+                It's important to know that the 5% Rule has limitations.
+                <ol>
+                  <li>
+                    Taking a mortgage means borrowing money to invest and can
+                    generate long-term returns as long as the mortgage interest
+                    rate is lower than the return from real estate investments.
+                    This financial leverage compensates the cost of buying in
+                    the long run. This calculator may{" "}
+                    <mark>incorrectly suggest that renting is better</mark> even
+                    if you plan to reside in the property for a long period of
+                    time (e.g. 20 years).
+                  </li>
+                  <li>
+                    The calculator also doesn't consider the fees for buying and
+                    selling a home. If you only stay in a property for a couple
+                    of years before selling it, buying a home may not be a good
+                    financial decision.
+                  </li>
+                </ol>
               </p>
               <p>
-                However, if you're not planning a long stay, this calculator
-                makes it easy to compare renting vs buying as you don't have to
-                enter complicated financial assumptions. For a more accurate
-                comparison considering investment length, the cash flow method
-                is preferred and more accurate. You can find a helpful
-                spreadsheet{" "}
+                Overall, this calculator makes it easy to compare renting vs
+                buying as you don't have to enter complicated financial
+                assumptions. For a more accurate comparison considering
+                investment length, the cash flow method is preferred and more
+                accurate. You can find a helpful spreadsheet{" "}
                 <a
                   href="http://www.holypotato.net/?p=1073"
                   title="A rent vs buy spreadsheet based on cash flow method"
