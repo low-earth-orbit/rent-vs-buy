@@ -3,14 +3,14 @@ import { useState } from "react";
 const Main = () => {
   const [isRentSelected, setIsRentSelected] = useState(true);
 
-  const [price, setPrice] = useState(500000);
+  const [price, setPrice] = useState(300000);
   const [rent, setRent] = useState(2000);
   const [propertyTax, setPropertyTax] = useState(1.3386);
   const [maintenanceCosts, setMaintenanceCosts] = useState(1.5);
   const [downPayment, setDownPayment] = useState(20);
-  const [mortgageRate, setMortgageRate] = useState(5.57);
-  const [stockMarketReturn, setStockMarketReturn] = useState(6.82);
-  const [realEstatePriceReturn, setRealEstatePriceReturn] = useState(1.61);
+  const [mortgageRate, setMortgageRate] = useState(4.5);
+  const [opportunityCostOfDownPayment, setOpportunityCostOfDownPayment] =
+    useState(5.21);
 
   const calculateFairPrice = (
     rent,
@@ -18,39 +18,52 @@ const Main = () => {
     maintenanceCosts,
     downPayment,
     mortgageRate,
-    stockMarketReturn,
-    realEstatePriceReturn
+    opportunityCostOfDownPayment
   ) => {
-    const yearlyRent = rent * 12;
-    const opportunityCostOfDownPayment =
-      (stockMarketReturn - realEstatePriceReturn) / 100;
-    const capitalCost =
-      (opportunityCostOfDownPayment * downPayment) / 100 +
-      (mortgageRate / 100) * (1 - downPayment / 100);
-    const costOfOwning =
-      capitalCost + propertyTax / 100 + maintenanceCosts / 100;
-    const fairPrice = yearlyRent / costOfOwning;
+    const costOfOwning = calculateCostOfOwning(
+      opportunityCostOfDownPayment,
+      downPayment,
+      mortgageRate,
+      propertyTax,
+      maintenanceCosts
+    );
+    const rentPerYear = rent * 12;
+    const fairPrice = rentPerYear / costOfOwning;
     return fairPrice;
   };
 
   const calculateFairRent = (
-    price,
+    rent,
     propertyTax,
     maintenanceCosts,
     downPayment,
     mortgageRate,
-    stockMarketReturn,
-    realEstatePriceReturn
+    opportunityCostOfDownPayment
   ) => {
-    const opportunityCostOfDownPayment =
-      (stockMarketReturn - realEstatePriceReturn) / 100;
+    const costOfOwning = calculateCostOfOwning(
+      opportunityCostOfDownPayment,
+      downPayment,
+      mortgageRate,
+      propertyTax,
+      maintenanceCosts
+    );
+    const fairRent = (price * costOfOwning) / 12;
+    return fairRent;
+  };
+
+  const calculateCostOfOwning = (
+    opportunityCostOfDownPayment,
+    downPayment,
+    mortgageRate,
+    propertyTax,
+    maintenanceCosts
+  ) => {
     const capitalCost =
-      (opportunityCostOfDownPayment * downPayment) / 100 +
+      (opportunityCostOfDownPayment / 100) * (downPayment / 100) +
       (mortgageRate / 100) * (1 - downPayment / 100);
     const costOfOwning =
       capitalCost + propertyTax / 100 + maintenanceCosts / 100;
-    const fairRent = (price * costOfOwning) / 12;
-    return fairRent;
+    return costOfOwning;
   };
 
   return (
@@ -102,7 +115,7 @@ const Main = () => {
                   htmlFor="rent"
                   title="Monthly rent cost refers to the amount of money paid by a tenant to the landlord on a monthly basis for the use of a property."
                 >
-                  Monthly rent <i className="bi bi-question-circle"></i>
+                  Monthly Rent <i className="bi bi-question-circle"></i>
                 </label>
                 <div className="input-group mb-3">
                   <div className="input-group-prepend">
@@ -117,6 +130,7 @@ const Main = () => {
                     value={rent ? rent : ""}
                     placeholder="Enter the monthly rent"
                     aria-label="Enter the amount of monthly rent to the nearest dollar"
+                    step="100"
                     required
                   />
                   <div className="input-group-append">
@@ -130,7 +144,7 @@ const Main = () => {
                   htmlFor="price"
                   title="Property price refers to the monetary value of a real estate property. It is the amount that a buyer is willing to pay for a property, or the amount that a seller is asking for the property."
                 >
-                  Property price <i className="bi bi-question-circle"></i>
+                  Property Price <i className="bi bi-question-circle"></i>
                 </label>
                 <div className="input-group mb-3">
                   <div className="input-group-prepend">
@@ -145,6 +159,7 @@ const Main = () => {
                     value={price}
                     placeholder="Enter the property price"
                     aria-label="Enter the price of the property to the nearest dollar"
+                    step="10000"
                     required="required"
                   />
                   <div className="input-group-append">
@@ -158,7 +173,7 @@ const Main = () => {
                 htmlFor="propertyTax"
                 title="Property tax is a tax imposed by the government on real estate property and is typically based on the value of the property."
               >
-                Property tax <i className="bi bi-question-circle"></i>
+                Property Tax <i className="bi bi-question-circle"></i>
               </label>
               <div id="propertyTaxHelp" className="form-text">
                 Enter the property tax rate for the area where the property is
@@ -174,6 +189,7 @@ const Main = () => {
                   value={propertyTax}
                   placeholder="Enter the property tax rate"
                   aria-label="Enter the property tax rate"
+                  step="0.01"
                   required="required"
                 />
                 <div className="input-group-append">
@@ -186,15 +202,15 @@ const Main = () => {
                 htmlFor="maintenanceCosts"
                 title="Maintenance costs of a real estate property refers to the expenses incurred in keeping the property in good condition, such as condo fees, renovation, home insurance, among others."
               >
-                Maintenance costs <i className="bi bi-question-circle"></i>
+                Maintenance Costs <i className="bi bi-question-circle"></i>
               </label>
               <div id=" maintenanceCostsHelp" className="form-text">
-                As a rough estimate, you can use 1% of the property value for
-                homes worth over $500,000, or 1.5% for homes worth less.
+                As an estimate, you can use 1% of the property value for homes
+                worth over $500,000, or 1.5% for homes worth less.
               </div>
               <div className="input-group mb-3">
                 <input
-                  id=" maintenanceCosts"
+                  id="maintenanceCosts"
                   type="number"
                   min="0"
                   className="form-control"
@@ -202,6 +218,7 @@ const Main = () => {
                   value={maintenanceCosts}
                   placeholder="Enter maintenance costs as a percentage of property price"
                   aria-label="Enter maintenance costs as a percentage of property price"
+                  step="0.1"
                   required="required"
                 />
                 <div className="input-group-append">
@@ -214,7 +231,7 @@ const Main = () => {
                 htmlFor="downPayment"
                 title="Down payment is money you pay right away when you buy a home. The rest of the cost is paid later with monthly mortgage payments."
               >
-                Down payment <i className="bi bi-question-circle"></i>
+                Down Payment <i className="bi bi-question-circle"></i>
               </label>
               <div className="input-group mb-3">
                 <input
@@ -227,6 +244,7 @@ const Main = () => {
                   value={downPayment}
                   placeholder="Enter the percentage of down payment"
                   aria-label="Enter the percentage of down payment"
+                  step="1"
                   required="required"
                 />
                 <div className="input-group-append">
@@ -239,11 +257,11 @@ const Main = () => {
                 htmlFor="mortgageRate"
                 title="Mortgage rate is the interest rate charged on a mortgage loan, which is a type of loan used to finance the purchase of a property."
               >
-                Mortgage rate <i className="bi bi-question-circle"></i>
+                Mortgage Rate <i className="bi bi-question-circle"></i>
               </label>
               <div id="mortgageRateHelp" className="form-text">
-                As a suggestion, enter the annual percentage rate (APR) for a
-                5-year fixed mortgage rate.
+                The default value is based on a 2.5% neutral rate of interest
+                plus a 2% spread.
               </div>
               <div className="input-group mb-3">
                 <input
@@ -254,6 +272,7 @@ const Main = () => {
                   value={mortgageRate}
                   placeholder="Enter the mortgage rate"
                   aria-label="Enter the mortgage rate"
+                  step="0.1"
                   required="required"
                 />
                 <div className="input-group-append">
@@ -263,80 +282,30 @@ const Main = () => {
             </div>
             <div className="form-group">
               <label
-                htmlFor="stockMarketReturn"
-                title="The stock market return is the rate of profit or loss on investments in the stock market. Investing your down payment in stocks can be an option."
+                htmlFor="opportunityCostOfDownPayment"
+                title="The opportunity cost of down payment refers to the cost of not using the money that is put down as down payment towards other investment opportunities such as stocks."
               >
-                Stock market return <i className="bi bi-question-circle"></i>
-              </label>
-              <div id="stockMarketReturnRateHelp" className="form-text">
-                The long-term real return on stocks from 1870-2015 is 6.82%.
-              </div>
-              <div className="input-group mb-3">
-                <input
-                  id="stockMarketReturn"
-                  type="number"
-                  className="form-control"
-                  onChange={(event) => setStockMarketReturn(event.target.value)}
-                  value={stockMarketReturn}
-                  placeholder="Enter the return rate of stock market"
-                  aria-label="Enter the return rate of stock market"
-                  required="required"
-                />
-                <div className="input-group-append">
-                  <span className="input-group-text">%</span>
-                </div>
-              </div>
-            </div>
-            <div className="form-group">
-              <label
-                htmlFor="realEstatePriceReturn"
-                title="The investment return from the change in home price over a specific period of time."
-              >
-                Real estate price return{" "}
+                Opportunity Cost of Down Payment{" "}
                 <i className="bi bi-question-circle"></i>
               </label>
-              <div id="realEstatePriceReturnHelp" className="form-text">
-                The long-term real capital return on real estate investments
-                from 1870-2015 is 1.61%.
+              <div id="opportunityCostOfDownPayment" className="form-text">
+                The default value is calculated as the difference between the
+                total return on stocks (6.82%) and the price return on real
+                estate (1.61%) from 1870 to 2015.
               </div>
               <div className="input-group mb-3">
                 <input
-                  id="realEstatePriceReturn"
+                  id="opportunityCostOfDownPayment"
                   type="number"
                   className="form-control"
                   onChange={(event) =>
-                    setRealEstatePriceReturn(event.target.value)
+                    setOpportunityCostOfDownPayment(event.target.value)
                   }
-                  value={realEstatePriceReturn}
-                  placeholder="Enter real estate price return"
-                  aria-label="Enter real estate price return"
+                  value={opportunityCostOfDownPayment}
+                  placeholder="Enter the opportunity cost of down payment"
+                  aria-label="Enter the opportunity cost of down payment"
+                  step="0.1"
                   required="required"
-                />
-                <div className="input-group-append">
-                  <span className="input-group-text">%</span>
-                </div>
-              </div>
-            </div>
-            <div className="form-group">
-              <label
-                htmlFor="opportunityCosts"
-                title="The opportunity cost of the down payment not being invested in similarly risky assets such as stocks."
-              >
-                Opportunity costs of the down payment{" "}
-                <i className="bi bi-question-circle"></i>
-              </label>
-              <div id="opportunityCosts" className="form-text">
-                Automatically calculated.
-              </div>
-              <div className="input-group mb-3">
-                <input
-                  id="opportunityCosts"
-                  type="number"
-                  className="form-control"
-                  value={(stockMarketReturn - realEstatePriceReturn).toFixed(2)}
-                  aria-label="Automatically calculated opportunity cost of the down payment"
-                  required="required"
-                  disabled
                 />
                 <div className="input-group-append">
                   <span className="input-group-text">%</span>
@@ -358,8 +327,7 @@ const Main = () => {
                     maintenanceCosts,
                     downPayment,
                     mortgageRate,
-                    stockMarketReturn,
-                    realEstatePriceReturn
+                    opportunityCostOfDownPayment
                   ).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </strong>
                 , then owning is better.
@@ -375,8 +343,7 @@ const Main = () => {
                     maintenanceCosts,
                     downPayment,
                     mortgageRate,
-                    stockMarketReturn,
-                    realEstatePriceReturn
+                    opportunityCostOfDownPayment
                   ).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </strong>{" "}
                 per month, then renting is better.
@@ -403,33 +370,31 @@ const Main = () => {
                 sold and the down payment has an opportunity cost as it could
                 have been invested in stocks.
               </p>
-              <p>
-                It's important to know that the 5% Rule has limitations.
-                <ol>
-                  <li>
-                    Taking a mortgage means borrowing money to invest and can
-                    generate long-term returns as long as the mortgage interest
-                    rate is lower than the return from real estate investments.
-                    This financial leverage compensates the cost of buying in
-                    the long run. This calculator may{" "}
-                    <mark>incorrectly suggest that renting is better</mark> even
-                    if you plan to reside in the property for a long period of
-                    time (e.g. 20 years).
-                  </li>
-                  <li>
-                    The calculator also doesn't consider the fees for buying and
-                    selling a home. If you only stay in a property for a couple
-                    of years before selling it, buying a home may not be a good
-                    financial decision.
-                  </li>
-                </ol>
-              </p>
+              <p>It's important to know that the 5% Rule has limitations.</p>
+              <ol>
+                <li>
+                  Taking a mortgage means borrowing money to invest and can
+                  generate long-term returns as long as the mortgage interest
+                  rate is lower than the return from real estate investments.
+                  This financial leverage compensates the cost of buying in the
+                  long run. Thus, this calculator may{" "}
+                  <mark>incorrectly suggest that renting is better</mark> even
+                  if you plan to reside in the property for a long period of
+                  time (e.g. 20 years).
+                </li>
+                <li>
+                  The calculator also doesn't consider the fees for buying and
+                  selling a home. If you only stay in a property for a couple of
+                  years before selling it, buying a home may not be a good
+                  financial decision.
+                </li>
+              </ol>
               <p>
                 Overall, this calculator makes it easy to compare renting vs
                 buying as you don't have to enter complicated financial
                 assumptions. For a more accurate comparison considering
-                investment length, the cash flow method is preferred and more
-                accurate. You can find a helpful spreadsheet{" "}
+                investment length, the cash flow method is preferred. You can
+                find a helpful spreadsheet{" "}
                 <a
                   href="http://www.holypotato.net/?p=1073"
                   title="A rent vs buy spreadsheet based on cash flow method"
