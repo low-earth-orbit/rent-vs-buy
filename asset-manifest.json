@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/rent-vs-buy/static/css/main.efab7e59.css",
-    "main.js": "/rent-vs-buy/static/js/main.a9c63fd9.js",
-    "index.html": "/rent-vs-buy/index.html",
-    "main.efab7e59.css.map": "/rent-vs-buy/static/css/main.efab7e59.css.map",
-    "main.a9c63fd9.js.map": "/rent-vs-buy/static/js/main.a9c63fd9.js.map"
+    "main.css": "/static/css/main.6964e88a.css",
+    "main.js": "/static/js/main.a9c63fd9.js",
+    "index.html": "/index.html",
+    "main.6964e88a.css.map": "/static/css/main.6964e88a.css.map",
+    "main.a9c63fd9.js.map": "/static/js/main.a9c63fd9.js.map"
   },
   "entrypoints": [
-    "static/css/main.efab7e59.css",
+    "static/css/main.6964e88a.css",
     "static/js/main.a9c63fd9.js"
   ]
 }
