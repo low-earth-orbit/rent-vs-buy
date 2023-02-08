@@ -33,7 +33,7 @@ const Main = () => {
   };
 
   const calculateFairRent = (
-    rent,
+    price,
     propertyTax,
     maintenanceCosts,
     downPayment,
@@ -189,7 +189,7 @@ const Main = () => {
                   value={propertyTax}
                   placeholder="Enter the property tax rate"
                   aria-label="Enter the property tax rate"
-                  step="0.01"
+                  step="0.1"
                   required="required"
                 />
                 <div className="input-group-append">
