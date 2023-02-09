@@ -160,7 +160,6 @@ const Main = () => {
                     placeholder="Enter the property price"
                     aria-label="Enter the price of the property to the nearest dollar"
                     step="10000"
-                    required="required"
                   />
                   <div className="input-group-append">
                     <span className="input-group-text">.00</span>
@@ -190,7 +189,6 @@ const Main = () => {
                   placeholder="Enter the property tax rate"
                   aria-label="Enter the property tax rate"
                   step="0.1"
-                  required="required"
                 />
                 <div className="input-group-append">
                   <span className="input-group-text">%</span>
@@ -219,7 +217,6 @@ const Main = () => {
                   placeholder="Enter maintenance costs as a percentage of property price"
                   aria-label="Enter maintenance costs as a percentage of property price"
                   step="0.1"
-                  required="required"
                 />
                 <div className="input-group-append">
                   <span className="input-group-text">%</span>
@@ -245,7 +242,6 @@ const Main = () => {
                   placeholder="Enter the percentage of down payment"
                   aria-label="Enter the percentage of down payment"
                   step="1"
-                  required="required"
                 />
                 <div className="input-group-append">
                   <span className="input-group-text">%</span>
@@ -273,7 +269,6 @@ const Main = () => {
                   placeholder="Enter the mortgage rate"
                   aria-label="Enter the mortgage rate"
                   step="0.1"
-                  required="required"
                 />
                 <div className="input-group-append">
                   <span className="input-group-text">%</span>
@@ -305,7 +300,6 @@ const Main = () => {
                   placeholder="Enter the opportunity cost of down payment"
                   aria-label="Enter the opportunity cost of down payment"
                   step="0.1"
-                  required="required"
                 />
                 <div className="input-group-append">
                   <span className="input-group-text">%</span>
@@ -330,7 +324,7 @@ const Main = () => {
                     opportunityCostOfDownPayment
                   ).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </strong>
-                , then owning is better.
+                , then owning is likely better.
               </p>
             ) : (
               <p>
@@ -346,7 +340,7 @@ const Main = () => {
                     opportunityCostOfDownPayment
                   ).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </strong>{" "}
-                per month, then renting is better.
+                per month, then renting is likely better.
               </p>
             )}
           </div>
@@ -377,15 +371,14 @@ const Main = () => {
                   generate long-term returns as long as the mortgage interest
                   rate is lower than the return from real estate investments.
                   This financial leverage compensates the cost of buying in the
-                  long run. Thus, this calculator may{" "}
-                  <mark>incorrectly suggest that renting is better</mark> even
-                  if you plan to reside in the property for a long period of
-                  time (e.g. 20 years).
+                  long run. Thus, this calculator may incorrectly suggest that
+                  renting is better even if you plan to reside in the property
+                  for a long period of time (e.g. 20 years).
                 </li>
                 <li>
                   The calculator also doesn't consider the fees for buying and
-                  selling a home. If you only stay in a property for a couple of
-                  years before selling it, buying a home may not be a good
+                  selling a home. If you plan to stay in the property for only a
+                  few years before selling it, buying a home may not be a good
                   financial decision.
                 </li>
               </ol>
