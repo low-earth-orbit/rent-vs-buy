@@ -89,7 +89,7 @@ const Main = () => {
                 readOnly
               />
               <label className="btn btn-outline-dark" htmlFor="rentOption">
-                monthly rent
+                Monthly Rent
               </label>
 
               <input
@@ -104,7 +104,7 @@ const Main = () => {
                 readOnly
               />
               <label className="btn btn-outline-dark" htmlFor="priceOption">
-                property price
+                Property Price
               </label>
             </div>
           </div>
@@ -202,7 +202,7 @@ const Main = () => {
               >
                 Maintenance Costs <i className="bi bi-question-circle"></i>
               </label>
-              <div id=" maintenanceCostsHelp" className="form-text">
+              <div id="maintenanceCostsHelp" className="form-text">
                 As an estimate, you can use 1% of the property value for homes
                 worth over $500,000, or 1.5% for homes worth less.
               </div>
