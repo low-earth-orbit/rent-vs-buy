@@ -70,43 +70,41 @@ const Main = () => {
     <main className="container">
       <div className="row gx-5">
         <div className="col-7">
-          <div id="start">
-            Start with{" "}
-            <div
-              className="btn-group"
-              role="group"
-              aria-label="Select an option to start with"
-            >
-              <input
-                type="radio"
-                className="btn-check"
-                name="btnradio"
-                id="rentOption"
-                autoComplete="off"
-                onClick={() => setIsRentSelected(true)}
-                checked={isRentSelected}
-                title="Select this option if you know the monthly rent of the property. You can also estimate the amount of rent by properties with similar conditions."
-                readOnly
-              />
-              <label className="btn btn-outline-dark" htmlFor="rentOption">
-                Monthly Rent
-              </label>
+          <div
+            id="start"
+            className="btn-group btn-group-sm"
+            role="group"
+            aria-label="Select an option to start with"
+          >
+            <input
+              type="radio"
+              className="btn-check"
+              name="btnradio"
+              id="rentOption"
+              autoComplete="off"
+              onClick={() => setIsRentSelected(true)}
+              checked={isRentSelected}
+              title="Select this option if you know the monthly rent of the property. You can also estimate the amount of rent by properties with similar conditions."
+              readOnly
+            />
+            <label className="btn btn-outline-dark" htmlFor="rentOption">
+              Monthly Rent
+            </label>
 
-              <input
-                type="radio"
-                className="btn-check"
-                name="btnradio"
-                id="priceOption"
-                autoComplete="off"
-                onClick={() => setIsRentSelected(false)}
-                checked={!isRentSelected}
-                title="Select this option if you know the property price. You can also estimate the price by similar units nearby."
-                readOnly
-              />
-              <label className="btn btn-outline-dark" htmlFor="priceOption">
-                Property Price
-              </label>
-            </div>
+            <input
+              type="radio"
+              className="btn-check"
+              name="btnradio"
+              id="priceOption"
+              autoComplete="off"
+              onClick={() => setIsRentSelected(false)}
+              checked={!isRentSelected}
+              title="Select this option if you know the property price. You can also estimate the price by similar units nearby."
+              readOnly
+            />
+            <label className="btn btn-outline-dark" htmlFor="priceOption">
+              Property Price
+            </label>
           </div>
           <form id="form">
             {isRentSelected ? (
