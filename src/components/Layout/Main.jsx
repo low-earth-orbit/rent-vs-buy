@@ -3,14 +3,14 @@ import { useState } from "react";
 const Main = () => {
   const [isRentSelected, setIsRentSelected] = useState(true);
 
-  const [price, setPrice] = useState(300000);
+  const [price, setPrice] = useState(500000);
   const [rent, setRent] = useState(2000);
-  const [propertyTax, setPropertyTax] = useState(1.3386);
+  const [propertyTax, setPropertyTax] = useState(1.0);
   const [maintenanceCosts, setMaintenanceCosts] = useState(1.5);
   const [downPayment, setDownPayment] = useState(20);
   const [mortgageRate, setMortgageRate] = useState(4.5);
   const [opportunityCostOfDownPayment, setOpportunityCostOfDownPayment] =
-    useState(5.21);
+    useState(5.2);
 
   const calculateFairPrice = (
     rent,
