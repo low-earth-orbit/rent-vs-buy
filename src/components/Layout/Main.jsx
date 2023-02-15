@@ -6,7 +6,7 @@ const Main = () => {
   const [price, setPrice] = useState(500000);
   const [rent, setRent] = useState(2000);
   const [propertyTax, setPropertyTax] = useState(1.0);
-  const [maintenanceCosts, setMaintenanceCosts] = useState(1.5);
+  const [maintenanceCosts, setMaintenanceCosts] = useState(1.0);
   const [downPayment, setDownPayment] = useState(20);
   const [mortgageRate, setMortgageRate] = useState(4.5);
   const [opportunityCostOfDownPayment, setOpportunityCostOfDownPayment] =
