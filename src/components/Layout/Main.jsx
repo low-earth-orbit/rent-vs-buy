@@ -10,7 +10,7 @@ const Main = () => {
   const [downPayment, setDownPayment] = useState(20);
   const [mortgageRate, setMortgageRate] = useState(4.5);
   const [opportunityCostOfDownPayment, setOpportunityCostOfDownPayment] =
-    useState(5.2);
+    useState(4.2);
 
   const calculateFairPrice = (
     rent,
@@ -111,9 +111,8 @@ const Main = () => {
               <div className="form-group">
                 <label
                   htmlFor="rent"
-                  title="Monthly rent cost refers to the amount of money paid by a tenant to the landlord on a monthly basis for the use of a property."
                 >
-                  Monthly Rent <i className="bi bi-question-circle"></i>
+                  Monthly Rent 
                 </label>
                 <div className="input-group mb-3">
                   <div className="input-group-prepend">
@@ -140,9 +139,8 @@ const Main = () => {
               <div className="form-group">
                 <label
                   htmlFor="price"
-                  title="Property price refers to the monetary value of a real estate property. It is the amount that a buyer is willing to pay for a property, or the amount that a seller is asking for the property."
                 >
-                  Property Price <i className="bi bi-question-circle"></i>
+                  Property Price 
                 </label>
                 <div className="input-group mb-3">
                   <div className="input-group-prepend">
@@ -168,9 +166,8 @@ const Main = () => {
             <div className="form-group">
               <label
                 htmlFor="propertyTax"
-                title="Property tax is a tax imposed by the government on real estate property and is typically based on the value of the property."
               >
-                Property Tax <i className="bi bi-question-circle"></i>
+                Property Tax 
               </label>
               <div id="propertyTaxHelp" className="form-text">
                 Enter the property tax rate for the area where the property is
@@ -196,12 +193,11 @@ const Main = () => {
             <div className="form-group">
               <label
                 htmlFor="maintenanceCosts"
-                title="Maintenance costs of a real estate property refers to the expenses incurred in keeping the property in good condition, such as condo fees, renovation, home insurance, among others."
               >
-                Maintenance Costs <i className="bi bi-question-circle"></i>
+                Maintenance Costs 
               </label>
               <div id="maintenanceCostsHelp" className="form-text">
-                As an estimate, you can use 1% of the property value for homes
+                Including repair, deprecitaion, condo fees, insurance, etc. As an estimate, you can use 1% of the property value for homes
                 worth over $500,000, or 1.5% for homes worth less.
               </div>
               <div className="input-group mb-3">
@@ -224,9 +220,8 @@ const Main = () => {
             <div className="form-group">
               <label
                 htmlFor="downPayment"
-                title="Down payment is money you pay right away when you buy a home. The rest of the cost is paid later with monthly mortgage payments."
               >
-                Down Payment <i className="bi bi-question-circle"></i>
+                Down Payment 
               </label>
               <div className="input-group mb-3">
                 <input
@@ -249,9 +244,8 @@ const Main = () => {
             <div className="form-group">
               <label
                 htmlFor="mortgageRate"
-                title="Mortgage rate is the interest rate charged on a mortgage loan, which is a type of loan used to finance the purchase of a property."
               >
-                Mortgage Rate <i className="bi bi-question-circle"></i>
+                Mortgage Rate 
               </label>
               <div id="mortgageRateHelp" className="form-text">
                 The default value is based on a 2.5% neutral rate of interest
@@ -276,15 +270,12 @@ const Main = () => {
             <div className="form-group">
               <label
                 htmlFor="opportunityCostOfDownPayment"
-                title="The opportunity cost of down payment refers to the cost of not using the money that is put down as down payment towards other investment opportunities such as stocks."
               >
-                Opportunity Cost of Down Payment{" "}
-                <i className="bi bi-question-circle"></i>
+                Opportunity Cost of Down Payment
               </label>
               <div id="opportunityCostOfDownPayment" className="form-text">
-                The default value is calculated as the difference between the
-                total return on stocks (6.82%) and the price return on real
-                estate (1.61%) from 1870 to 2015.
+                The default value is the difference between the return on an 80/20 growth portfolio and the price increase on real
+                estate based on long-term capital markets assumptions.
               </div>
               <div className="input-group mb-3">
                 <input
