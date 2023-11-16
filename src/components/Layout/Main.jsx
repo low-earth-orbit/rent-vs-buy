@@ -197,8 +197,7 @@ const Main = () => {
                 Maintenance Costs 
               </label>
               <div id="maintenanceCostsHelp" className="form-text">
-                Including repair, deprecitaion, condo fees, insurance, etc. As an estimate, you can use 1% of the property value for homes
-                worth over $500,000, or 1.5% for homes worth less.
+                Including cost of repair, depreciation, condo fees, insurance premium, etc. As an estimate, you can use 1% of the property value for homes worth over $500,000, or 1.5% for homes worth less.
               </div>
               <div className="input-group mb-3">
                 <input
