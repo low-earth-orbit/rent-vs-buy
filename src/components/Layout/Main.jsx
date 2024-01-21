@@ -8,9 +8,10 @@ const Main = () => {
   const [propertyTax, setPropertyTax] = useState(1.0);
   const [maintenanceCosts, setMaintenanceCosts] = useState(1.0);
   const [downPayment, setDownPayment] = useState(20);
-  const [mortgageRate, setMortgageRate] = useState(4.5);
+  const [mortgageRate, setMortgageRate] = useState(4.75);
   const [opportunityCostOfDownPayment, setOpportunityCostOfDownPayment] =
-    useState(4.2);
+    useState(6.4);
+  const [homePriceGrowth, setHomePriceGrowth] = useState(3);
 
   const calculateFairPrice = (
     rent,
@@ -60,7 +61,8 @@ const Main = () => {
   ) => {
     const capitalCost =
       (opportunityCostOfDownPayment / 100) * (downPayment / 100) +
-      (mortgageRate / 100) * (1 - downPayment / 100);
+      (mortgageRate / 100) * (1 - downPayment / 100) -
+      homePriceGrowth / 100;
     const costOfOwning =
       capitalCost + propertyTax / 100 + maintenanceCosts / 100;
     return costOfOwning;
@@ -109,11 +111,7 @@ const Main = () => {
           <form id="form">
             {isRentSelected ? (
               <div className="form-group">
-                <label
-                  htmlFor="rent"
-                >
-                  Monthly Rent 
-                </label>
+                <label htmlFor="rent">Monthly Rent</label>
                 <div className="input-group mb-3">
                   <div className="input-group-prepend">
                     <span className="input-group-text">$</span>
@@ -137,11 +135,7 @@ const Main = () => {
               </div>
             ) : (
               <div className="form-group">
-                <label
-                  htmlFor="price"
-                >
-                  Property Price 
-                </label>
+                <label htmlFor="price">Property Price</label>
                 <div className="input-group mb-3">
                   <div className="input-group-prepend">
                     <span className="input-group-text">$</span>
@@ -164,14 +158,10 @@ const Main = () => {
               </div>
             )}
             <div className="form-group">
-              <label
-                htmlFor="propertyTax"
-              >
-                Property Tax 
-              </label>
+              <label htmlFor="propertyTax">Property Tax</label>
               <div id="propertyTaxHelp" className="form-text">
                 Enter the property tax rate for the area where the property is
-                located. Tax rates can vary depending on the jurisdiction.
+                located.
               </div>
               <div className="input-group mb-3">
                 <input
@@ -191,13 +181,10 @@ const Main = () => {
               </div>
             </div>
             <div className="form-group">
-              <label
-                htmlFor="maintenanceCosts"
-              >
-                Maintenance Costs 
-              </label>
+              <label htmlFor="maintenanceCosts">Maintenance Costs</label>
               <div id="maintenanceCostsHelp" className="form-text">
-                Including cost of repair, depreciation, condo fees, insurance premium, etc. As an estimate, you can use 1% of the property value for homes worth over $500,000, or 1.5% for homes worth less.
+                Include cost of repair, depreciation, condo fees, insurance
+                premium, etc. As a rough estimate, you can use 1%.
               </div>
               <div className="input-group mb-3">
                 <input
@@ -217,11 +204,7 @@ const Main = () => {
               </div>
             </div>
             <div className="form-group">
-              <label
-                htmlFor="downPayment"
-              >
-                Down Payment 
-              </label>
+              <label htmlFor="downPayment">Down Payment</label>
               <div className="input-group mb-3">
                 <input
                   id="downPayment"
@@ -241,14 +224,10 @@ const Main = () => {
               </div>
             </div>
             <div className="form-group">
-              <label
-                htmlFor="mortgageRate"
-              >
-                Mortgage Rate 
-              </label>
+              <label htmlFor="mortgageRate">Mortgage Rate</label>
               <div id="mortgageRateHelp" className="form-text">
-                The default value is based on a 2.5% neutral rate of interest
-                plus a 2% spread.
+                The default value is based on a 2.75% neutral rate plus a 2%
+                spread.
               </div>
               <div className="input-group mb-3">
                 <input
@@ -267,14 +246,13 @@ const Main = () => {
               </div>
             </div>
             <div className="form-group">
-              <label
-                htmlFor="opportunityCostOfDownPayment"
-              >
+              <label htmlFor="opportunityCostOfDownPayment">
                 Opportunity Cost of Down Payment
               </label>
               <div id="opportunityCostOfDownPayment" className="form-text">
-                The default value is the difference between the return on an 80/20 growth portfolio and the price increase on real
-                estate based on long-term capital markets assumptions.
+                Enter the expected return of your investment portfolio if you
+                use the down payment amount for investing. The default value is
+                projected return of an 80/20 growth portfolio.
               </div>
               <div className="input-group mb-3">
                 <input
@@ -287,6 +265,27 @@ const Main = () => {
                   value={opportunityCostOfDownPayment}
                   placeholder="Enter the opportunity cost of down payment"
                   aria-label="Enter the opportunity cost of down payment"
+                  step="0.1"
+                />
+                <div className="input-group-append">
+                  <span className="input-group-text">%</span>
+                </div>
+              </div>
+            </div>
+            <div className="form-group">
+              <label htmlFor="homePriceGrowth">Home Price Growth</label>
+              <div id="homePriceGrowth" className="form-text">
+                The default value is 3%, assuming 1% real price change.
+              </div>
+              <div className="input-group mb-3">
+                <input
+                  id="homePriceGrowth"
+                  type="number"
+                  className="form-control"
+                  onChange={(event) => setHomePriceGrowth(event.target.value)}
+                  value={homePriceGrowth}
+                  placeholder="Enter the expected growth of home price"
+                  aria-label="Enter the expected growth of home price"
                   step="0.1"
                 />
                 <div className="input-group-append">
@@ -335,7 +334,7 @@ const Main = () => {
           <div id="Method">
             <small>
               <p>
-                This calculator is based on the{" "}
+                This calculator is inspired by the{" "}
                 <a
                   href="https://www.pwlcapital.com/rent-or-own-your-home-5-rule/"
                   title="Learn more about the 5% Rule by Ben Felix"
@@ -352,24 +351,12 @@ const Main = () => {
                 sold and the down payment has an opportunity cost as it could
                 have been invested in stocks.
               </p>
-              <p>It's important to know that the 5% Rule has limitations.</p>
-              <ol>
-                <li>
-                  Taking a mortgage means borrowing money to invest and can
-                  generate long-term returns as long as the mortgage interest
-                  rate is lower than the return from real estate investments.
-                  This financial leverage compensates the cost of buying in the
-                  long run. Thus, this calculator may incorrectly suggest that
-                  renting is better even if you plan to reside in the property
-                  for a long period of time (e.g. 20 years).
-                </li>
-                <li>
-                  The calculator also doesn't consider the fees for buying and
-                  selling a home. If you plan to stay in the property for only a
-                  few years before selling it, buying a home may not be a good
-                  financial decision.
-                </li>
-              </ol>
+              <p>
+                The calculator doesn't consider the fees for buying and selling
+                a home. If you plan to stay in the property for only a few years
+                before selling it, buying a home may not be a good financial
+                decision.
+              </p>
               <p>
                 Overall, this calculator makes it easy to compare renting vs
                 buying as you don't have to enter complicated financial
