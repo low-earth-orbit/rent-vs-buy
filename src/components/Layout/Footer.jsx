@@ -1,3 +1,5 @@
+import githubLogo from "../../images/github-mark.svg";
+
 const Footer = () => {
   return (
     <footer className="container" id="footer">
@@ -8,11 +10,7 @@ const Footer = () => {
         rel="noreferrer"
         title="Connect with me on Github"
       >
-        <img
-          id="github-logo"
-          src="https://github.githubassets.com/images/modules/logos_page/Octocat.png"
-          alt="Github logo"
-        />
+        <img id="github-logo" src={githubLogo} alt="Github logo" />
       </a>
       <p>Copyright © 2023 Leo Hong</p>
     </footer>
