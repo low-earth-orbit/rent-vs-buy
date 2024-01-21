@@ -12,13 +12,14 @@ code {
 /* Header */
 #header {
   padding-top: 2rem;
-  padding-bottom: 1rem;
+  padding-bottom: 0.5rem;
 }
 
 /* Main */
 #start {
   margin-bottom: 1rem;
 }
+
 /* Footer */
 #footer {
   padding-top: 2rem;
@@ -30,10 +31,23 @@ code {
   padding-bottom: 1rem;
 }
 
-@media only screen and (max-width: 1200px) {
+@media only screen and (max-width: 576px) {
   #header {
     padding-top: 1rem;
     padding-bottom: 0;
+  }
+  #footer {
+    padding-top: 1rem;
+  }
+}
+
+@media only screen and (max-width: 1200px) {
+  #header {
+    padding-top: 1.5rem;
+    padding-bottom: 0;
+  }
+  #footer {
+    padding-top: 1.5rem;
   }
   [class*="col-"] {
     width: 100%;
