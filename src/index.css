@@ -23,6 +23,7 @@ code {
 .row {
   margin-left: 0px;
   margin-right: 0px;
+  column-gap: 24px;
 }
 
 div[class^="col-"] {

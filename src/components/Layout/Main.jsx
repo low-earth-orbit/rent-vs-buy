@@ -71,7 +71,7 @@ const Main = () => {
   return (
     <main className="container">
       <div className="row gx-5">
-        <div className="col-7">
+        <div className="col-6">
           <div
             id="start"
             className="btn-group btn-group-sm"
