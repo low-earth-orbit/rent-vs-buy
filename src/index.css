@@ -20,6 +20,17 @@ code {
   margin-bottom: 1rem;
 }
 
+.row {
+  margin-left: 0px;
+  margin-right: 0px;
+  column-gap: 24px;
+}
+
+div[class^="col-"] {
+  padding-left: 0px;
+  padding-right: 0px;
+}
+
 /* Footer */
 #footer {
   padding-top: 2rem;
