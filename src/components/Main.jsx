@@ -1,72 +1,34 @@
 import { useState } from "react";
+import Result from "./Result";
 
 const Main = () => {
-  const [isRentSelected, setIsRentSelected] = useState(true);
+  const [userInput, setUserInput] = useState({
+    isRentSelected: true,
+    price: 1000000,
+    rent: 3000,
+    propertyTax: 1,
+    maintenanceCost: 2,
+    downPayment: 20,
+    mortgageRate: 4.75,
+    investmentReturn: 6.4,
+    homePriceChange: 3,
+  });
 
-  const [price, setPrice] = useState(500000);
-  const [rent, setRent] = useState(2000);
-  const [propertyTax, setPropertyTax] = useState(1.0);
-  const [maintenanceCosts, setMaintenanceCosts] = useState(1.0);
-  const [downPayment, setDownPayment] = useState(20);
-  const [mortgageRate, setMortgageRate] = useState(4.75);
-  const [opportunityCostOfDownPayment, setOpportunityCostOfDownPayment] =
-    useState(6.4);
-  const [homePriceGrowth, setHomePriceGrowth] = useState(3);
-
-  const calculateFairPrice = (
-    rent,
-    propertyTax,
-    maintenanceCosts,
-    downPayment,
-    mortgageRate,
-    opportunityCostOfDownPayment
-  ) => {
-    const costOfOwning = calculateCostOfOwning(
-      opportunityCostOfDownPayment,
-      downPayment,
-      mortgageRate,
-      propertyTax,
-      maintenanceCosts
-    );
-    const rentPerYear = rent * 12;
-    const fairPrice = rentPerYear / costOfOwning;
-    return fairPrice;
-  };
-
-  const calculateFairRent = (
-    price,
-    propertyTax,
-    maintenanceCosts,
-    downPayment,
-    mortgageRate,
-    opportunityCostOfDownPayment
-  ) => {
-    const costOfOwning = calculateCostOfOwning(
-      opportunityCostOfDownPayment,
-      downPayment,
-      mortgageRate,
-      propertyTax,
-      maintenanceCosts
-    );
-    const fairRent = (price * costOfOwning) / 12;
-    return fairRent;
-  };
-
-  const calculateCostOfOwning = (
-    opportunityCostOfDownPayment,
-    downPayment,
-    mortgageRate,
-    propertyTax,
-    maintenanceCosts
-  ) => {
-    const capitalCost =
-      (opportunityCostOfDownPayment / 100) * (downPayment / 100) +
-      (mortgageRate / 100) * (1 - downPayment / 100) -
-      homePriceGrowth / 100;
-    const costOfOwning =
-      capitalCost + propertyTax / 100 + maintenanceCosts / 100;
-    return costOfOwning;
-  };
+  function handleChange(inputIdentifier, newValue) {
+    if (inputIdentifier === "selectRent") {
+      setUserInput((prevUserInput) => {
+        return { ...prevUserInput, isRentSelected: true };
+      });
+    } else if (inputIdentifier === "selectPrice") {
+      setUserInput((prevUserInput) => {
+        return { ...prevUserInput, isRentSelected: false };
+      });
+    } else {
+      setUserInput((prevUserInput) => {
+        return { ...prevUserInput, [inputIdentifier]: +newValue }; // + converts string to number
+      });
+    }
+  }
 
   return (
     <main className="container">
@@ -84,8 +46,10 @@ const Main = () => {
               name="btnradio"
               id="rentOption"
               autoComplete="off"
-              onClick={() => setIsRentSelected(true)}
-              checked={isRentSelected}
+              onClick={() => {
+                handleChange("selectRent", null);
+              }}
+              checked={userInput.isRentSelected}
               title="Select this option if you know the monthly rent of the property. You can also estimate the amount of rent by properties with similar conditions."
               readOnly
             />
@@ -99,8 +63,10 @@ const Main = () => {
               name="btnradio"
               id="priceOption"
               autoComplete="off"
-              onClick={() => setIsRentSelected(false)}
-              checked={!isRentSelected}
+              onClick={() => {
+                handleChange("selectPrice", null);
+              }}
+              checked={!userInput.isRentSelected}
               title="Select this option if you know the property price. You can also estimate the price by similar units nearby."
               readOnly
             />
@@ -109,7 +75,7 @@ const Main = () => {
             </label>
           </div>
           <form id="form">
-            {isRentSelected ? (
+            {userInput.isRentSelected ? (
               <div className="form-group">
                 <label htmlFor="rent">Monthly Rent</label>
                 <div className="input-group mb-3">
@@ -121,8 +87,10 @@ const Main = () => {
                     type="number"
                     min="0"
                     className="form-control"
-                    onChange={(event) => setRent(event.target.value)}
-                    value={rent ? rent : ""}
+                    onChange={(event) => {
+                      handleChange("rent", event.target.value);
+                    }}
+                    value={userInput.rent}
                     placeholder="Enter the monthly rent"
                     aria-label="Enter the amount of monthly rent to the nearest dollar"
                     step="100"
@@ -145,8 +113,10 @@ const Main = () => {
                     type="number"
                     min="0"
                     className="form-control"
-                    onChange={(event) => setPrice(event.target.value)}
-                    value={price}
+                    onChange={(event) => {
+                      handleChange("price", event.target.value);
+                    }}
+                    value={userInput.price}
                     placeholder="Enter the property price"
                     aria-label="Enter the price of the property to the nearest dollar"
                     step="10000"
@@ -158,19 +128,17 @@ const Main = () => {
               </div>
             )}
             <div className="form-group">
-              <label htmlFor="propertyTax">Property Tax</label>
-              <div id="propertyTaxHelp" className="form-text">
-                Enter the property tax rate for the area where the property is
-                located.
-              </div>
+              <label htmlFor="propertyTax">Property Tax Rate</label>
               <div className="input-group mb-3">
                 <input
                   id="propertyTax"
                   type="number"
                   min="0"
                   className="form-control"
-                  onChange={(event) => setPropertyTax(event.target.value)}
-                  value={propertyTax}
+                  onChange={(event) => {
+                    handleChange("propertyTax", event.target.value);
+                  }}
+                  value={userInput.propertyTax}
                   placeholder="Enter the property tax rate"
                   aria-label="Enter the property tax rate"
                   step="0.1"
@@ -181,21 +149,24 @@ const Main = () => {
               </div>
             </div>
             <div className="form-group">
-              <label htmlFor="maintenanceCosts">Maintenance Costs</label>
-              <div id="maintenanceCostsHelp" className="form-text">
-                Include cost of repair, depreciation, condo fees, insurance
-                premium, etc. As a rough estimate, you can use 1%.
+              <label htmlFor="maintenanceCost">Maintenance Cost</label>
+              <div id="maintenanceCostHelp" className="form-text">
+                Include depreciation, repairs, condo fees, insurance premiums,
+                etc. The default value is based on an estimated depreciation of
+                1.5% plus additional expenditures.
               </div>
               <div className="input-group mb-3">
                 <input
-                  id="maintenanceCosts"
+                  id="maintenanceCost"
                   type="number"
                   min="0"
                   className="form-control"
-                  onChange={(event) => setMaintenanceCosts(event.target.value)}
-                  value={maintenanceCosts}
-                  placeholder="Enter maintenance costs as a percentage of property price"
-                  aria-label="Enter maintenance costs as a percentage of property price"
+                  onChange={(event) => {
+                    handleChange("maintenanceCost", event.target.value);
+                  }}
+                  value={userInput.maintenanceCost}
+                  placeholder="Enter maintenance cost as a percentage of property price"
+                  aria-label="Enter maintenance cost as a percentage of property price"
                   step="0.1"
                 />
                 <div className="input-group-append">
@@ -212,8 +183,10 @@ const Main = () => {
                   min="0"
                   max="100"
                   className="form-control"
-                  onChange={(event) => setDownPayment(event.target.value)}
-                  value={downPayment}
+                  onChange={(event) => {
+                    handleChange("downPayment", event.target.value);
+                  }}
+                  value={userInput.downPayment}
                   placeholder="Enter the percentage of down payment"
                   aria-label="Enter the percentage of down payment"
                   step="1"
@@ -234,8 +207,10 @@ const Main = () => {
                   id="mortgageRate"
                   type="number"
                   className="form-control"
-                  onChange={(event) => setMortgageRate(event.target.value)}
-                  value={mortgageRate}
+                  onChange={(event) => {
+                    handleChange("mortgageRate", event.target.value);
+                  }}
+                  value={userInput.mortgageRate}
                   placeholder="Enter the mortgage rate"
                   aria-label="Enter the mortgage rate"
                   step="0.1"
@@ -256,13 +231,13 @@ const Main = () => {
               </div>
               <div className="input-group mb-3">
                 <input
-                  id="opportunityCostOfDownPayment"
+                  id="investmentReturn"
                   type="number"
                   className="form-control"
-                  onChange={(event) =>
-                    setOpportunityCostOfDownPayment(event.target.value)
-                  }
-                  value={opportunityCostOfDownPayment}
+                  onChange={(event) => {
+                    handleChange("investmentReturn", event.target.value);
+                  }}
+                  value={userInput.investmentReturn}
                   placeholder="Enter the opportunity cost of down payment"
                   aria-label="Enter the opportunity cost of down payment"
                   step="0.1"
@@ -273,17 +248,19 @@ const Main = () => {
               </div>
             </div>
             <div className="form-group">
-              <label htmlFor="homePriceGrowth">Home Price Growth</label>
-              <div id="homePriceGrowth" className="form-text">
+              <label htmlFor="homePriceChange">Home Price Growth</label>
+              <div id="homePriceChange" className="form-text">
                 The default value is 3%, assuming 1% real price change.
               </div>
               <div className="input-group mb-3">
                 <input
-                  id="homePriceGrowth"
+                  id="homePriceChange"
                   type="number"
                   className="form-control"
-                  onChange={(event) => setHomePriceGrowth(event.target.value)}
-                  value={homePriceGrowth}
+                  onChange={(event) => {
+                    handleChange("homePriceChange", event.target.value);
+                  }}
+                  value={userInput.homePriceChange}
                   placeholder="Enter the expected growth of home price"
                   aria-label="Enter the expected growth of home price"
                   step="0.1"
@@ -296,86 +273,7 @@ const Main = () => {
           </form>
         </div>
         <div className="col-5">
-          <div id="result">
-            {isRentSelected ? (
-              <p>
-                If you can purchase a similar property for less than{" "}
-                <strong>
-                  $
-                  {calculateFairPrice(
-                    rent,
-                    propertyTax,
-                    maintenanceCosts,
-                    downPayment,
-                    mortgageRate,
-                    opportunityCostOfDownPayment
-                  ).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                </strong>
-                , then owning is likely better.
-              </p>
-            ) : (
-              <p>
-                If you can rent a similar property for less than{" "}
-                <strong>
-                  $
-                  {calculateFairRent(
-                    price,
-                    propertyTax,
-                    maintenanceCosts,
-                    downPayment,
-                    mortgageRate,
-                    opportunityCostOfDownPayment
-                  ).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                </strong>{" "}
-                per month, then renting is likely better.
-              </p>
-            )}
-          </div>
-          <div id="Method">
-            <small>
-              <p>
-                This calculator is inspired by the{" "}
-                <a
-                  href="https://www.pwlcapital.com/rent-or-own-your-home-5-rule/"
-                  title="Learn more about the 5% Rule by Ben Felix"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="link-dark"
-                >
-                  5% Rule by Ben Felix
-                </a>
-                , although the sum may not always be 5%. When people decide to
-                rent or buy a home, they often only compare the monthly mortgage
-                payment with the monthly rent. This is not a complete picture
-                because mortgage payments can be recovered when the property is
-                sold and the down payment has an opportunity cost as it could
-                have been invested in stocks.
-              </p>
-              <p>
-                The calculator doesn't consider the fees for buying and selling
-                a home. If you plan to stay in the property for only a few years
-                before selling it, buying a home may not be a good financial
-                decision.
-              </p>
-              <p>
-                Overall, this calculator makes it easy to compare renting vs
-                buying as you don't have to enter complicated financial
-                assumptions. For a more accurate comparison considering
-                investment length, the cash flow method is preferred. You can
-                find a helpful spreadsheet{" "}
-                <a
-                  href="http://www.holypotato.net/?p=1073"
-                  title="A rent vs buy spreadsheet based on cash flow method"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="link-dark"
-                >
-                  here
-                </a>
-                .
-              </p>
-            </small>
-          </div>
+          <Result userInput={userInput} />
         </div>
       </div>
     </main>
