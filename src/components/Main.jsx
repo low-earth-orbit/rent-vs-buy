@@ -25,7 +25,10 @@ const Main = () => {
       });
     } else {
       setUserInput((prevUserInput) => {
-        return { ...prevUserInput, [inputIdentifier]: +newValue }; // + converts string to number
+        return {
+          ...prevUserInput,
+          [inputIdentifier]: newValue ? +newValue : newValue,
+        }; // + converts string to number
       });
     }
   }
@@ -34,12 +37,7 @@ const Main = () => {
     <main className="container">
       <div className="row gx-5">
         <div className="col-6">
-          <div
-            id="start"
-            className="btn-group btn-group-sm"
-            role="group"
-            aria-label="Select an option to start with"
-          >
+          <div id="start" className="btn-group btn-group-sm" role="group">
             <input
               type="radio"
               className="btn-check"
@@ -92,7 +90,6 @@ const Main = () => {
                     }}
                     value={userInput.rent}
                     placeholder="Enter the monthly rent"
-                    aria-label="Enter the amount of monthly rent to the nearest dollar"
                     step="100"
                     required
                   />
@@ -118,7 +115,6 @@ const Main = () => {
                     }}
                     value={userInput.price}
                     placeholder="Enter the property price"
-                    aria-label="Enter the price of the property to the nearest dollar"
                     step="10000"
                   />
                   <div className="input-group-append">
@@ -140,7 +136,6 @@ const Main = () => {
                   }}
                   value={userInput.propertyTax}
                   placeholder="Enter the property tax rate"
-                  aria-label="Enter the property tax rate"
                   step="0.1"
                 />
                 <div className="input-group-append">
@@ -165,8 +160,6 @@ const Main = () => {
                     handleChange("maintenanceCost", event.target.value);
                   }}
                   value={userInput.maintenanceCost}
-                  placeholder="Enter maintenance cost as a percentage of property price"
-                  aria-label="Enter maintenance cost as a percentage of property price"
                   step="0.1"
                 />
                 <div className="input-group-append">
@@ -187,8 +180,6 @@ const Main = () => {
                     handleChange("downPayment", event.target.value);
                   }}
                   value={userInput.downPayment}
-                  placeholder="Enter the percentage of down payment"
-                  aria-label="Enter the percentage of down payment"
                   step="1"
                 />
                 <div className="input-group-append">
@@ -211,8 +202,6 @@ const Main = () => {
                     handleChange("mortgageRate", event.target.value);
                   }}
                   value={userInput.mortgageRate}
-                  placeholder="Enter the mortgage rate"
-                  aria-label="Enter the mortgage rate"
                   step="0.1"
                 />
                 <div className="input-group-append">
@@ -221,13 +210,12 @@ const Main = () => {
               </div>
             </div>
             <div className="form-group">
-              <label htmlFor="opportunityCostOfDownPayment">
-                Opportunity Cost of Down Payment
-              </label>
-              <div id="opportunityCostOfDownPayment" className="form-text">
-                Enter the expected return of your investment portfolio if you
-                use the down payment amount for investing. The default value is
-                projected return of an 80/20 growth portfolio.
+              <label htmlFor="investmentReturn">Investment Return</label>
+              <div id="investmentReturnHelp" className="form-text">
+                Enter the expected return of your investment portfolio. You
+                could use the down payment amount for investing. This is the
+                opportunity cost of down payment. The default value is projected
+                return of an 80/20 growth portfolio.
               </div>
               <div className="input-group mb-3">
                 <input
@@ -238,8 +226,6 @@ const Main = () => {
                     handleChange("investmentReturn", event.target.value);
                   }}
                   value={userInput.investmentReturn}
-                  placeholder="Enter the opportunity cost of down payment"
-                  aria-label="Enter the opportunity cost of down payment"
                   step="0.1"
                 />
                 <div className="input-group-append">
@@ -248,8 +234,8 @@ const Main = () => {
               </div>
             </div>
             <div className="form-group">
-              <label htmlFor="homePriceChange">Home Price Growth</label>
-              <div id="homePriceChange" className="form-text">
+              <label htmlFor="homePriceChange">Home Price Change</label>
+              <div id="homePriceChangeHelp" className="form-text">
                 The default value is 3%, assuming 1% real price change.
               </div>
               <div className="input-group mb-3">
@@ -261,8 +247,6 @@ const Main = () => {
                     handleChange("homePriceChange", event.target.value);
                   }}
                   value={userInput.homePriceChange}
-                  placeholder="Enter the expected growth of home price"
-                  aria-label="Enter the expected growth of home price"
                   step="0.1"
                 />
                 <div className="input-group-append">
