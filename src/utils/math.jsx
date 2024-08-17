@@ -143,16 +143,18 @@ function getOwnerValueEndOfYear({
   principal,
   annualInterestRate,
   years,
+  saleCommission,
 }) {
   const ownerValue =
-    getHomePriceEndOfYear(homePrice, priceChange, yearNumber) -
+    getHomePriceEndOfYear(homePrice, priceChange, yearNumber) *
+      (1 - saleCommission / 100) -
     getMortgageBalanceEndOfYear(
       principal,
       annualInterestRate,
       years,
       yearNumber
     );
-    
+
   return ownerValue;
 }
 
@@ -265,6 +267,7 @@ function rentMinusBuyEndOfYear({
   maintenanceCost,
   homePrice,
   priceChange,
+  saleCommission,
 }) {
   const renterValue = getRenterValueEndOfYear({
     monthlyRent,
@@ -280,18 +283,20 @@ function rentMinusBuyEndOfYear({
     maintenanceCost,
     homePrice,
     priceChange,
+    saleCommission,
   });
 
   // console.log(`renter value at Year ${yearNumber} = `, renterValue.toFixed(0));
 
-  const ownerValue = getOwnerValueEndOfYear(
+  const ownerValue = getOwnerValueEndOfYear({
     homePrice,
     priceChange,
     yearNumber,
     principal,
     annualInterestRate,
-    years
-  );
+    years,
+    saleCommission,
+  });
   // console.log(`owner value at Year ${yearNumber} = `, ownerValue.toFixed(0));
 
   const result = renterValue - ownerValue;
@@ -303,6 +308,11 @@ function rentMinusBuyEndOfYear({
 
   return result;
 }
+
+// TODO:
+// Add commission on sale
+// Add tax on investment return
+// Add tax on selling the house
 
 /*
   Test
@@ -320,6 +330,7 @@ const annualInterestRate = 4.75;
 const years = 25;
 const yearNumber = 30; // Year number to calculate ending principal
 const downPayment = homePrice * 0.2;
+const saleCommission = 5;
 
 rentMinusBuyEndOfYear({
   monthlyRent,
@@ -335,6 +346,7 @@ rentMinusBuyEndOfYear({
   maintenanceCost,
   homePrice,
   priceChange,
+  saleCommission,
 });
 
 rentMinusBuyEndOfYear({
@@ -351,6 +363,7 @@ rentMinusBuyEndOfYear({
   maintenanceCost,
   homePrice,
   priceChange,
+  saleCommission,
 });
 
 rentMinusBuyEndOfYear({
@@ -367,6 +380,7 @@ rentMinusBuyEndOfYear({
   maintenanceCost,
   homePrice,
   priceChange,
+  saleCommission,
 });
 
 rentMinusBuyEndOfYear({
@@ -383,6 +397,7 @@ rentMinusBuyEndOfYear({
   maintenanceCost,
   homePrice,
   priceChange,
+  saleCommission,
 });
 
 rentMinusBuyEndOfYear({
@@ -399,6 +414,7 @@ rentMinusBuyEndOfYear({
   maintenanceCost,
   homePrice,
   priceChange,
+  saleCommission,
 });
 
 rentMinusBuyEndOfYear({
@@ -415,6 +431,7 @@ rentMinusBuyEndOfYear({
   maintenanceCost,
   homePrice,
   priceChange,
+  saleCommission,
 });
 
 rentMinusBuyEndOfYear({
@@ -431,6 +448,7 @@ rentMinusBuyEndOfYear({
   maintenanceCost,
   homePrice,
   priceChange,
+  saleCommission,
 });
 
 rentMinusBuyEndOfYear({
@@ -447,6 +465,7 @@ rentMinusBuyEndOfYear({
   maintenanceCost,
   homePrice,
   priceChange,
+  saleCommission,
 });
 
 console.log(
@@ -464,5 +483,6 @@ console.log(
     maintenanceCost,
     homePrice,
     priceChange,
+    saleCommission,
   })
 );
