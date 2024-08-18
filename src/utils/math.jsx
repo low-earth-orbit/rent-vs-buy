@@ -205,6 +205,10 @@ function getRenterSurplus(
   return surplus;
 }
 
+function closingFeeAmount({ buyerClosingFeePercentage, homePrice }) {
+  return homePrice * (buyerClosingFeePercentage / 100);
+}
+
 function getRenterValueEndOfYear({
   monthlyRent,
   rentIncrease,
@@ -219,8 +223,13 @@ function getRenterValueEndOfYear({
   maintenanceCost,
   homePrice,
   priceChange,
+  capitalGainTaxOnInvestment,
 }) {
-  let value = downPayment + homePrice * (buyerClosingFeePercentage / 100);
+  const initialValue =
+    downPayment + closingFeeAmount({ buyerClosingFeePercentage, homePrice });
+
+  let portfolioValue = initialValue;
+  let investedAmount = initialValue;
 
   // assume surplus are invested in the middle of each year, i.e. surplus gains 1/2 year investment return within the given year.
   // use a simple calculation for the half-year investment return rate.
@@ -240,17 +249,23 @@ function getRenterValueEndOfYear({
       priceChange
     );
 
+    investedAmount += surplus;
+
     if (i === 1) {
-      value += surplus * halfYearReturnFactor;
+      portfolioValue += surplus * halfYearReturnFactor;
     } else {
-      value =
-        value * (1 + investmentReturnRate / 100) +
+      portfolioValue =
+        portfolioValue * (1 + investmentReturnRate / 100) +
         surplus * halfYearReturnFactor;
     }
     // console.log(`renter value at Year ${i} = `, value.toFixed(0));
   }
 
-  return value;
+  const afterTaxValue =
+    investedAmount +
+    (portfolioValue - investedAmount) * (1 - capitalGainTaxOnInvestment / 100);
+
+  return afterTaxValue;
 }
 
 function rentMinusBuyEndOfYear({
@@ -268,6 +283,7 @@ function rentMinusBuyEndOfYear({
   homePrice,
   priceChange,
   saleCommission,
+  capitalGainTaxOnInvestment,
 }) {
   const renterValue = getRenterValueEndOfYear({
     monthlyRent,
@@ -284,6 +300,7 @@ function rentMinusBuyEndOfYear({
     homePrice,
     priceChange,
     saleCommission,
+    capitalGainTaxOnInvestment,
   });
 
   // console.log(`renter value at Year ${yearNumber} = `, renterValue.toFixed(0));
@@ -309,11 +326,6 @@ function rentMinusBuyEndOfYear({
   return result;
 }
 
-// TODO:
-// Add commission on sale
-// Add tax on investment return
-// Add tax on selling the house
-
 /*
   Test
 */
@@ -331,6 +343,7 @@ const years = 25;
 const yearNumber = 30; // Year number to calculate ending principal
 const downPayment = homePrice * 0.2;
 const saleCommission = 5;
+const capitalGainTaxOnInvestment = 10;
 
 rentMinusBuyEndOfYear({
   monthlyRent,
@@ -347,6 +360,7 @@ rentMinusBuyEndOfYear({
   homePrice,
   priceChange,
   saleCommission,
+  capitalGainTaxOnInvestment,
 });
 
 rentMinusBuyEndOfYear({
@@ -364,6 +378,7 @@ rentMinusBuyEndOfYear({
   homePrice,
   priceChange,
   saleCommission,
+  capitalGainTaxOnInvestment,
 });
 
 rentMinusBuyEndOfYear({
@@ -381,6 +396,7 @@ rentMinusBuyEndOfYear({
   homePrice,
   priceChange,
   saleCommission,
+  capitalGainTaxOnInvestment,
 });
 
 rentMinusBuyEndOfYear({
@@ -398,6 +414,7 @@ rentMinusBuyEndOfYear({
   homePrice,
   priceChange,
   saleCommission,
+  capitalGainTaxOnInvestment,
 });
 
 rentMinusBuyEndOfYear({
@@ -415,6 +432,7 @@ rentMinusBuyEndOfYear({
   homePrice,
   priceChange,
   saleCommission,
+  capitalGainTaxOnInvestment,
 });
 
 rentMinusBuyEndOfYear({
@@ -432,6 +450,7 @@ rentMinusBuyEndOfYear({
   homePrice,
   priceChange,
   saleCommission,
+  capitalGainTaxOnInvestment,
 });
 
 rentMinusBuyEndOfYear({
@@ -449,6 +468,7 @@ rentMinusBuyEndOfYear({
   homePrice,
   priceChange,
   saleCommission,
+  capitalGainTaxOnInvestment,
 });
 
 rentMinusBuyEndOfYear({
@@ -457,7 +477,7 @@ rentMinusBuyEndOfYear({
   principal,
   annualInterestRate,
   years,
-  yearNumber: 30,
+  yearNumber,
   investmentReturnRate,
   downPayment,
   buyerClosingFeePercentage,
@@ -466,23 +486,5 @@ rentMinusBuyEndOfYear({
   homePrice,
   priceChange,
   saleCommission,
+  capitalGainTaxOnInvestment,
 });
-
-console.log(
-  getRenterValueEndOfYear({
-    monthlyRent,
-    rentIncrease,
-    principal,
-    annualInterestRate,
-    years,
-    yearNumber,
-    investmentReturnRate,
-    downPayment,
-    buyerClosingFeePercentage,
-    propertyTax,
-    maintenanceCost,
-    homePrice,
-    priceChange,
-    saleCommission,
-  })
-);
