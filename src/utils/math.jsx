@@ -1,46 +1,40 @@
-// home value at the start of the given year
-function getHomePriceStartOfYear(homePrice, priceChange, yearNumber) {
-  const price = homePrice * Math.pow(1 + priceChange / 100, yearNumber - 1);
+// home price at the start of the given year
+function getHomePriceYearStart(homePrice, homePriceGrowthPercentage, yearNumber) {
+  if (yearNumber <= 0) {
+    throw new Error("Invalid yearNumber");
+  }
+  const price = homePrice * Math.pow(1 + homePriceGrowthPercentage / 100, yearNumber - 1);
   return price;
 }
 
-// home value at the end of the given year
-function getHomePriceEndOfYear(homePrice, priceChange, yearNumber) {
-  const price = homePrice * Math.pow(1 + priceChange / 100, yearNumber);
+// home price at the end of the given year
+function getHomePriceYearEnd(homePrice, homePriceGrowthPercentage, yearNumber) {
+  if (yearNumber <= 0) {
+    throw new Error("Invalid yearNumber");
+  }
+  const price = homePrice * Math.pow(1 + homePriceGrowthPercentage / 100, yearNumber);
   return price;
 }
 
 // rent of the given year
-function getRentOfTheYear(monthlyRent, rentIncrease, yearNumber) {
-  if (yearNumber === 0) return 0;
+function getRentOfYear(monthlyRent, rentIncreasePercentage, yearNumber) {
+  if (yearNumber <= 0) {
+    throw new Error("Invalid yearNumber");
+  }
   const rent =
-    monthlyRent * Math.pow(1 + rentIncrease / 100, yearNumber - 1) * 12;
-  // console.log("Rent of year ", yearNumber, " = ", rent.toFixed(0));
+    monthlyRent *
+    Math.pow(1 + rentIncreasePercentage / 100, yearNumber - 1) *
+    12;
 
   return rent;
 }
 
-// Calculate the monthly interest rate using the semi-annual compounding formula
+// monthly interest rate, semi-annual compounding
 function getMonthlyMortgageInterestRate(annualInterestRate) {
-  return Math.pow(Math.pow(annualInterestRate / 2 / 100 + 1, 2), 1 / 12) - 1;
+  const rate =
+    Math.pow(Math.pow(annualInterestRate / 2 / 100 + 1, 2), 1 / 12) - 1;
+  return rate;
 }
-
-// function getMonthlyCompoundInterestRate(annualInterestRate) {
-//   return Math.pow(1 + annualInterestRate / 100, 1 / 12) - 1;
-// }
-
-// function ordinaryAnnuity(pmt, r, n) {
-//   return pmt * ((Math.pow(1 + r / 100, n) - 1) / (r / 100));
-// }
-
-// console.log(
-//   "getMonthlyCompoundInterestRate = ",
-//   getMonthlyCompoundInterestRate(6.4) * 100
-// );
-// console.log(
-//   "ordinaryAnnuity = ",
-//   ordinaryAnnuity(1000, getMonthlyCompoundInterestRate(6.4) * 100, 12)
-// );
 
 // monthly mortgage payment
 function getMonthlyMortgage(principal, annualInterestRate, years) {
@@ -61,23 +55,11 @@ function getMonthlyMortgage(principal, annualInterestRate, years) {
     (principal * monthlyInterestRate) /
     (1 - Math.pow(1 + monthlyInterestRate, -totalPayments));
 
-  // console.log(`monthlyPayment  = `, monthlyPayment.toFixed(0));
-
   return monthlyPayment;
 }
 
-// Annual mortgage
-function getAnnualMortgage(monthlyPayment) {
-  return monthlyPayment > 0 ? monthlyPayment * 12 : 0;
-}
-
 // Annual mortgage of the given year
-function getMortgageOfTheYear(
-  principal,
-  annualInterestRate,
-  years,
-  yearNumber
-) {
+function getMortgageOfYear(principal, annualInterestRate, years, yearNumber) {
   if (yearNumber > years) return 0;
 
   const monthlyPayment = getMonthlyMortgage(
@@ -85,24 +67,22 @@ function getMortgageOfTheYear(
     annualInterestRate,
     years
   );
-  const annualMortgage = getAnnualMortgage(monthlyPayment);
+  const annualMortgage = monthlyPayment * 12;
   return annualMortgage;
 }
 
 // mortgage balance at the end of the given year
-function getMortgageBalanceEndOfYear(
+function getMortgageBalanceYearEnd(
   principal,
   annualInterestRate,
   years,
   yearNumber
 ) {
-  if (principal < 0 || years < 0 || yearNumber < 0) {
+  if (principal <= 0 || years <= 0 || yearNumber <= 0) {
     throw new Error("Invalid data.");
   }
 
-  if (yearNumber === 0) return principal;
-
-  if (yearNumber > years || principal === 0) {
+  if (yearNumber > years) {
     return 0;
   }
 
@@ -126,197 +106,197 @@ function getMortgageBalanceEndOfYear(
     const principalPayment = monthlyPayment - interestPayment;
 
     mortgageBalance -= principalPayment;
-
-    if (mortgageBalance < 0) {
-      mortgageBalance = 0;
-      break;
-    }
   }
+
+  // console.log(
+  //   `mortgageBalance end of year ${yearNumber} = `,
+  //   mortgageBalance.toFixed(0)
+  // );
 
   return mortgageBalance;
 }
 
-function getOwnerValueEndOfYear({
+function getOwnersValueYearEnd({
   homePrice,
-  priceChange,
+  homePriceGrowthPercentage,
   yearNumber,
   principal,
   annualInterestRate,
   years,
-  saleCommission,
+  sellersClosingCostsPercentage,
 }) {
-  const ownerValue =
-    getHomePriceEndOfYear(homePrice, priceChange, yearNumber) *
-      (1 - saleCommission / 100) -
-    getMortgageBalanceEndOfYear(
-      principal,
-      annualInterestRate,
-      years,
-      yearNumber
-    );
+  const ownersValue =
+    getHomePriceYearEnd(homePrice, homePriceGrowthPercentage, yearNumber) *
+      (1 - sellersClosingCostsPercentage / 100) -
+    getMortgageBalanceYearEnd(principal, annualInterestRate, years, yearNumber);
 
-  return ownerValue;
+  // console.log(
+  //   `ownersValue end of year ${yearNumber} = `,
+  //   ownersValue.toFixed(0)
+  // );
+
+  return ownersValue;
 }
 
 // cash outflow of the given year for the owning case, including mortgage, property tax, maintenance.
-function getCashOutOfTheYear(
-  homePriceOfTheYear,
-  mortgagePaymentOfTheYear,
-  propertyTax,
-  maintenanceCost
+// not including initial payment, i.e. down payment, closing fees.
+function getOwnersCashOutOfYear(
+  homePriceOfYearStart,
+  mortgagePaymentOfYear,
+  propertyTaxPercentage,
+  maintenanceCostsPercentage
 ) {
   return (
-    mortgagePaymentOfTheYear +
-    (homePriceOfTheYear * (propertyTax + maintenanceCost)) / 100
+    mortgagePaymentOfYear +
+    (homePriceOfYearStart *
+      (propertyTaxPercentage + maintenanceCostsPercentage)) /
+      100
   );
 }
 
-function getRenterSurplus(
+function getRentersSurplusOfYear(
   monthlyRent,
-  rentIncrease,
+  rentIncreasePercentage,
   principal,
   annualInterestRate,
   years,
   yearNumber,
-  propertyTax,
-  maintenanceCost,
+  propertyTaxPercentage,
+  maintenanceCostsPercentage,
   homePrice,
-  priceChange
+  homePriceGrowthPercentage
 ) {
-  const mortgage = getMortgageOfTheYear(
+  const mortgage = getMortgageOfYear(
     principal,
     annualInterestRate,
     years,
     yearNumber
   );
-  const homePriceOfTheYear = getHomePriceStartOfYear(
+  const homePriceOfYearStart = getHomePriceYearStart(
     homePrice,
-    priceChange,
+    homePriceGrowthPercentage,
     yearNumber
   );
-  const cashOut = getCashOutOfTheYear(
-    homePriceOfTheYear,
+  const cashOut = getOwnersCashOutOfYear(
+    homePriceOfYearStart,
     mortgage,
-    propertyTax,
-    maintenanceCost
+    propertyTaxPercentage,
+    maintenanceCostsPercentage
   );
+  // console.log(`owner's cash out of Year ${yearNumber} = `, cashOut.toFixed(0));
+
   const surplus =
-    cashOut - getRentOfTheYear(monthlyRent, rentIncrease, yearNumber);
+    cashOut - getRentOfYear(monthlyRent, rentIncreasePercentage, yearNumber);
+
+  // console.log(`renter's surplus of Year ${yearNumber} = `, surplus.toFixed(0));
   return surplus;
 }
 
-function closingFeeAmount({ buyerClosingFeePercentage, homePrice }) {
-  return homePrice * (buyerClosingFeePercentage / 100);
-}
-
-function getRenterValueEndOfYear({
+function getRentersValueYearEnd({
   monthlyRent,
-  rentIncrease,
+  rentIncreasePercentage,
   principal,
   annualInterestRate,
   years,
   yearNumber,
   investmentReturnRate,
   downPayment,
-  buyerClosingFeePercentage,
-  propertyTax,
-  maintenanceCost,
+  buyersClosingCostsPercentage,
+  propertyTaxPercentage,
+  maintenanceCostsPercentage,
   homePrice,
-  priceChange,
+  homePriceGrowthPercentage,
   capitalGainTaxOnInvestment,
 }) {
   const initialValue =
-    downPayment + closingFeeAmount({ buyerClosingFeePercentage, homePrice });
+    downPayment + homePrice * (buyersClosingCostsPercentage / 100);
 
   let portfolioValue = initialValue;
-  let investedAmount = initialValue;
+  let bookValue = initialValue;
 
   // assume surplus are invested in the middle of each year, i.e. surplus gains 1/2 year investment return within the given year.
   // use a simple calculation for the half-year investment return rate.
   const halfYearReturnFactor = 1 + investmentReturnRate / 100 / 2;
 
   for (var i = 1; i <= yearNumber; i++) {
-    const surplus = getRenterSurplus(
+    const surplus = getRentersSurplusOfYear(
       monthlyRent,
-      rentIncrease,
+      rentIncreasePercentage,
       principal,
       annualInterestRate,
       years,
       i,
-      propertyTax,
-      maintenanceCost,
+      propertyTaxPercentage,
+      maintenanceCostsPercentage,
       homePrice,
-      priceChange
+      homePriceGrowthPercentage
     );
 
-    investedAmount += surplus;
+    bookValue += surplus;
 
-    if (i === 1) {
-      portfolioValue += surplus * halfYearReturnFactor;
-    } else {
-      portfolioValue =
-        portfolioValue * (1 + investmentReturnRate / 100) +
-        surplus * halfYearReturnFactor;
-    }
-    // console.log(`renter value at Year ${i} = `, value.toFixed(0));
+    portfolioValue =
+      portfolioValue * (1 + investmentReturnRate / 100) +
+      surplus * halfYearReturnFactor;
   }
 
   const afterTaxValue =
-    investedAmount +
-    (portfolioValue - investedAmount) * (1 - capitalGainTaxOnInvestment / 100);
+    bookValue +
+    (portfolioValue - bookValue) * (1 - capitalGainTaxOnInvestment / 100);
 
   return afterTaxValue;
 }
 
-function rentMinusBuyEndOfYear({
+function calculateRentMinusBuyYearEnd({
   monthlyRent,
-  rentIncrease,
+  rentIncreasePercentage,
   principal,
   annualInterestRate,
   years,
   yearNumber,
   investmentReturnRate,
   downPayment,
-  buyerClosingFeePercentage,
-  propertyTax,
-  maintenanceCost,
+  buyersClosingCostsPercentage,
+  propertyTaxPercentage,
+  maintenanceCostsPercentage,
   homePrice,
-  priceChange,
-  saleCommission,
+  homePriceGrowthPercentage,
+  sellersClosingCostsPercentage,
   capitalGainTaxOnInvestment,
 }) {
-  const renterValue = getRenterValueEndOfYear({
+  const rentersValue = getRentersValueYearEnd({
     monthlyRent,
-    rentIncrease,
+    rentIncreasePercentage,
     principal,
     annualInterestRate,
     years,
     yearNumber,
     investmentReturnRate,
     downPayment,
-    buyerClosingFeePercentage,
-    propertyTax,
-    maintenanceCost,
+    buyersClosingCostsPercentage,
+    propertyTaxPercentage,
+    maintenanceCostsPercentage,
     homePrice,
-    priceChange,
-    saleCommission,
+    homePriceGrowthPercentage,
+    sellersClosingCostsPercentage,
     capitalGainTaxOnInvestment,
   });
+  // console.log(
+  //   `renter's value at Year ${yearNumber} = `,
+  //   rentersValue.toFixed(0)
+  // );
 
-  // console.log(`renter value at Year ${yearNumber} = `, renterValue.toFixed(0));
-
-  const ownerValue = getOwnerValueEndOfYear({
+  const ownersValue = getOwnersValueYearEnd({
     homePrice,
-    priceChange,
+    homePriceGrowthPercentage,
     yearNumber,
     principal,
     annualInterestRate,
     years,
-    saleCommission,
+    sellersClosingCostsPercentage,
   });
   // console.log(`owner value at Year ${yearNumber} = `, ownerValue.toFixed(0));
 
-  const result = renterValue - ownerValue;
+  const result = rentersValue - ownersValue;
 
   console.log(
     `renter's advantage at the end of Year ${yearNumber} = `,
@@ -331,160 +311,141 @@ function rentMinusBuyEndOfYear({
 */
 const homePrice = 350000;
 const monthlyRent = 2200;
-const rentIncrease = 3;
+const rentIncreasePercentage = 3;
 const investmentReturnRate = 6.4;
-const buyerClosingFeePercentage = 2.5;
-const propertyTax = 1.5;
-const maintenanceCost = 3;
-const priceChange = 3;
+const buyersClosingCostsPercentage = 2.5;
+const propertyTaxPercentage = 1.5;
+const maintenanceCostsPercentage = 3;
+const homePriceGrowthPercentage = 3;
 const principal = homePrice * 0.8;
 const annualInterestRate = 4.75;
 const years = 25;
-const yearNumber = 30; // Year number to calculate ending principal
 const downPayment = homePrice * 0.2;
-const saleCommission = 5;
+const sellersClosingCostsPercentage = 5;
 const capitalGainTaxOnInvestment = 10;
 
-rentMinusBuyEndOfYear({
+calculateRentMinusBuyYearEnd({
   monthlyRent,
-  rentIncrease,
-  principal,
-  annualInterestRate,
-  years,
-  yearNumber: 0,
-  investmentReturnRate,
-  downPayment,
-  buyerClosingFeePercentage,
-  propertyTax,
-  maintenanceCost,
-  homePrice,
-  priceChange,
-  saleCommission,
-  capitalGainTaxOnInvestment,
-});
-
-rentMinusBuyEndOfYear({
-  monthlyRent,
-  rentIncrease,
+  rentIncreasePercentage,
   principal,
   annualInterestRate,
   years,
   yearNumber: 1,
   investmentReturnRate,
   downPayment,
-  buyerClosingFeePercentage,
-  propertyTax,
-  maintenanceCost,
+  buyersClosingCostsPercentage,
+  propertyTaxPercentage,
+  maintenanceCostsPercentage,
   homePrice,
-  priceChange,
-  saleCommission,
+  homePriceGrowthPercentage,
+  sellersClosingCostsPercentage,
   capitalGainTaxOnInvestment,
 });
 
-rentMinusBuyEndOfYear({
+calculateRentMinusBuyYearEnd({
   monthlyRent,
-  rentIncrease,
+  rentIncreasePercentage,
   principal,
   annualInterestRate,
   years,
   yearNumber: 2,
   investmentReturnRate,
   downPayment,
-  buyerClosingFeePercentage,
-  propertyTax,
-  maintenanceCost,
+  buyersClosingCostsPercentage,
+  propertyTaxPercentage,
+  maintenanceCostsPercentage,
   homePrice,
-  priceChange,
-  saleCommission,
+  homePriceGrowthPercentage,
+  sellersClosingCostsPercentage,
   capitalGainTaxOnInvestment,
 });
 
-rentMinusBuyEndOfYear({
+calculateRentMinusBuyYearEnd({
   monthlyRent,
-  rentIncrease,
+  rentIncreasePercentage,
   principal,
   annualInterestRate,
   years,
   yearNumber: 5,
   investmentReturnRate,
   downPayment,
-  buyerClosingFeePercentage,
-  propertyTax,
-  maintenanceCost,
+  buyersClosingCostsPercentage,
+  propertyTaxPercentage,
+  maintenanceCostsPercentage,
   homePrice,
-  priceChange,
-  saleCommission,
+  homePriceGrowthPercentage,
+  sellersClosingCostsPercentage,
   capitalGainTaxOnInvestment,
 });
 
-rentMinusBuyEndOfYear({
+calculateRentMinusBuyYearEnd({
   monthlyRent,
-  rentIncrease,
+  rentIncreasePercentage,
   principal,
   annualInterestRate,
   years,
   yearNumber: 10,
   investmentReturnRate,
   downPayment,
-  buyerClosingFeePercentage,
-  propertyTax,
-  maintenanceCost,
+  buyersClosingCostsPercentage,
+  propertyTaxPercentage,
+  maintenanceCostsPercentage,
   homePrice,
-  priceChange,
-  saleCommission,
+  homePriceGrowthPercentage,
+  sellersClosingCostsPercentage,
   capitalGainTaxOnInvestment,
 });
 
-rentMinusBuyEndOfYear({
+calculateRentMinusBuyYearEnd({
   monthlyRent,
-  rentIncrease,
+  rentIncreasePercentage,
   principal,
   annualInterestRate,
   years,
   yearNumber: 20,
   investmentReturnRate,
   downPayment,
-  buyerClosingFeePercentage,
-  propertyTax,
-  maintenanceCost,
+  buyersClosingCostsPercentage,
+  propertyTaxPercentage,
+  maintenanceCostsPercentage,
   homePrice,
-  priceChange,
-  saleCommission,
+  homePriceGrowthPercentage,
+  sellersClosingCostsPercentage,
   capitalGainTaxOnInvestment,
 });
 
-rentMinusBuyEndOfYear({
+calculateRentMinusBuyYearEnd({
   monthlyRent,
-  rentIncrease,
+  rentIncreasePercentage,
   principal,
   annualInterestRate,
   years,
   yearNumber: 25,
   investmentReturnRate,
   downPayment,
-  buyerClosingFeePercentage,
-  propertyTax,
-  maintenanceCost,
+  buyersClosingCostsPercentage,
+  propertyTaxPercentage,
+  maintenanceCostsPercentage,
   homePrice,
-  priceChange,
-  saleCommission,
+  homePriceGrowthPercentage,
+  sellersClosingCostsPercentage,
   capitalGainTaxOnInvestment,
 });
 
-rentMinusBuyEndOfYear({
+calculateRentMinusBuyYearEnd({
   monthlyRent,
-  rentIncrease,
+  rentIncreasePercentage,
   principal,
   annualInterestRate,
   years,
-  yearNumber,
+  yearNumber: 30,
   investmentReturnRate,
   downPayment,
-  buyerClosingFeePercentage,
-  propertyTax,
-  maintenanceCost,
+  buyersClosingCostsPercentage,
+  propertyTaxPercentage,
+  maintenanceCostsPercentage,
   homePrice,
-  priceChange,
-  saleCommission,
+  homePriceGrowthPercentage,
+  sellersClosingCostsPercentage,
   capitalGainTaxOnInvestment,
 });
