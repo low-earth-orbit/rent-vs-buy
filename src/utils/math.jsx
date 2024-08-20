@@ -215,7 +215,7 @@ function calculateRentersPortfolioValue({
   yearNumber,
   investmentReturnRate,
   downPaymentPercentage,
-  buyersClosingCostsPercentage,
+  buyersClosingCostPercentage,
   propertyTaxRate,
   maintenanceCostPercentage,
   initialHomePrice,
@@ -223,8 +223,7 @@ function calculateRentersPortfolioValue({
   capitalGainTaxOnInvestment,
 }) {
   const initialInvestment =
-    (initialHomePrice *
-      (downPaymentPercentage + buyersClosingCostsPercentage)) /
+    (initialHomePrice * (downPaymentPercentage + buyersClosingCostPercentage)) /
     100;
 
   let portfolioValue = initialInvestment;
@@ -255,7 +254,6 @@ function calculateRentersPortfolioValue({
       surplus * halfYearReturnFactor;
   }
 
-  // deduct capital gain tax
   const afterTaxValue =
     bookValue +
     (portfolioValue - bookValue) * (1 - capitalGainTaxOnInvestment / 100);
@@ -264,7 +262,7 @@ function calculateRentersPortfolioValue({
 }
 
 // Calculate renter's advantage over buying at the end of the given year
-function calculateRentersAdvantageAtYearEnd({
+export function calculateRentersAdvantageAtYearEnd({
   monthlyRent,
   rentIncreaseRate,
   annualMortgageInterestRate,
@@ -272,7 +270,7 @@ function calculateRentersAdvantageAtYearEnd({
   yearNumber,
   investmentReturnRate,
   downPaymentPercentage,
-  buyersClosingCostsPercentage,
+  buyersClosingCostPercentage,
   propertyTaxRate,
   maintenanceCostPercentage,
   initialHomePrice,
@@ -292,7 +290,7 @@ function calculateRentersAdvantageAtYearEnd({
     yearNumber,
     investmentReturnRate,
     downPaymentPercentage,
-    buyersClosingCostsPercentage,
+    buyersClosingCostPercentage,
     propertyTaxRate,
     maintenanceCostPercentage,
     initialHomePrice,
@@ -313,146 +311,5 @@ function calculateRentersAdvantageAtYearEnd({
 
   const result = rentersPortfolioValue - ownersEquity;
 
-  console.log(
-    `renter's advantage at the end of Year ${yearNumber} = `,
-    result.toFixed(0)
-  );
-
   return result;
 }
-
-/*
-  Test
-*/
-const initialHomePrice = 350000;
-const monthlyRent = 2200;
-const rentIncreaseRate = 3;
-const investmentReturnRate = 6.4;
-const buyersClosingCostsPercentage = 2.5;
-const propertyTaxRate = 1.5;
-const maintenanceCostPercentage = 3;
-const homePriceGrowthRate = 3;
-const annualMortgageInterestRate = 4.75;
-const loanTermYears = 25;
-const downPaymentPercentage = 20;
-const sellersClosingCostPercentage = 5;
-const capitalGainTaxOnInvestment = 10;
-
-calculateRentersAdvantageAtYearEnd({
-  monthlyRent,
-  rentIncreaseRate,
-  annualMortgageInterestRate,
-  loanTermYears,
-  yearNumber: 1,
-  investmentReturnRate,
-  downPaymentPercentage,
-  buyersClosingCostsPercentage,
-  propertyTaxRate,
-  maintenanceCostPercentage,
-  initialHomePrice,
-  homePriceGrowthRate,
-  sellersClosingCostPercentage,
-  capitalGainTaxOnInvestment,
-});
-
-calculateRentersAdvantageAtYearEnd({
-  monthlyRent,
-  rentIncreaseRate,
-  annualMortgageInterestRate,
-  loanTermYears,
-  yearNumber: 2,
-  investmentReturnRate,
-  downPaymentPercentage,
-  buyersClosingCostsPercentage,
-  propertyTaxRate,
-  maintenanceCostPercentage,
-  initialHomePrice,
-  homePriceGrowthRate,
-  sellersClosingCostPercentage,
-  capitalGainTaxOnInvestment,
-});
-
-calculateRentersAdvantageAtYearEnd({
-  monthlyRent,
-  rentIncreaseRate,
-  annualMortgageInterestRate,
-  loanTermYears,
-  yearNumber: 5,
-  investmentReturnRate,
-  downPaymentPercentage,
-  buyersClosingCostsPercentage,
-  propertyTaxRate,
-  maintenanceCostPercentage,
-  initialHomePrice,
-  homePriceGrowthRate,
-  sellersClosingCostPercentage,
-  capitalGainTaxOnInvestment,
-});
-
-calculateRentersAdvantageAtYearEnd({
-  monthlyRent,
-  rentIncreaseRate,
-  annualMortgageInterestRate,
-  loanTermYears,
-  yearNumber: 10,
-  investmentReturnRate,
-  downPaymentPercentage,
-  buyersClosingCostsPercentage,
-  propertyTaxRate,
-  maintenanceCostPercentage,
-  initialHomePrice,
-  homePriceGrowthRate,
-  sellersClosingCostPercentage,
-  capitalGainTaxOnInvestment,
-});
-
-calculateRentersAdvantageAtYearEnd({
-  monthlyRent,
-  rentIncreaseRate,
-  annualMortgageInterestRate,
-  loanTermYears,
-  yearNumber: 20,
-  investmentReturnRate,
-  downPaymentPercentage,
-  buyersClosingCostsPercentage,
-  propertyTaxRate,
-  maintenanceCostPercentage,
-  initialHomePrice,
-  homePriceGrowthRate,
-  sellersClosingCostPercentage,
-  capitalGainTaxOnInvestment,
-});
-
-calculateRentersAdvantageAtYearEnd({
-  monthlyRent,
-  rentIncreaseRate,
-  annualMortgageInterestRate,
-  loanTermYears,
-  yearNumber: 25,
-  investmentReturnRate,
-  downPaymentPercentage,
-  buyersClosingCostsPercentage,
-  propertyTaxRate,
-  maintenanceCostPercentage,
-  initialHomePrice,
-  homePriceGrowthRate,
-  sellersClosingCostPercentage,
-  capitalGainTaxOnInvestment,
-});
-
-calculateRentersAdvantageAtYearEnd({
-  monthlyRent,
-  rentIncreaseRate,
-  annualMortgageInterestRate,
-  loanTermYears,
-  yearNumber: 30,
-  investmentReturnRate,
-  downPaymentPercentage,
-  buyersClosingCostsPercentage,
-  propertyTaxRate,
-  maintenanceCostPercentage,
-  initialHomePrice,
-  homePriceGrowthRate,
-  sellersClosingCostPercentage,
-  capitalGainTaxOnInvestment,
-});

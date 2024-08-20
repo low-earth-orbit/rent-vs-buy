@@ -1,134 +1,129 @@
+import { calculateRentersAdvantageAtYearEnd } from "../utils/math";
+
+function validateUserInput(input) {
+  const errors = {};
+
+  // Validate each input field
+  if (!input.monthlyRent || input.monthlyRent <= 0)
+    errors.monthlyRent = "Monthly rent must be greater than 0.";
+  if (!input.rentIncreaseRate || input.rentIncreaseRate < 0)
+    errors.rentIncreaseRate = "Rent increase rate must be non-negative.";
+  if (!input.initialHomePrice || input.initialHomePrice <= 0)
+    errors.initialHomePrice = "Home price must be greater than 0.";
+  if (!input.homePriceGrowthRate || input.homePriceGrowthRate < 0)
+    errors.homePriceGrowthRate = "Home price growth rate must be non-negative.";
+  if (
+    !input.buyersClosingCostPercentage ||
+    input.buyersClosingCostPercentage < 0 ||
+    input.buyersClosingCostPercentage > 100
+  )
+    errors.buyersClosingCostPercentage =
+      "Buyers closing cost percentage must be between 0 and 100.";
+  if (
+    !input.sellersClosingCostPercentage ||
+    input.sellersClosingCostPercentage < 0 ||
+    input.sellersClosingCostPercentage > 100
+  )
+    errors.sellersClosingCostPercentage =
+      "Sellers closing cost percentage must be between 0 and 100.";
+  if (
+    !input.propertyTaxRate ||
+    input.propertyTaxRate < 0 ||
+    input.propertyTaxRate > 100
+  )
+    errors.propertyTaxRate = "Property tax rate must be between 0 and 100.";
+  if (
+    !input.maintenanceCostPercentage ||
+    input.maintenanceCostPercentage < 0 ||
+    input.maintenanceCostPercentage > 100
+  )
+    errors.maintenanceCostPercentage =
+      "Maintenance cost percentage must be between 0 and 100.";
+  if (
+    !input.downPaymentPercentage ||
+    input.downPaymentPercentage <= 0 ||
+    input.downPaymentPercentage > 100
+  )
+    errors.downPaymentPercentage =
+      "Down payment percentage must be greater than 0 and less than or equal to 100.";
+  if (!input.annualMortgageInterestRate || input.annualMortgageInterestRate < 0)
+    errors.annualMortgageInterestRate =
+      "Annual mortgage interest rate must be non-negative.";
+  if (!input.loanTermYears || input.loanTermYears <= 0)
+    errors.loanTermYears = "Loan term must be greater than 0 years.";
+  if (!input.investmentReturnRate || input.investmentReturnRate < 0)
+    errors.investmentReturnRate =
+      "Investment return rate must be non-negative.";
+  if (
+    !input.capitalGainTaxOnInvestment ||
+    input.capitalGainTaxOnInvestment < 0 ||
+    input.capitalGainTaxOnInvestment > 100
+  )
+    errors.capitalGainTaxOnInvestment =
+      "Capital gain tax on investment must be between 0 and 100.";
+
+  return errors;
+}
+
 export default function Result({ userInput }) {
-  const calculateFairRent = ({
-    price,
-    propertyTax,
-    maintenanceCost,
-    downPayment,
-    mortgageRate,
-    investmentReturn,
-    homePriceChange,
-  }) => {
-    const costOfOwning = calculateCostOfOwning(
-      investmentReturn,
-      downPayment,
-      mortgageRate,
-      propertyTax,
-      maintenanceCost,
-      homePriceChange
-    );
-    const fairRent = (price * costOfOwning) / 12;
-    return fairRent;
-  };
+  const errors = validateUserInput(userInput);
 
-  const calculateFairPrice = ({
-    rent,
-    propertyTax,
-    maintenanceCost,
-    downPayment,
-    mortgageRate,
-    investmentReturn,
-    homePriceChange,
-  }) => {
-    const costOfOwning = calculateCostOfOwning(
-      investmentReturn,
-      downPayment,
-      mortgageRate,
-      propertyTax,
-      maintenanceCost,
-      homePriceChange
+  if (Object.keys(errors).length > 0) {
+    return (
+      <div className="error">
+        <p>Valid user input is required:</p>
+        <ul>
+          {Object.keys(errors).map((field) => (
+            <li key={field}>{errors[field]}</li>
+          ))}
+        </ul>
+      </div>
     );
-    const rentPerYear = rent * 12;
-    const fairPrice = rentPerYear / costOfOwning;
-    return fairPrice;
-  };
-
-  const calculateCostOfOwning = (
-    opportunityCostOfDownPayment,
-    downPayment,
-    mortgageRate,
-    propertyTax,
-    maintenanceCost,
-    homePriceChange
-  ) => {
-    const investmentReturn =
-      (opportunityCostOfDownPayment / 100) * (downPayment / 100) +
-      (mortgageRate / 100) * (1 - downPayment / 100) -
-      homePriceChange / 100;
-    const costOfOwning =
-      investmentReturn + propertyTax / 100 + maintenanceCost / 100;
-    return costOfOwning;
-  };
+  }
 
   return (
     <>
-      <div id="result">
-        {userInput.isRentSelected ? (
-          <p>
-            If you can purchase a similar property for less than{" "}
-            <strong>
-              $
-              {calculateFairPrice(userInput).toLocaleString("en-US", {
-                maximumFractionDigits: 0,
-              })}
-            </strong>
-            , then owning is likely better.
-          </p>
-        ) : (
-          <p>
-            If you can rent a similar property for less than{" "}
-            <strong>
-              $
-              {calculateFairRent(userInput).toLocaleString("en-US", {
-                maximumFractionDigits: 0,
-              })}
-            </strong>{" "}
-            per month, then renting is likely better.
-          </p>
-        )}
-      </div>
-      <div id="method">
-        <small>
-          <p>
-            When people decide to rent or buy a home, they often only compare
-            the mortgage payment with rent. This is useful but does not
-            represent a complete picture because mortgage payments and the down
-            payment have an opportunity cost, as it could have been invested in
-            similarly risky assets, such as stocks.
-          </p>
-          <p>
-            This calculator is inspired by the{" "}
-            <a
-              href="https://www.pwlcapital.com/rent-or-own-your-home-5-rule/"
-              title="Learn more about the 5% Rule by Ben Felix"
-              target="_blank"
-              rel="noreferrer"
-              className="link-dark"
-            >
-              5% Rule by Ben Felix
-            </a>
-            , although different base assumptions are made, so the sum may not
-            be 5%. As you may see, the break-even point is sensitive to these
-            assumptions made.
-          </p>
-          <p>
-            The calculator doesn't consider the fees for buying and selling a
-            home nor taxes on investment gains. There is also an inaccuracy in
-            calculating capital cost. For a more accurate comparison considering
-            investment length, the cash flow method is preferred. You can find a
-            helpful spreadsheet{" "}
-            <a
-              href="http://www.holypotato.net/?p=1073"
-              title="A rent vs buy spreadsheet based on cash flow method"
-              target="_blank"
-              rel="noreferrer"
-              className="link-dark"
-            >
-              here
-            </a>
-            .
-          </p>
-        </small>
-      </div>
+      <p>Results are automatically generated below.</p>
+      <table id="result" className="table table-sm table-hover">
+        <thead>
+          <tr>
+            <th scope="col">End of Year</th>
+            <th scope="col">Advantage</th>
+            <th scope="col">Reference Amount</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {[...Array(30)].map((_, i) => {
+            const yearNumber = i + 1;
+            const rentersAdvantage = calculateRentersAdvantageAtYearEnd({
+              ...userInput,
+              yearNumber,
+            });
+
+            const amount = new Intl.NumberFormat("en-CA", {
+              style: "currency",
+              currency: "CAD",
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }).format(Math.abs(rentersAdvantage));
+
+            const isRentBetter = rentersAdvantage >= 0;
+            const advantageText = isRentBetter ? "Rent" : "Buy";
+
+            return (
+              <tr
+                key={yearNumber}
+                className={isRentBetter ? "table-danger" : "table-success"}
+              >
+                <td>{yearNumber}</td>
+                <td>{advantageText}</td>
+                <td>{amount}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </>
   );
 }
