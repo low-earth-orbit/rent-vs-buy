@@ -141,7 +141,7 @@ export default function UserInputForm({ userInput, handleChange }) {
       <UserInputFormItem
         id="buyersClosingCostPercentage"
         label="Buyer's Closing Cost"
-        helperText="Enter closing cost for home buyers as percentage of house price."
+        helperText="Closing cost for home buyers as percentage of house price."
         step="0.1"
         value={userInput.buyersClosingCostPercentage}
         onChange={(event) => {
@@ -153,7 +153,7 @@ export default function UserInputForm({ userInput, handleChange }) {
       <UserInputFormItem
         id="sellersClosingCostPercentage"
         label="Seller's Closing Cost"
-        helperText="Enter closing cost for home sellers as percentage of house price. 5% is typical real estate agent commission."
+        helperText="Closing cost for home sellers as percentage of house price. 5% is typical real estate agent commission."
         step="0.1"
         value={userInput.sellersClosingCostPercentage}
         onChange={(event) => {
