@@ -54,11 +54,11 @@ function calculateMonthlyMortgagePayment(
   annualMortgageInterestRate,
   loanTermYears
 ) {
-  if (mortgagePrincipal <= 0 || loanTermYears <= 0) {
-    throw new Error(
-      "mortgagePrincipal and loan term must be greater than zero."
-    );
+  if (loanTermYears <= 0) {
+    throw new Error("loan term must be greater than zero.");
   }
+
+  if (mortgagePrincipal <= 0) return 0;
 
   if (annualMortgageInterestRate === 0) {
     return mortgagePrincipal / (loanTermYears * 12);
@@ -69,6 +69,10 @@ function calculateMonthlyMortgagePayment(
   );
 
   const totalPayments = loanTermYears * 12;
+
+  if (monthlyRate === 0) {
+    return mortgagePrincipal / totalPayments;
+  }
 
   const monthlyPayment =
     (mortgagePrincipal * monthlyRate) /
@@ -102,11 +106,11 @@ function calculateMortgageBalanceAtYearEnd(
   loanTermYears,
   yearNumber
 ) {
-  if (mortgagePrincipal <= 0 || loanTermYears <= 0 || yearNumber <= 0) {
+  if (loanTermYears <= 0 || yearNumber <= 0) {
     throw new Error("Invalid input values.");
   }
 
-  if (yearNumber > loanTermYears) {
+  if (yearNumber > loanTermYears || mortgagePrincipal <= 0) {
     return 0;
   }
 

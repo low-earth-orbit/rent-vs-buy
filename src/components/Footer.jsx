@@ -37,15 +37,18 @@ const Footer = () => {
             therefore, the cash-flow method is used to give a more accurate
             comparison.
           </p>
+          <p>
+            {`Disclaimer: This tool is provided as-is. It's not financial advice.`.toUpperCase()}
+          </p>
         </small>
       </div>
 
       <a
         id="profile-link"
-        href="https://github.com/low-earth-orbit"
+        href="https://github.com/low-earth-orbit/rent-vs-buy"
         target="_blank"
         rel="noreferrer"
-        title="Connect with the author on Github"
+        title="This app's Github repo"
       >
         <img id="github-logo" src={githubLogo} alt="Github logo" />
       </a>

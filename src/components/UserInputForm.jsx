@@ -7,7 +7,7 @@ export default function UserInputForm({ userInput, handleChange }) {
         id="monthlyRent"
         label="Monthly Rent"
         step="100"
-        max=""
+        min={0}
         value={userInput.monthlyRent}
         onChange={(event) => {
           handleChange("monthlyRent", event.target.value);
@@ -19,8 +19,8 @@ export default function UserInputForm({ userInput, handleChange }) {
       <UserInputFormItem
         id="initialHomePrice"
         label="Property Price"
-        step="1000"
-        max=""
+        step="10000"
+        min={0}
         value={userInput.initialHomePrice}
         onChange={(event) => {
           handleChange("initialHomePrice", event.target.value);
@@ -56,7 +56,9 @@ export default function UserInputForm({ userInput, handleChange }) {
       <UserInputFormItem
         id="downPaymentPercentage"
         label="Down Payment"
-        step="1"
+        step="5"
+        min={5}
+        max={100}
         value={userInput.downPaymentPercentage}
         onChange={(event) => {
           handleChange("downPaymentPercentage", event.target.value);

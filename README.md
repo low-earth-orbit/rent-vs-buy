@@ -26,7 +26,7 @@ If you don't know, I recommend to keep the following as default.
 
 - **Down Payment** Enter the down payment percentage.
 
-- **Mortgage Rate** Mortgage rates fluctuate. I’ve provided an estimate of the long-term mortgage rate as the default value. You can also use the 5-year fixed-rate mortgage APR. Remember, the APR is slightly higher than the nominal mortgage rate.
+- **Mortgage Rate** Mortgage rates fluctuate. I've provided an estimate of the long-term mortgage rate as the default value. You can also use the 5-year fixed-rate mortgage APR. Remember, the APR is slightly higher than the nominal mortgage rate.
 
 - **Mortgage Terms** Enter the number of years you plan to pay off the mortgage. The typical term is 25 years.
 
@@ -44,4 +44,4 @@ If you don't know, I recommend to keep the following as default.
  2. The owner does not use a HELOC for investment.
 
 ## Disclaimer
-This tool is provided as-is. It’s not financial advice.
+This tool is provided as-is. It's not financial advice.
