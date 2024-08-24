@@ -1,5 +1,5 @@
 body {
-  font-family: "Libre Franklin", sans-serif;
+  font-family: Lato, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -23,7 +23,7 @@ code {
 .row {
   margin-left: 0px;
   margin-right: 0px;
-  column-gap: 24px;
+  column-gap: 2rem;
 }
 
 div[class^="col-"] {
