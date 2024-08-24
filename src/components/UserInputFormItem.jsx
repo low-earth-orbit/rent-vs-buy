@@ -11,6 +11,7 @@ export default function UserInputFormItem({
   onChange,
   prependText,
   appendText,
+  ...props
 }) {
   const placeholderText = placeholder
     ? placeholder
@@ -36,6 +37,7 @@ export default function UserInputFormItem({
           value={value}
           placeholder={placeholderText}
           step={step}
+          disabled={props.disabled}
         />
         {appendText && (
           <div className="input-group-append">

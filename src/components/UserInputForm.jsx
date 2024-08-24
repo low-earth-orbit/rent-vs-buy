@@ -77,6 +77,7 @@ export default function UserInputForm({ userInput, handleChange }) {
           handleChange("annualMortgageInterestRate", event.target.value);
         }}
         appendText="%"
+        disabled={userInput.downPaymentPercentage === 100}
       />
 
       <UserInputFormItem
@@ -90,6 +91,7 @@ export default function UserInputForm({ userInput, handleChange }) {
           handleChange("loanTermYears", event.target.value);
         }}
         appendText="Years"
+        disabled={userInput.downPaymentPercentage === 100}
       />
 
       <UserInputFormItem
