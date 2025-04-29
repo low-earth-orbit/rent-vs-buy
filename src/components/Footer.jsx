@@ -10,22 +10,22 @@ const Footer = () => {
           <p>
             When people decide to rent or buy a home, they often compare the
             mortgage payment with rent. This is useful but does not represent a
-            complete picture, because: (a) Unlike rent payments, capital
+            complete picture, because: (a) unlike rent payments, capital
             investment in a home is partially recoverable upon selling the
-            house; (b) The down payment and subsequent mortgage payments have an
-            opportunity cost, as they could have been invested in similarly
-            risky assets, such as stocks. The opportunity cost for a mortgage
-            may be less or greater than the APR of the mortgage. Many people
-            understand the first point, but not the second one. Indeed, it is a
-            little more complicated than comparing monthly rent vs mortgage
+            house; and (b) the down payment and subsequent mortgage payments
+            have opportunity costs, as they could have been invested in
+            similarly risky assets, such as stocks. The opportunity cost for a
+            mortgage may be less or greater than the APR of the mortgage. Many
+            people understand the first point but not the second one. Indeed, it
+            is more complicated than comparing monthly rent vs. mortgage
             payment. This Rent vs Buy calculator helps with this.
           </p>
           <p>
             In the previous version of this app, I used the{" "}
             <a
               target="_blank"
-              rel="noopener noreferrer"
               href="https://www.pwlcapital.com/rent-or-own-your-home-5-rule/"
+              rel="noreferrer"
             >
               5% Rule by Ben Felix
             </a>
@@ -34,8 +34,16 @@ const Footer = () => {
             calculating the capital cost — as the mortgage was paid, the owner
             no longer benefited from the leveraging effect. How many years the
             owner "holds" the property, matters. In the latest version,
-            therefore, the cash-flow method is used to give a more accurate
-            comparison.
+            therefore, the cash-flow method, similar to{" "}
+            <a
+              target="_blank"
+              href="http://www.holypotato.net/?p=1235"
+              rel="noreferrer"
+            >
+              This One By Dr. Potato
+            </a>{" "}
+            (my implementation slightly differs), is used to give a more
+            accurate comparison.
           </p>
           <p>
             {`Disclaimer: This tool is provided as-is. It's not financial advice.`.toUpperCase()}

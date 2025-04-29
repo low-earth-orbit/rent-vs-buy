@@ -43,8 +43,7 @@ export default function UserInputForm({ userInput, handleChange }) {
       <UserInputFormItem
         id="maintenanceCostPercentage"
         label="Maintenance Cost"
-        helperText="Enter annual maintenance cost as a percentage of home price. The default value is based on an estimated depreciation of
-      1.5% plus additional expenditures."
+        helperText="Enter annual maintenance cost as a percentage of home price. The default value is based on an estimated depreciation of 1.5% plus additional expenditures."
         step="0.1"
         value={userInput.maintenanceCostPercentage}
         onChange={(event) => {
@@ -69,8 +68,7 @@ export default function UserInputForm({ userInput, handleChange }) {
       <UserInputFormItem
         id="annualMortgageInterestRate"
         label="Mortgage Rate"
-        helperText="The default value is based on a 2.75% neutral rate plus a 2%
-      spread."
+        helperText="The default value is based on a 2.75% neutral rate plus a 2% spread."
         step="0.1"
         value={userInput.annualMortgageInterestRate}
         onChange={(event) => {
