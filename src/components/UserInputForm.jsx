@@ -43,7 +43,7 @@ export default function UserInputForm({ userInput, handleChange }) {
       <UserInputFormItem
         id="maintenanceCostPercentage"
         label="Maintenance Cost"
-        helperText="Enter annual maintenance cost as a percentage of home price. The default value is based on an estimated depreciation of 1.5% plus additional expenditures."
+        helperText="Enter annual maintenance cost as a percentage of home price. The default value is based on an estimated depreciation of 1.5% plus 1% maintenance fee."
         step="0.1"
         value={userInput.maintenanceCostPercentage}
         onChange={(event) => {
@@ -119,7 +119,7 @@ export default function UserInputForm({ userInput, handleChange }) {
       <UserInputFormItem
         id="rentIncreaseRate"
         label="Rent Increase"
-        helperText="The default value is 2% CPI inflation."
+        helperText="The default value is 2.2% CPI inflation plus 1%."
         step="0.1"
         value={userInput.rentIncreaseRate}
         onChange={(event) => {
@@ -131,7 +131,7 @@ export default function UserInputForm({ userInput, handleChange }) {
       <UserInputFormItem
         id="homePriceGrowthRate"
         label="Home Price Appreciation"
-        helperText="The default value is 3%, assuming 1% real price change based on historical data."
+        helperText="The default value is 3.2%, assuming 1% real price change."
         step="0.1"
         value={userInput.homePriceGrowthRate}
         onChange={(event) => {

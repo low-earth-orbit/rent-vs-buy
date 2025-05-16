@@ -5,13 +5,13 @@ import UserInputForm from "./UserInputForm";
 const Main = () => {
   const [userInput, setUserInput] = useState({
     monthlyRent: 5000,
-    rentIncreaseRate: 2,
+    rentIncreaseRate: 3.2,
     initialHomePrice: 1000000,
-    homePriceGrowthRate: 3,
+    homePriceGrowthRate: 3.2,
     buyersClosingCostPercentage: 2,
     sellersClosingCostPercentage: 5,
     propertyTaxRate: 1,
-    maintenanceCostPercentage: 2,
+    maintenanceCostPercentage: 2.5,
     downPaymentPercentage: 20,
     annualMortgageInterestRate: 4.75,
     loanTermYears: 25,
