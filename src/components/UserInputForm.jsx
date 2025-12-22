@@ -42,8 +42,8 @@ export default function UserInputForm({ userInput, handleChange }) {
 
       <UserInputFormItem
         id="maintenanceCostPercentage"
-        label="Maintenance Cost"
-        helperText="Enter annual maintenance cost as a percentage of home price. The default value is based on an estimated depreciation of 1.5% plus 1% maintenance fee."
+        label="Depreciation & Maintenance"
+        helperText="Enter annual depreciation and maintenance as a percentage of home price."
         step="0.1"
         value={userInput.maintenanceCostPercentage}
         onChange={(event) => {
@@ -68,7 +68,6 @@ export default function UserInputForm({ userInput, handleChange }) {
       <UserInputFormItem
         id="annualMortgageInterestRate"
         label="Mortgage Rate"
-        helperText="The default value is based on a 2.75% neutral rate plus a 2% spread."
         step="0.1"
         value={userInput.annualMortgageInterestRate}
         onChange={(event) => {
@@ -118,8 +117,7 @@ export default function UserInputForm({ userInput, handleChange }) {
 
       <UserInputFormItem
         id="rentIncreaseRate"
-        label="Rent Increase"
-        helperText="The default value is 2.2% CPI inflation plus 1%."
+        label="Rent Change"
         step="0.1"
         value={userInput.rentIncreaseRate}
         onChange={(event) => {
@@ -130,8 +128,7 @@ export default function UserInputForm({ userInput, handleChange }) {
 
       <UserInputFormItem
         id="homePriceGrowthRate"
-        label="Home Price Appreciation"
-        helperText="The default value is 3.2%, assuming 1% real price change."
+        label="Home Price Change"
         step="0.1"
         value={userInput.homePriceGrowthRate}
         onChange={(event) => {
@@ -155,7 +152,7 @@ export default function UserInputForm({ userInput, handleChange }) {
       <UserInputFormItem
         id="sellersClosingCostPercentage"
         label="Seller's Closing Cost"
-        helperText="Closing cost for home sellers as percentage of house price. 5% is typical real estate agent commission."
+        helperText="Closing cost for home sellers as percentage of house price."
         step="0.1"
         value={userInput.sellersClosingCostPercentage}
         onChange={(event) => {
