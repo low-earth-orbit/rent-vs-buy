@@ -16,7 +16,7 @@ const Main = () => {
     annualMortgageInterestRate: 4.5,
     mortgageTerm: 25,
     investmentReturnRate: 6.4,
-    capitalGainTaxOnInvestment: 15,
+    investmentGainTax: 15,
   });
 
   function handleChange(inputIdentifier, newValue) {

@@ -104,13 +104,13 @@ export default function UserInputForm({ userInput, handleChange }) {
       />
 
       <UserInputFormItem
-        id="capitalGainTaxOnInvestment"
-        label="Capital Gain Tax"
-        helperText="Typically half of your marginal income tax when you'll sell the property. The amount may be smaller as you can use TFSA, RRSP, etc. to shelter your investments."
+        id="investmentGainTax"
+        label="Investment Gain Tax"
+        helperText="Tax rate on investment gains."
         step="1"
-        value={userInput.capitalGainTaxOnInvestment}
+        value={userInput.investmentGainTax}
         onChange={(event) => {
-          handleChange("capitalGainTaxOnInvestment", event.target.value);
+          handleChange("investmentGainTax", event.target.value);
         }}
         appendText="%"
       />

@@ -32,7 +32,7 @@ Unless you're fairly confident about these base assumptions, I recommend keeping
 
 - **Mortgage Term:** The number of years you plan to pay off the mortgage. The typical term is 25 years.
 
-- **Capital Gain Tax:** Typically, this is half of your marginal income tax rate when selling the property. The amount may be lower if you use tax-advantaged accounts like TFSA or RRSP.
+- **Investment Gain Tax:** Typically, this may be half of your marginal income tax rate if the investment return is capital gain. The amount may be lower if you use tax-advantaged accounts like TFSA or RRSP.
 
 - **Rent Increase:** The expected annual rent increase. Historically, rent increases have kept pace with or slightly exceeded CPI inflation.
 
@@ -42,7 +42,7 @@ Unless you're fairly confident about these base assumptions, I recommend keeping
 
 ## Assumptions
 
-1.  Capital gains from selling the house are not taxed. This is a reasonable assumption for a principal residence.
+1.  Capital gain from selling the house are not taxed. This is a reasonable assumption for a principal residence.
 2.  The owner does not use a HELOC for investment.
 
 ## Disclaimer

@@ -224,7 +224,7 @@ function calculateRentersPortfolioValue({
   maintenanceCostPercentage,
   initialHomePrice,
   homePriceGrowthRate,
-  capitalGainTaxOnInvestment,
+  investmentGainTax,
 }) {
   const initialInvestment =
     (initialHomePrice * (downPaymentPercentage + buyersClosingCostPercentage)) /
@@ -259,8 +259,7 @@ function calculateRentersPortfolioValue({
   }
 
   const afterTaxValue =
-    bookValue +
-    (portfolioValue - bookValue) * (1 - capitalGainTaxOnInvestment / 100);
+    bookValue + (portfolioValue - bookValue) * (1 - investmentGainTax / 100);
 
   return afterTaxValue;
 }
@@ -280,7 +279,7 @@ export function calculateRentersAdvantageAtYearEnd({
   initialHomePrice,
   homePriceGrowthRate,
   sellersClosingCostPercentage,
-  capitalGainTaxOnInvestment,
+  investmentGainTax,
 }) {
   const mortgagePrincipal =
     initialHomePrice * (1 - downPaymentPercentage / 100);
@@ -300,7 +299,7 @@ export function calculateRentersAdvantageAtYearEnd({
     initialHomePrice,
     homePriceGrowthRate,
     sellersClosingCostPercentage,
-    capitalGainTaxOnInvestment,
+    investmentGainTax,
   });
 
   const ownersEquity = calculateOwnersEquityAtYearEnd({
