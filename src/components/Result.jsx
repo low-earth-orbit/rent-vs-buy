@@ -24,10 +24,10 @@ function validateUserInput(input) {
     errors.downPaymentPercentage = "Down payment must be between 5% and 100%";
   }
 
-  if (!input.loanTermYears) {
-    errors.loanTermYears = "Mortgage term is required";
-  } else if (input.loanTermYears < 5 || input.loanTermYears > 30) {
-    errors.loanTermYears = "Mortgage term must be between 5 and 30 years";
+  if (!input.mortgageTerm) {
+    errors.mortgageTerm = "Mortgage term is required";
+  } else if (input.mortgageTerm < 5 || input.mortgageTerm > 30) {
+    errors.mortgageTerm = "Mortgage term must be between 5 and 30 years";
   }
 
   return errors;

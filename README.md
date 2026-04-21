@@ -30,7 +30,7 @@ Unless you're fairly confident about these base assumptions, I recommend keeping
 
 - **Mortgage Rate:** Mortgage rates fluctuate. I've provided an estimate of the long-term mortgage rate as the default value. You can also use the 5-year fixed-rate mortgage APR. Remember, the APR is slightly higher than the nominal mortgage rate.
 
-- **Mortgage Terms:** The number of years you plan to pay off the mortgage. The typical term is 25 years.
+- **Mortgage Term:** The number of years you plan to pay off the mortgage. The typical term is 25 years.
 
 - **Capital Gain Tax:** Typically, this is half of your marginal income tax rate when selling the property. The amount may be lower if you use tax-advantaged accounts like TFSA or RRSP.
 

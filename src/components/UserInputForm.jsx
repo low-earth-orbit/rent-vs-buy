@@ -78,14 +78,14 @@ export default function UserInputForm({ userInput, handleChange }) {
       />
 
       <UserInputFormItem
-        id="loanTermYears"
-        label="Mortgage Terms"
+        id="mortgageTerm"
+        label="Mortgage Term"
         step="5"
         min={5}
         max={30}
-        value={userInput.loanTermYears}
+        value={userInput.mortgageTerm}
         onChange={(event) => {
-          handleChange("loanTermYears", event.target.value);
+          handleChange("mortgageTerm", event.target.value);
         }}
         appendText="Years"
         disabled={userInput.downPaymentPercentage === 100}

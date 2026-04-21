@@ -14,9 +14,9 @@ const Main = () => {
     maintenanceCostPercentage: 2,
     downPaymentPercentage: 20,
     annualMortgageInterestRate: 4.5,
-    loanTermYears: 25,
+    mortgageTerm: 25,
     investmentReturnRate: 6.4,
-    capitalGainTaxOnInvestment: 20,
+    capitalGainTaxOnInvestment: 15,
   });
 
   function handleChange(inputIdentifier, newValue) {
