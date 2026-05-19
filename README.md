@@ -2,6 +2,8 @@
 
 A simple and sensible calculator for comparing renting vs owning a home.
 
+[![Deploy to GitHub Pages](https://github.com/low-earth-orbit/rent-vs-buy/actions/workflows/deploy.yml/badge.svg)](https://github.com/low-earth-orbit/rent-vs-buy/actions/workflows/deploy.yml)
+
 Latest deployed version: [Click Me](https://low-earth-orbit.github.io/rent-vs-buy/)
 
 ## How It Works

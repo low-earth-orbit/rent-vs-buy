@@ -6,7 +6,6 @@ import {
   Line,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ReferenceLine,
   ResponsiveContainer,
@@ -26,7 +25,7 @@ function findCrossover(data, renterKey, ownerKey) {
     const a = data[i - 1][renterKey] - data[i - 1][ownerKey];
     const b = data[i][renterKey] - data[i][ownerKey];
     if (a === 0) return { year: data[i - 1].year };
-    if (a < 0 !== b < 0) {
+    if ((a < 0) !== (b < 0)) {
       const t = a / (a - b);
       return { year: data[i - 1].year + t };
     }
