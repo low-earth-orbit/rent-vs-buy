@@ -26,7 +26,7 @@ function findCrossover(data, renterKey, ownerKey) {
     const a = data[i - 1][renterKey] - data[i - 1][ownerKey];
     const b = data[i][renterKey] - data[i][ownerKey];
     if (a === 0) return { year: data[i - 1].year };
-    if ((a < 0) !== (b < 0)) {
+    if (a < 0 !== b < 0) {
       const t = a / (a - b);
       return { year: data[i - 1].year + t };
     }
@@ -161,7 +161,6 @@ export default function NetWorthChart({ userInput, showBands }) {
           data={chartData}
           margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
           <XAxis
             dataKey="year"
             label={{ value: "Year", position: "insideBottom", offset: -10 }}
