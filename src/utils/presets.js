@@ -1,5 +1,5 @@
 export const DEFAULTS = {
-  monthlyRent: 3500,
+  monthlyRent: 5000,
   rentIncreaseRate: 2.5,
   initialHomePrice: 1000000,
   homePriceGrowthRate: 2.5,
