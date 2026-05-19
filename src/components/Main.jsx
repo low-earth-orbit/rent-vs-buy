@@ -16,6 +16,8 @@ const Main = () => {
     annualMortgageInterestRate: 4.5,
     mortgageTerm: 25,
     investmentReturnRate: 6,
+    dividendYield: 2,
+    dividendTaxRate: 30,
     investmentGainTax: 15,
   });
 

@@ -93,8 +93,8 @@ export default function UserInputForm({ userInput, handleChange }) {
 
       <UserInputFormItem
         id="investmentReturnRate"
-        label="Investment Return"
-        helperText="Enter the expected pre-tax return of your investment portfolio. The default value is expected return of an 80/20 growth portfolio."
+        label="Total Portfolio Return"
+        helperText="Expected pre-tax annual return of your portfolio, including both dividends and capital gains. Typical 80/20 growth ETF (e.g. XGRO): ~6%."
         step="0.1"
         value={userInput.investmentReturnRate}
         onChange={(event) => {
@@ -104,9 +104,33 @@ export default function UserInputForm({ userInput, handleChange }) {
       />
 
       <UserInputFormItem
+        id="dividendYield"
+        label="Dividend Yield"
+        helperText="Portion of the total return paid as dividends each year, taxed annually. The remainder is capital appreciation, deferred until sale. Typical global equity ETF: 1.5–2.5%."
+        step="0.1"
+        value={userInput.dividendYield}
+        onChange={(event) => {
+          handleChange("dividendYield", event.target.value);
+        }}
+        appendText="%"
+      />
+
+      <UserInputFormItem
+        id="dividendTaxRate"
+        label="Dividend Tax Rate"
+        helperText="Effective tax rate on annual dividends. Eligible Canadian dividends ~25–30%; foreign dividends taxed at your marginal rate."
+        step="1"
+        value={userInput.dividendTaxRate}
+        onChange={(event) => {
+          handleChange("dividendTaxRate", event.target.value);
+        }}
+        appendText="%"
+      />
+
+      <UserInputFormItem
         id="investmentGainTax"
-        label="Investment Gain Tax"
-        helperText="Tax rate on investment gains."
+        label="Capital Gain Tax Rate"
+        helperText="Tax rate applied to capital gains (total return minus dividends) when the portfolio is liquidated."
         step="1"
         value={userInput.investmentGainTax}
         onChange={(event) => {

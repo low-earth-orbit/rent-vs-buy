@@ -225,6 +225,8 @@ function calculateRentersPortfolioValue({
   initialHomePrice,
   homePriceGrowthRate,
   investmentGainTax,
+  dividendYield,
+  dividendTaxRate,
 }) {
   const initialInvestment =
     (initialHomePrice * (downPaymentPercentage + buyersClosingCostPercentage)) /
@@ -236,6 +238,8 @@ function calculateRentersPortfolioValue({
   // assume surplus are invested in the middle of each year, i.e. surplus gains 1/2 year investment return within the given year.
   // use a simple calculation for the half-year investment return rate.
   const halfYearReturnFactor = 1 + investmentReturnRate / 100 / 2;
+  const dividendYieldRate = dividendYield / 100;
+  const dividendTaxFraction = dividendTaxRate / 100;
 
   for (var i = 1; i <= yearNumber; i++) {
     const surplus = calculateRentersSurplus({
@@ -251,11 +255,18 @@ function calculateRentersPortfolioValue({
       homePriceGrowthRate,
     });
 
-    bookValue += surplus;
+    // Dividends earned on start-of-year balance, taxed annually.
+    const grossDividends = portfolioValue * dividendYieldRate;
+    const afterTaxDividends = grossDividends * (1 - dividendTaxFraction);
 
+    // Portfolio grows at full gross rate, dividend tax paid out, surplus added mid-year.
     portfolioValue =
-      portfolioValue * (1 + investmentReturnRate / 100) +
+      portfolioValue * (1 + investmentReturnRate / 100) -
+      grossDividends * dividendTaxFraction +
       surplus * halfYearReturnFactor;
+
+    // After-tax dividends reinvested increase cost basis to prevent double-taxation at terminal sale.
+    bookValue += surplus + afterTaxDividends;
   }
 
   // Cost basis cannot go negative, and investment losses do not generate a
@@ -299,6 +310,8 @@ export function calculateRentersAdvantageAtYearEnd({
   homePriceGrowthRate,
   sellersClosingCostPercentage,
   investmentGainTax,
+  dividendYield,
+  dividendTaxRate,
 }) {
   const mortgagePrincipal = calculateMortgagePrincipal(
     initialHomePrice,
@@ -321,6 +334,8 @@ export function calculateRentersAdvantageAtYearEnd({
     homePriceGrowthRate,
     sellersClosingCostPercentage,
     investmentGainTax,
+    dividendYield,
+    dividendTaxRate,
   });
 
   const ownersEquity = calculateOwnersEquityAtYearEnd({
