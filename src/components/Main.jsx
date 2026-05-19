@@ -31,11 +31,15 @@ const Main = () => {
     });
   }
 
+  function handlePreset(values) {
+    setUserInput(values);
+  }
+
   return (
     <Container size="lg" py="md">
       <Grid gutter="xl">
         <Grid.Col span={{ base: 12, lg: 5 }}>
-          <UserInputForm userInput={userInput} handleChange={handleChange} />
+          <UserInputForm userInput={userInput} handleChange={handleChange} handlePreset={handlePreset} />
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 7 }}>
           <Result userInput={userInput} />
