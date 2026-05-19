@@ -25,10 +25,10 @@ root.render(
   <React.StrictMode>
     <MantineProvider
       theme={theme}
-      defaultColorScheme="light"
+      defaultColorScheme="auto"
       colorSchemeManager={colorSchemeManager}
     >
       <App />
     </MantineProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

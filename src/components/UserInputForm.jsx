@@ -1,4 +1,11 @@
-import { Accordion, Button, Group, SimpleGrid, Stack, Text } from "@mantine/core";
+import {
+  Accordion,
+  Button,
+  Group,
+  SimpleGrid,
+  Stack,
+  Text,
+} from "@mantine/core";
 import UserInputFormItem from "./UserInputFormItem";
 
 const DEFAULTS = {
@@ -14,7 +21,7 @@ const DEFAULTS = {
   annualMortgageInterestRate: 4.5,
   mortgageTerm: 25,
   investmentReturnRate: 6,
-  dividendYield: 2,
+  dividendYield: 1.5,
   dividendTaxRate: 30,
   investmentGainTax: 15,
 };
@@ -22,29 +29,32 @@ const DEFAULTS = {
 const PRESETS = [
   { label: "Defaults", values: DEFAULTS },
   {
-    label: "Starter condo",
+    label: "Bay Street condo",
     values: {
       ...DEFAULTS,
-      monthlyRent: 2200,
-      initialHomePrice: 550000,
-      downPaymentPercentage: 10,
-      mortgageTerm: 25,
-      annualMortgageInterestRate: 5,
+      monthlyRent: 2600,
+      initialHomePrice: 700000,
+      maintenanceCostPercentage: 2.5,
+      propertyTaxRate: 0.5,
     },
   },
   {
-    label: "City SFH",
+    label: "Calgary SFH",
     values: {
       ...DEFAULTS,
-      monthlyRent: 4500,
-      initialHomePrice: 1500000,
-      downPaymentPercentage: 20,
-      mortgageTerm: 25,
+      monthlyRent: 3200,
+      initialHomePrice: 850000,
+      maintenanceCostPercentage: 2.0,
+      propertyTaxRate: 0.9,
     },
   },
 ];
 
-export default function UserInputForm({ userInput, handleChange, handlePreset }) {
+export default function UserInputForm({
+  userInput,
+  handleChange,
+  handlePreset,
+}) {
   const bind = (id) => (value) => handleChange(id, value);
 
   return (
@@ -67,7 +77,11 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
         </Group>
       </Stack>
 
-      <Accordion multiple defaultValue={["rent", "property", "mortgage"]} variant="contained">
+      <Accordion
+        multiple
+        defaultValue={["rent", "property", "mortgage"]}
+        variant="contained"
+      >
         <Accordion.Item value="rent">
           <Accordion.Control>Rent</Accordion.Control>
           <Accordion.Panel>
@@ -79,7 +93,7 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
                 min={0}
                 value={userInput.monthlyRent}
                 onChange={bind("monthlyRent")}
-                prependText="$"
+                prefix="$"
                 thousandSeparator
               />
               <UserInputFormItem
@@ -89,11 +103,8 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
                 step={0.5}
                 value={userInput.rentIncreaseRate}
                 onChange={bind("rentIncreaseRate")}
-                appendText="%"
+                suffix="%"
                 allowNegative
-                sliderMin={-5}
-                sliderMax={10}
-                sliderStep={0.5}
               />
             </SimpleGrid>
           </Accordion.Panel>
@@ -110,7 +121,7 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
                 min={0}
                 value={userInput.initialHomePrice}
                 onChange={bind("initialHomePrice")}
-                prependText="$"
+                prefix="$"
                 thousandSeparator
               />
               <UserInputFormItem
@@ -120,35 +131,26 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
                 step={0.5}
                 value={userInput.homePriceGrowthRate}
                 onChange={bind("homePriceGrowthRate")}
-                appendText="%"
+                suffix="%"
                 allowNegative
-                sliderMin={-5}
-                sliderMax={10}
-                sliderStep={0.5}
               />
               <UserInputFormItem
                 id="propertyTaxRate"
                 label="Property Tax Rate"
-                helperText="Annual property tax as a percentage of assessed home value."
+                helperText="Annual property tax as a percentage of fair-market home value (not necessarily the same as assessed value)."
                 step={0.1}
                 value={userInput.propertyTaxRate}
                 onChange={bind("propertyTaxRate")}
-                appendText="%"
-                sliderMin={0}
-                sliderMax={3}
-                sliderStep={0.1}
+                suffix="%"
               />
               <UserInputFormItem
                 id="maintenanceCostPercentage"
-                label="Depreciation & Maintenance"
-                helperText="Annual depreciation and maintenance as a percentage of home price."
+                label="Maintenance"
+                helperText="Annual maintenance costs as a percentage of home price, including repairs, insurance, condo fees, and other homeowner-specific expenses."
                 step={0.1}
                 value={userInput.maintenanceCostPercentage}
                 onChange={bind("maintenanceCostPercentage")}
-                appendText="%"
-                sliderMin={0}
-                sliderMax={5}
-                sliderStep={0.25}
+                suffix="%"
               />
             </SimpleGrid>
           </Accordion.Panel>
@@ -167,10 +169,7 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
                 max={100}
                 value={userInput.downPaymentPercentage}
                 onChange={bind("downPaymentPercentage")}
-                appendText="%"
-                sliderMin={5}
-                sliderMax={100}
-                sliderStep={5}
+                suffix="%"
               />
               <UserInputFormItem
                 id="annualMortgageInterestRate"
@@ -178,11 +177,8 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
                 step={0.25}
                 value={userInput.annualMortgageInterestRate}
                 onChange={bind("annualMortgageInterestRate")}
-                appendText="%"
+                suffix="%"
                 disabled={userInput.downPaymentPercentage === 100}
-                sliderMin={1}
-                sliderMax={10}
-                sliderStep={0.25}
               />
               <UserInputFormItem
                 id="mortgageTerm"
@@ -192,11 +188,8 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
                 max={30}
                 value={userInput.mortgageTerm}
                 onChange={bind("mortgageTerm")}
-                appendText="Years"
+                suffix="Years"
                 disabled={userInput.downPaymentPercentage === 100}
-                sliderMin={5}
-                sliderMax={30}
-                sliderStep={5}
               />
             </SimpleGrid>
           </Accordion.Panel>
@@ -209,14 +202,11 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
               <UserInputFormItem
                 id="investmentReturnRate"
                 label="Total Portfolio Return"
-                helperText="Expected pre-tax annual return, including both dividends and capital gains. Typical 80/20 growth ETF: ~6%."
+                helperText="Expected pre-tax annual return, including both dividends and capital gains. Typical 80/20 growth ETF (e.g. XGRO) returns ~6%."
                 step={0.5}
                 value={userInput.investmentReturnRate}
                 onChange={bind("investmentReturnRate")}
-                appendText="%"
-                sliderMin={0}
-                sliderMax={15}
-                sliderStep={0.5}
+                suffix="%"
               />
               <UserInputFormItem
                 id="dividendYield"
@@ -225,34 +215,25 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
                 step={0.5}
                 value={userInput.dividendYield}
                 onChange={bind("dividendYield")}
-                appendText="%"
-                sliderMin={0}
-                sliderMax={10}
-                sliderStep={0.5}
+                suffix="%"
               />
               <UserInputFormItem
                 id="dividendTaxRate"
                 label="Dividend Tax Rate"
-                helperText="Effective tax rate on annual dividends. Eligible Canadian dividends ~25–30%; foreign dividends at marginal rate."
+                helperText="Effective tax rate on annual dividends. Eligible Canadian dividends taxed at a lower rate; foreign dividends at marginal income tax rate."
                 step={1}
                 value={userInput.dividendTaxRate}
                 onChange={bind("dividendTaxRate")}
-                appendText="%"
-                sliderMin={0}
-                sliderMax={55}
-                sliderStep={1}
+                suffix="%"
               />
               <UserInputFormItem
                 id="investmentGainTax"
                 label="Capital Gain Tax Rate"
-                helperText="Tax rate applied to capital gains (total return minus dividends) when the portfolio is liquidated."
+                helperText="Tax rate applied to the whole amount of capital gains when the portfolio is liquidated. Use your marginal income tax rate x 50%."
                 step={1}
                 value={userInput.investmentGainTax}
                 onChange={bind("investmentGainTax")}
-                appendText="%"
-                sliderMin={0}
-                sliderMax={55}
-                sliderStep={1}
+                suffix="%"
               />
             </SimpleGrid>
           </Accordion.Panel>
@@ -269,10 +250,7 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
                 step={0.25}
                 value={userInput.buyersClosingCostPercentage}
                 onChange={bind("buyersClosingCostPercentage")}
-                appendText="%"
-                sliderMin={0}
-                sliderMax={10}
-                sliderStep={0.25}
+                suffix="%"
               />
               <UserInputFormItem
                 id="sellersClosingCostPercentage"
@@ -281,10 +259,7 @@ export default function UserInputForm({ userInput, handleChange, handlePreset })
                 step={0.25}
                 value={userInput.sellersClosingCostPercentage}
                 onChange={bind("sellersClosingCostPercentage")}
-                appendText="%"
-                sliderMin={0}
-                sliderMax={10}
-                sliderStep={0.25}
+                suffix="%"
               />
             </SimpleGrid>
           </Accordion.Panel>

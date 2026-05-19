@@ -1,4 +1,4 @@
-import { Group, NumberInput, Slider, Stack, Text, Tooltip } from "@mantine/core";
+import { Group, NumberInput, Stack, Text, Tooltip } from "@mantine/core";
 
 const InfoIcon = () => (
   <svg
@@ -23,26 +23,28 @@ export default function UserInputFormItem({
   value,
   placeholder,
   onChange,
-  prependText,
-  appendText,
   thousandSeparator,
   disabled,
   allowNegative,
-  sliderMin,
-  sliderMax,
-  sliderStep,
+  ...rest
 }) {
   const placeholderText = placeholder ?? `Enter ${label.toLowerCase()}`;
-  const hasSlider = sliderMin !== undefined && sliderMax !== undefined;
-  const numericValue = typeof value === "number" ? value : sliderMin ?? 0;
-  const clampedSliderValue = hasSlider
-    ? Math.min(sliderMax, Math.max(sliderMin, numericValue))
-    : 0;
 
   const labelNode = helperText ? (
-    <Group gap={4} wrap="nowrap" display="inline-flex" style={{ alignItems: "center" }}>
+    <Group
+      gap={4}
+      wrap="nowrap"
+      display="inline-flex"
+      style={{ alignItems: "center" }}
+    >
       <span>{label}</span>
-      <Tooltip label={helperText} multiline maw={260} withArrow position="top-start">
+      <Tooltip
+        label={helperText}
+        multiline
+        maw={260}
+        withArrow
+        position="top-start"
+      >
         <span style={{ display: "inline-flex", cursor: "help" }}>
           <InfoIcon />
         </span>
@@ -53,7 +55,7 @@ export default function UserInputFormItem({
   );
 
   return (
-    <Stack gap={hasSlider ? 4 : 0}>
+    <Stack gap={0}>
       <NumberInput
         id={id}
         label={labelNode}
@@ -65,37 +67,9 @@ export default function UserInputFormItem({
         step={step}
         disabled={disabled}
         allowNegative={allowNegative ?? false}
-        hideControls
         thousandSeparator={thousandSeparator ? "," : undefined}
-        leftSection={
-          prependText ? (
-            <Text size="sm" c="dimmed">
-              {prependText}
-            </Text>
-          ) : undefined
-        }
-        rightSection={
-          appendText ? (
-            <Text size="sm" c="dimmed" pr="xs" style={{ whiteSpace: "nowrap" }}>
-              {appendText}
-            </Text>
-          ) : undefined
-        }
-        rightSectionWidth={appendText ? "auto" : undefined}
+        {...rest}
       />
-      {hasSlider && (
-        <Slider
-          value={clampedSliderValue}
-          onChange={onChange}
-          min={sliderMin}
-          max={sliderMax}
-          step={sliderStep ?? step ?? 1}
-          disabled={disabled}
-          size="xs"
-          label={null}
-          mt={2}
-        />
-      )}
     </Stack>
   );
 }

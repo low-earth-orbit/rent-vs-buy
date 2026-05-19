@@ -1,5 +1,4 @@
 import { Anchor, Container, Stack, Text } from "@mantine/core";
-import githubLogo from "../assets/github-mark.svg";
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -13,12 +12,12 @@ const Footer = () => {
           complete picture, because: (a) unlike rent payments, capital
           investment in a home is partially recoverable upon selling the house;
           and (b) the down payment and subsequent mortgage payments have
-          opportunity costs, as they could have been invested in similarly
-          risky assets, such as stocks. The opportunity cost for a mortgage may
-          be less or greater than the APR of the mortgage. Many people
-          understand the first point but not the second one. Indeed, it is more
-          complicated than comparing monthly rent vs. mortgage payment. This
-          Rent vs Buy calculator helps with this.
+          opportunity costs, as they could have been invested in similarly risky
+          assets, such as stocks. The opportunity cost for a mortgage may be
+          less or greater than the APR of the mortgage. Many people understand
+          the first point but not the second one. Indeed, it is more complicated
+          than comparing monthly rent vs. mortgage payment. This Rent vs Buy
+          calculator helps with this.
         </Text>
         <Text size="sm" c="dimmed">
           In the previous version of this app, I used the{" "}
@@ -49,18 +48,6 @@ const Footer = () => {
           {`Disclaimer: This tool is provided as-is. It's not financial advice.`.toUpperCase()}
         </Text>
 
-        <Anchor
-          href="https://github.com/low-earth-orbit/rent-vs-buy"
-          target="_blank"
-          rel="noreferrer"
-          title="This app's Github repo"
-        >
-          <img
-            src={githubLogo}
-            alt="Github logo"
-            style={{ maxWidth: "4rem" }}
-          />
-        </Anchor>
         <Text size="sm" c="dimmed">
           Copyright © 2023–{currentYear} Leo Hong
         </Text>

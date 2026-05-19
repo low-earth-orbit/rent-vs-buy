@@ -35,10 +35,10 @@ function ChartTooltip({ payload }) {
         Year {point.year}
       </Text>
       <Text size="sm" c="teal">
-        Rent + invest: {formatCAD(point.renterNetWorth)}
+        Rent & invest: {formatCAD(point.renterNetWorth)}
       </Text>
       <Text size="sm" c="indigo">
-        Buy — home equity: {formatCAD(point.ownerNetWorth)}
+        Buy: {formatCAD(point.ownerNetWorth)}
       </Text>
       <Text size="sm" mt={4}>
         {leader} by {formatCAD(Math.abs(point.difference))}
@@ -55,7 +55,7 @@ function SummaryBanner({ data, crossover }) {
 
   let title, body;
   if (crossover) {
-    const breakEvenYear = crossover.year.toFixed(1);
+    const breakEvenYear = crossover.year.toFixed(0);
     title = `Break-even around year ${breakEvenYear}`;
     body = renterWins
       ? `Renting leads until then; buying leads from year ${breakEvenYear} onward. At year 30, buying leads by ${margin}.`
@@ -106,7 +106,7 @@ export default function NetWorthChart({ userInput }) {
             ? [
                 {
                   x: Math.round(crossover.year),
-                  label: `Break-even ≈ Yr ${crossover.year.toFixed(1)}`,
+                  label: `Break-even tenure ≈ Yr ${crossover.year.toFixed(0)}`,
                   color: "gray.6",
                 },
               ]
