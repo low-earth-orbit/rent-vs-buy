@@ -7,48 +7,7 @@ import {
   Text,
 } from "@mantine/core";
 import UserInputFormItem from "./UserInputFormItem";
-
-const DEFAULTS = {
-  monthlyRent: 5000,
-  rentIncreaseRate: 2.5,
-  initialHomePrice: 1000000,
-  homePriceGrowthRate: 2,
-  buyersClosingCostPercentage: 3,
-  sellersClosingCostPercentage: 4,
-  propertyTaxRate: 1,
-  maintenanceCostPercentage: 2,
-  downPaymentPercentage: 20,
-  annualMortgageInterestRate: 4.5,
-  mortgageTerm: 25,
-  investmentReturnRate: 6,
-  dividendYield: 1.5,
-  dividendTaxRate: 30,
-  investmentGainTax: 15,
-};
-
-const PRESETS = [
-  { label: "Defaults", values: DEFAULTS },
-  {
-    label: "Bay Street condo",
-    values: {
-      ...DEFAULTS,
-      monthlyRent: 2600,
-      initialHomePrice: 700000,
-      maintenanceCostPercentage: 2.5,
-      propertyTaxRate: 0.5,
-    },
-  },
-  {
-    label: "Calgary SFH",
-    values: {
-      ...DEFAULTS,
-      monthlyRent: 3200,
-      initialHomePrice: 850000,
-      maintenanceCostPercentage: 2.0,
-      propertyTaxRate: 0.9,
-    },
-  },
-];
+import { PRESETS } from "../utils/presets";
 
 export default function UserInputForm({
   userInput,

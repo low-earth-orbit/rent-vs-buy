@@ -3,25 +3,10 @@ import { Container, Grid } from "@mantine/core";
 import Result from "./Result";
 import UserInputForm from "./UserInputForm";
 import GitHubCorners from "@uiw/react-github-corners";
+import { DEFAULTS } from "../utils/presets";
 
 const Main = () => {
-  const [userInput, setUserInput] = useState({
-    monthlyRent: 5000,
-    rentIncreaseRate: 2.5,
-    initialHomePrice: 1000000,
-    homePriceGrowthRate: 2,
-    buyersClosingCostPercentage: 3,
-    sellersClosingCostPercentage: 4,
-    propertyTaxRate: 1,
-    maintenanceCostPercentage: 2,
-    downPaymentPercentage: 20,
-    annualMortgageInterestRate: 4.5,
-    mortgageTerm: 25,
-    investmentReturnRate: 6,
-    dividendYield: 2,
-    dividendTaxRate: 30,
-    investmentGainTax: 15,
-  });
+  const [userInput, setUserInput] = useState(DEFAULTS);
 
   function handleChange(inputIdentifier, newValue) {
     setUserInput((prevUserInput) => {
