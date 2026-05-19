@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Container, Grid } from "@mantine/core";
 import Result from "./Result";
 import UserInputForm from "./UserInputForm";
 
@@ -31,16 +32,16 @@ const Main = () => {
   }
 
   return (
-    <div className="container">
-      <div className="row">
-        <div className="col-6">
+    <Container size="lg" py="md">
+      <Grid gutter="xl">
+        <Grid.Col span={{ base: 12, lg: 5 }}>
           <UserInputForm userInput={userInput} handleChange={handleChange} />
-        </div>
-        <div className="col">
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 7 }}>
           <Result userInput={userInput} />
-        </div>
-      </div>
-    </div>
+        </Grid.Col>
+      </Grid>
+    </Container>
   );
 };
 

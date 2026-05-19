@@ -4,10 +4,13 @@
   "homepage": "https://low-earth-orbit.github.io/rent-vs-buy/",
   "private": true,
   "dependencies": {
-    "bootstrap-icons": "^1.10.3",
+    "@mantine/charts": "^7.17.8",
+    "@mantine/core": "^7.17.8",
+    "@mantine/hooks": "^7.17.8",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "recharts": "^2.15.4"
   },
   "scripts": {
     "predeploy": "npm run build",

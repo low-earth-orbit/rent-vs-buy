@@ -1,8 +1,9 @@
+import { NumberInput, Text } from "@mantine/core";
+
 export default function UserInputFormItem({
   id,
   label,
   helperText,
-  type = "number",
   min,
   max,
   step,
@@ -11,46 +12,43 @@ export default function UserInputFormItem({
   onChange,
   prependText,
   appendText,
-  ...props
+  thousandSeparator,
+  disabled,
 }) {
   const placeholderText = placeholder
     ? placeholder
     : `Enter ${label.toLowerCase()}`;
 
   return (
-    <div className="mb-3">
-      <label htmlFor={id}>{label}</label>
-
-      <div className="input-group">
-        {prependText && (
-          <div className="input-group-prepend">
-            <span className="input-group-text">{prependText}</span>
-          </div>
-        )}
-        <input
-          id={id}
-          type={type}
-          min={min}
-          max={max}
-          className="form-control"
-          onChange={onChange}
-          value={value}
-          placeholder={placeholderText}
-          step={step}
-          disabled={props.disabled}
-        />
-        {appendText && (
-          <div className="input-group-append">
-            <span className="input-group-text">{appendText}</span>
-          </div>
-        )}
-      </div>
-
-      {helperText && (
-        <div id={`${id}HelpText`} className="form-text">
-          {helperText}
-        </div>
-      )}
-    </div>
+    <NumberInput
+      id={id}
+      label={label}
+      description={helperText}
+      placeholder={placeholderText}
+      value={value}
+      onChange={onChange}
+      min={min}
+      max={max}
+      step={step}
+      disabled={disabled}
+      allowNegative={false}
+      hideControls
+      thousandSeparator={thousandSeparator ? "," : undefined}
+      leftSection={
+        prependText ? (
+          <Text size="sm" c="dimmed">
+            {prependText}
+          </Text>
+        ) : undefined
+      }
+      rightSection={
+        appendText ? (
+          <Text size="sm" c="dimmed" pr="xs" style={{ whiteSpace: "nowrap" }}>
+            {appendText}
+          </Text>
+        ) : undefined
+      }
+      rightSectionWidth={appendText ? "auto" : undefined}
+    />
   );
 }

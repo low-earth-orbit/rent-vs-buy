@@ -1,189 +1,172 @@
+import { Fieldset, SimpleGrid, Stack } from "@mantine/core";
 import UserInputFormItem from "./UserInputFormItem";
 
 export default function UserInputForm({ userInput, handleChange }) {
+  const bind = (id) => (value) => handleChange(id, value);
+
   return (
-    <form id="form">
-      <UserInputFormItem
-        id="monthlyRent"
-        label="Monthly Rent"
-        step="100"
-        min={0}
-        value={userInput.monthlyRent}
-        onChange={(event) => {
-          handleChange("monthlyRent", event.target.value);
-        }}
-        prependText="$"
-        appendText=".00"
-      />
+    <Stack gap="md">
+      <Fieldset legend="Rent">
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <UserInputFormItem
+            id="monthlyRent"
+            label="Monthly Rent"
+            step={100}
+            min={0}
+            value={userInput.monthlyRent}
+            onChange={bind("monthlyRent")}
+            prependText="$"
+            thousandSeparator
+          />
+          <UserInputFormItem
+            id="rentIncreaseRate"
+            label="Rent Change"
+            step={0.1}
+            value={userInput.rentIncreaseRate}
+            onChange={bind("rentIncreaseRate")}
+            appendText="%"
+          />
+        </SimpleGrid>
+      </Fieldset>
 
-      <UserInputFormItem
-        id="initialHomePrice"
-        label="Property Price"
-        step="10000"
-        min={0}
-        value={userInput.initialHomePrice}
-        onChange={(event) => {
-          handleChange("initialHomePrice", event.target.value);
-        }}
-        prependText="$"
-        appendText=".00"
-      />
+      <Fieldset legend="Property">
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <UserInputFormItem
+            id="initialHomePrice"
+            label="Property Price"
+            step={10000}
+            min={0}
+            value={userInput.initialHomePrice}
+            onChange={bind("initialHomePrice")}
+            prependText="$"
+            thousandSeparator
+          />
+          <UserInputFormItem
+            id="homePriceGrowthRate"
+            label="Home Price Change"
+            step={0.1}
+            value={userInput.homePriceGrowthRate}
+            onChange={bind("homePriceGrowthRate")}
+            appendText="%"
+          />
+          <UserInputFormItem
+            id="propertyTaxRate"
+            label="Property Tax Rate"
+            step={0.1}
+            value={userInput.propertyTaxRate}
+            onChange={bind("propertyTaxRate")}
+            appendText="%"
+          />
+          <UserInputFormItem
+            id="maintenanceCostPercentage"
+            label="Depreciation & Maintenance"
+            helperText="Annual depreciation and maintenance as a percentage of home price."
+            step={0.1}
+            value={userInput.maintenanceCostPercentage}
+            onChange={bind("maintenanceCostPercentage")}
+            appendText="%"
+          />
+        </SimpleGrid>
+      </Fieldset>
 
-      <UserInputFormItem
-        id="propertyTaxRate"
-        label="Property Tax Rate"
-        step="0.1"
-        value={userInput.propertyTaxRate}
-        onChange={(event) => {
-          handleChange("propertyTaxRate", event.target.value);
-        }}
-        appendText="%"
-      />
+      <Fieldset legend="Mortgage">
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <UserInputFormItem
+            id="downPaymentPercentage"
+            label="Down Payment"
+            step={5}
+            min={5}
+            max={100}
+            value={userInput.downPaymentPercentage}
+            onChange={bind("downPaymentPercentage")}
+            appendText="%"
+          />
+          <UserInputFormItem
+            id="annualMortgageInterestRate"
+            label="Mortgage Rate"
+            step={0.1}
+            value={userInput.annualMortgageInterestRate}
+            onChange={bind("annualMortgageInterestRate")}
+            appendText="%"
+            disabled={userInput.downPaymentPercentage === 100}
+          />
+          <UserInputFormItem
+            id="mortgageTerm"
+            label="Mortgage Term"
+            step={5}
+            min={5}
+            max={30}
+            value={userInput.mortgageTerm}
+            onChange={bind("mortgageTerm")}
+            appendText="Years"
+            disabled={userInput.downPaymentPercentage === 100}
+          />
+        </SimpleGrid>
+      </Fieldset>
 
-      <UserInputFormItem
-        id="maintenanceCostPercentage"
-        label="Depreciation & Maintenance"
-        helperText="Enter annual depreciation and maintenance as a percentage of home price."
-        step="0.1"
-        value={userInput.maintenanceCostPercentage}
-        onChange={(event) => {
-          handleChange("maintenanceCostPercentage", event.target.value);
-        }}
-        appendText="%"
-      />
+      <Fieldset legend="Investment & Tax">
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <UserInputFormItem
+            id="investmentReturnRate"
+            label="Total Portfolio Return"
+            helperText="Expected pre-tax annual return, including both dividends and capital gains. Typical 80/20 growth ETF: ~6%."
+            step={0.1}
+            value={userInput.investmentReturnRate}
+            onChange={bind("investmentReturnRate")}
+            appendText="%"
+          />
+          <UserInputFormItem
+            id="dividendYield"
+            label="Dividend Yield"
+            helperText="Portion of the total return paid as dividends each year, taxed annually. Remainder is capital appreciation deferred until sale."
+            step={0.1}
+            value={userInput.dividendYield}
+            onChange={bind("dividendYield")}
+            appendText="%"
+          />
+          <UserInputFormItem
+            id="dividendTaxRate"
+            label="Dividend Tax Rate"
+            helperText="Effective tax rate on annual dividends. Eligible Canadian dividends ~25–30%; foreign dividends at marginal rate."
+            step={1}
+            value={userInput.dividendTaxRate}
+            onChange={bind("dividendTaxRate")}
+            appendText="%"
+          />
+          <UserInputFormItem
+            id="investmentGainTax"
+            label="Capital Gain Tax Rate"
+            helperText="Tax rate applied to capital gains (total return minus dividends) when the portfolio is liquidated."
+            step={1}
+            value={userInput.investmentGainTax}
+            onChange={bind("investmentGainTax")}
+            appendText="%"
+          />
+        </SimpleGrid>
+      </Fieldset>
 
-      <UserInputFormItem
-        id="downPaymentPercentage"
-        label="Down Payment"
-        step="5"
-        min={5}
-        max={100}
-        value={userInput.downPaymentPercentage}
-        onChange={(event) => {
-          handleChange("downPaymentPercentage", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="annualMortgageInterestRate"
-        label="Mortgage Rate"
-        step="0.1"
-        value={userInput.annualMortgageInterestRate}
-        onChange={(event) => {
-          handleChange("annualMortgageInterestRate", event.target.value);
-        }}
-        appendText="%"
-        disabled={userInput.downPaymentPercentage === 100}
-      />
-
-      <UserInputFormItem
-        id="mortgageTerm"
-        label="Mortgage Term"
-        step="5"
-        min={5}
-        max={30}
-        value={userInput.mortgageTerm}
-        onChange={(event) => {
-          handleChange("mortgageTerm", event.target.value);
-        }}
-        appendText="Years"
-        disabled={userInput.downPaymentPercentage === 100}
-      />
-
-      <UserInputFormItem
-        id="investmentReturnRate"
-        label="Total Portfolio Return"
-        helperText="Expected pre-tax annual return of your portfolio, including both dividends and capital gains. Typical 80/20 growth ETF (e.g. XGRO): ~6%."
-        step="0.1"
-        value={userInput.investmentReturnRate}
-        onChange={(event) => {
-          handleChange("investmentReturnRate", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="dividendYield"
-        label="Dividend Yield"
-        helperText="Portion of the total return paid as dividends each year, taxed annually. The remainder is capital appreciation, deferred until sale. Typical global equity ETF: 1.5–2.5%."
-        step="0.1"
-        value={userInput.dividendYield}
-        onChange={(event) => {
-          handleChange("dividendYield", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="dividendTaxRate"
-        label="Dividend Tax Rate"
-        helperText="Effective tax rate on annual dividends. Eligible Canadian dividends ~25–30%; foreign dividends taxed at your marginal rate."
-        step="1"
-        value={userInput.dividendTaxRate}
-        onChange={(event) => {
-          handleChange("dividendTaxRate", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="investmentGainTax"
-        label="Capital Gain Tax Rate"
-        helperText="Tax rate applied to capital gains (total return minus dividends) when the portfolio is liquidated."
-        step="1"
-        value={userInput.investmentGainTax}
-        onChange={(event) => {
-          handleChange("investmentGainTax", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="rentIncreaseRate"
-        label="Rent Change"
-        step="0.1"
-        value={userInput.rentIncreaseRate}
-        onChange={(event) => {
-          handleChange("rentIncreaseRate", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="homePriceGrowthRate"
-        label="Home Price Change"
-        step="0.1"
-        value={userInput.homePriceGrowthRate}
-        onChange={(event) => {
-          handleChange("homePriceGrowthRate", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="buyersClosingCostPercentage"
-        label="Buyer's Closing Cost"
-        helperText="Closing cost for home buyers as percentage of house price."
-        step="0.1"
-        value={userInput.buyersClosingCostPercentage}
-        onChange={(event) => {
-          handleChange("buyersClosingCostPercentage", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="sellersClosingCostPercentage"
-        label="Seller's Closing Cost"
-        helperText="Closing cost for home sellers as percentage of house price."
-        step="0.1"
-        value={userInput.sellersClosingCostPercentage}
-        onChange={(event) => {
-          handleChange("sellersClosingCostPercentage", event.target.value);
-        }}
-        appendText="%"
-      />
-    </form>
+      <Fieldset legend="Transaction Costs">
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          <UserInputFormItem
+            id="buyersClosingCostPercentage"
+            label="Buyer's Closing Cost"
+            helperText="Closing cost for home buyers as percentage of house price."
+            step={0.1}
+            value={userInput.buyersClosingCostPercentage}
+            onChange={bind("buyersClosingCostPercentage")}
+            appendText="%"
+          />
+          <UserInputFormItem
+            id="sellersClosingCostPercentage"
+            label="Seller's Closing Cost"
+            helperText="Closing cost for home sellers as percentage of house price."
+            step={0.1}
+            value={userInput.sellersClosingCostPercentage}
+            onChange={bind("sellersClosingCostPercentage")}
+            appendText="%"
+          />
+        </SimpleGrid>
+      </Fieldset>
+    </Stack>
   );
 }

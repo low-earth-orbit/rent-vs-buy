@@ -294,8 +294,8 @@ function calculateMortgagePrincipal(initialHomePrice, downPaymentPercentage) {
   return baseLoan * (1 + getCmhcPremiumRate(downPaymentPercentage) / 100);
 }
 
-// Calculate renter's advantage over buying at the end of the given year
-export function calculateRentersAdvantageAtYearEnd({
+// Renter's and owner's absolute net worth at the end of the given year
+export function calculateNetWorthAtYearEnd({
   monthlyRent,
   rentIncreaseRate,
   annualMortgageInterestRate,
@@ -318,7 +318,7 @@ export function calculateRentersAdvantageAtYearEnd({
     downPaymentPercentage,
   );
 
-  const rentersPortfolioValue = calculateRentersPortfolioValue({
+  const renterNetWorth = calculateRentersPortfolioValue({
     monthlyRent,
     rentIncreaseRate,
     mortgagePrincipal,
@@ -332,13 +332,12 @@ export function calculateRentersAdvantageAtYearEnd({
     maintenanceCostPercentage,
     initialHomePrice,
     homePriceGrowthRate,
-    sellersClosingCostPercentage,
     investmentGainTax,
     dividendYield,
     dividendTaxRate,
   });
 
-  const ownersEquity = calculateOwnersEquityAtYearEnd({
+  const ownerNetWorth = calculateOwnersEquityAtYearEnd({
     initialHomePrice,
     homePriceGrowthRate,
     yearNumber,
@@ -348,7 +347,15 @@ export function calculateRentersAdvantageAtYearEnd({
     sellersClosingCostPercentage,
   });
 
-  const result = rentersPortfolioValue - ownersEquity;
+  return {
+    year: yearNumber,
+    renterNetWorth,
+    ownerNetWorth,
+    difference: renterNetWorth - ownerNetWorth,
+  };
+}
 
-  return result;
+// Calculate renter's advantage over buying at the end of the given year
+export function calculateRentersAdvantageAtYearEnd(input) {
+  return calculateNetWorthAtYearEnd(input).difference;
 }

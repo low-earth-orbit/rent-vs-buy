@@ -1,4 +1,5 @@
-import { calculateRentersAdvantageAtYearEnd } from "../utils/math";
+import { Alert, List } from "@mantine/core";
+import NetWorthChart from "./NetWorthChart";
 
 function validateUserInput(input) {
   const errors = {};
@@ -38,60 +39,15 @@ export default function Result({ userInput }) {
 
   if (Object.keys(errors).length > 0) {
     return (
-      <div className="error">
-        <p>Valid user input is required:</p>
-        <ul>
+      <Alert color="red" title="Valid user input is required">
+        <List size="sm">
           {Object.keys(errors).map((field) => (
-            <li key={field}>{errors[field]}</li>
+            <List.Item key={field}>{errors[field]}</List.Item>
           ))}
-        </ul>
-      </div>
+        </List>
+      </Alert>
     );
   }
 
-  return (
-    <>
-      <p>Results are automatically generated below.</p>
-      <table id="result" className="table table-sm table-hover">
-        <thead>
-          <tr>
-            <th scope="col">End of Year</th>
-            <th scope="col">Advantage</th>
-            <th scope="col">Net Worth Difference</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {[...Array(30)].map((_, i) => {
-            const yearNumber = i + 1;
-            const rentersAdvantage = calculateRentersAdvantageAtYearEnd({
-              ...userInput,
-              yearNumber,
-            });
-
-            const amount = new Intl.NumberFormat("en-CA", {
-              style: "currency",
-              currency: "CAD",
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }).format(Math.abs(rentersAdvantage));
-
-            const isRentBetter = rentersAdvantage >= 0;
-            const advantageText = isRentBetter ? "Rent" : "Buy";
-
-            return (
-              <tr
-                key={yearNumber}
-                className={isRentBetter ? "table-danger" : "table-success"}
-              >
-                <td>{yearNumber}</td>
-                <td>{advantageText}</td>
-                <td>{amount}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </>
-  );
+  return <NetWorthChart userInput={userInput} />;
 }
