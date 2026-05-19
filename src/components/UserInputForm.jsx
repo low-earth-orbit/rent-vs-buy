@@ -59,8 +59,8 @@ export default function UserInputForm({ userInput, handleChange }) {
           />
           <UserInputFormItem
             id="maintenanceCostPercentage"
-            label="Depreciation & Maintenance"
-            helperText="Annual depreciation and maintenance as a percentage of home price."
+            label="Maintenance"
+            helperText="Annual maintenance cost as a percentage of home price."
             step={0.1}
             value={userInput.maintenanceCostPercentage}
             onChange={bind("maintenanceCostPercentage")}
