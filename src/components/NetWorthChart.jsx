@@ -1,22 +1,32 @@
+import { useMemo } from "react";
 import { Alert, Paper, Stack, Text } from "@mantine/core";
-import { LineChart } from "@mantine/charts";
+import {
+  ComposedChart,
+  Area,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceLine,
+  ResponsiveContainer,
+} from "recharts";
 import { calculateNetWorthAtYearEnd } from "../utils/math";
+import { runMonteCarlo } from "../utils/monteCarlo";
 import { formatCAD, formatCADCompact } from "../utils/format";
 
-function buildData(userInput) {
-  const horizon = 30;
-  return Array.from({ length: horizon }, (_, i) =>
+function buildBaseData(userInput) {
+  return Array.from({ length: 30 }, (_, i) =>
     calculateNetWorthAtYearEnd({ ...userInput, yearNumber: i + 1 }),
   );
 }
 
-// First sign flip of (renter - owner); linearly interpolate the fractional year.
-function findCrossover(data) {
+function findCrossover(data, renterKey, ownerKey) {
   for (let i = 1; i < data.length; i++) {
-    const a = data[i - 1].difference;
-    const b = data[i].difference;
+    const a = data[i - 1][renterKey] - data[i - 1][ownerKey];
+    const b = data[i][renterKey] - data[i][ownerKey];
     if (a === 0) return { year: data[i - 1].year };
-    if ((a < 0) !== (b < 0)) {
+    if (a < 0 !== b < 0) {
       const t = a / (a - b);
       return { year: data[i - 1].year + t };
     }
@@ -24,23 +34,41 @@ function findCrossover(data) {
   return null;
 }
 
-function ChartTooltip({ payload }) {
+function ChartTooltip({ payload, showBands }) {
   if (!payload || payload.length === 0) return null;
   const point = payload[0].payload;
-  const leader = point.difference >= 0 ? "Renting leads" : "Buying leads";
+  const renter = point.renterMedian;
+  const owner = point.ownerMedian;
+  if (renter == null || owner == null) return null;
+  const leader = renter >= owner ? "Renting leads" : "Buying leads";
+
   return (
     <Paper px="md" py="sm" withBorder shadow="md" radius="md">
       <Text fw={600} mb={4}>
         Year {point.year}
       </Text>
       <Text size="sm" c="teal">
-        Rent + Invest: {formatCAD(point.renterNetWorth)}
+        Rent + Invest: {formatCAD(renter)}
+        {showBands && point.renterP25 != null && (
+          <Text size="xs" c="dimmed" span>
+            {" "}
+            ({formatCADCompact(point.renterP25)} –{" "}
+            {formatCADCompact(point.renterP75)})
+          </Text>
+        )}
       </Text>
       <Text size="sm" c="indigo">
-        Buy: {formatCAD(point.ownerNetWorth)}
+        Buy: {formatCAD(owner)}
+        {showBands && point.ownerP25 != null && (
+          <Text size="xs" c="dimmed" span>
+            {" "}
+            ({formatCADCompact(point.ownerP25)} –{" "}
+            {formatCADCompact(point.ownerP75)})
+          </Text>
+        )}
       </Text>
       <Text size="sm" mt={4}>
-        {leader} by {formatCAD(Math.abs(point.difference))}
+        {leader} by {formatCAD(Math.abs(renter - owner))}
       </Text>
     </Paper>
   );
@@ -48,8 +76,8 @@ function ChartTooltip({ payload }) {
 
 function SummaryBanner({ data, crossover }) {
   const last = data[data.length - 1];
-  const renterWins = last.difference >= 0;
-  const margin = formatCAD(Math.abs(last.difference));
+  const renterWins = last.renterMedian >= last.ownerMedian;
+  const margin = formatCAD(Math.abs(last.renterMedian - last.ownerMedian));
   const color = renterWins ? "teal" : "indigo";
 
   let title, body;
@@ -61,8 +89,8 @@ function SummaryBanner({ data, crossover }) {
       : `Buying leads until then; renting leads from year ${breakEvenYear} onward. At year 30, renting leads by ${margin}.`;
   } else {
     title = renterWins
-      ? `Renting leads for the entire 30 years`
-      : `Buying leads for the entire 30 years`;
+      ? "Renting leads for the entire 30 years"
+      : "Buying leads for the entire 30 years";
     body = `By ${margin} at year 30.`;
   }
 
@@ -73,48 +101,159 @@ function SummaryBanner({ data, crossover }) {
   );
 }
 
-export default function NetWorthChart({ userInput }) {
-  const data = buildData(userInput);
-  const crossover = findCrossover(data);
+export default function NetWorthChart({ userInput, showBands }) {
+  const baseData = useMemo(() => buildBaseData(userInput), [userInput]);
+
+  const mcData = useMemo(
+    () => (showBands ? runMonteCarlo(userInput) : null),
+    [userInput, showBands],
+  );
+
+  const chartData = useMemo(() => {
+    if (!showBands || !mcData) {
+      return baseData.map((d) => ({
+        year: d.year,
+        renterMedian: d.renterNetWorth,
+        ownerMedian: d.ownerNetWorth,
+      }));
+    }
+    return mcData.map((mc) => ({
+      year: mc.year,
+      renterP25: mc.renterP25,
+      renterMedian: mc.renterMedian,
+      renterP75: mc.renterP75,
+      renterBandBase: mc.renterP25,
+      renterBandWidth: mc.renterP75 - mc.renterP25,
+      ownerP25: mc.ownerP25,
+      ownerMedian: mc.ownerMedian,
+      ownerP75: mc.ownerP75,
+      ownerBandBase: mc.ownerP25,
+      ownerBandWidth: mc.ownerP75 - mc.ownerP25,
+    }));
+  }, [baseData, mcData, showBands]);
+
+  const crossover = findCrossover(chartData, "renterMedian", "ownerMedian");
+
+  const allValues = chartData
+    .flatMap((d) =>
+      showBands
+        ? [d.renterP25, d.renterP75, d.ownerP25, d.ownerP75]
+        : [d.renterMedian, d.ownerMedian],
+    )
+    .filter((v) => v != null && isFinite(v));
+
+  const yMin = Math.min(...allValues);
+  const yMax = Math.max(...allValues);
+  const yPad = (yMax - yMin) * 0.08;
+  const yDomain = [
+    Math.floor((yMin - yPad) / 50000) * 50000,
+    Math.ceil((yMax + yPad) / 50000) * 50000,
+  ];
 
   return (
     <Stack gap="xs">
-      <SummaryBanner data={data} crossover={crossover} />
+      <SummaryBanner data={chartData} crossover={crossover} />
       <Text fw={600} size="lg">
         Net worth: rent vs buy
       </Text>
-      <LineChart
-        h={400}
-        data={data}
-        dataKey="year"
-        withDots={false}
-        curveType="linear"
-        valueFormatter={formatCADCompact}
-        xAxisLabel="Year"
-        tooltipProps={{ content: ChartTooltip }}
-        series={[
-          { name: "renterNetWorth", label: "Rent + Invest", color: "teal.6" },
-          {
-            name: "ownerNetWorth",
-            label: "Buy",
-            color: "indigo.6",
-          },
-        ]}
-        referenceLines={
-          crossover
-            ? [
-                {
-                  x: Math.round(crossover.year),
-                  label: `Break-even tenure ≈ Yr ${crossover.year.toFixed(0)}`,
-                  color: "gray.6",
-                },
-              ]
-            : []
-        }
-      />
+      <ResponsiveContainer width="100%" height={400}>
+        <ComposedChart
+          data={chartData}
+          margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
+        >
+          <XAxis
+            dataKey="year"
+            label={{ value: "Year", position: "insideBottom", offset: -10 }}
+            tick={{ fontSize: 12 }}
+          />
+          <YAxis
+            domain={yDomain}
+            tickFormatter={formatCADCompact}
+            tick={{ fontSize: 12 }}
+            width={70}
+          />
+          <Tooltip content={<ChartTooltip showBands={showBands} />} />
+
+          {showBands && (
+            <>
+              <Area
+                type="linear"
+                dataKey="renterBandBase"
+                stackId="renter"
+                fill="transparent"
+                stroke="none"
+                legendType="none"
+                name=""
+              />
+              <Area
+                type="linear"
+                dataKey="renterBandWidth"
+                stackId="renter"
+                fill="#12b886"
+                fillOpacity={0.18}
+                stroke="none"
+                legendType="none"
+                name=""
+              />
+              <Area
+                type="linear"
+                dataKey="ownerBandBase"
+                stackId="owner"
+                fill="transparent"
+                stroke="none"
+                legendType="none"
+                name=""
+              />
+              <Area
+                type="linear"
+                dataKey="ownerBandWidth"
+                stackId="owner"
+                fill="#4c6ef5"
+                fillOpacity={0.18}
+                stroke="none"
+                legendType="none"
+                name=""
+              />
+            </>
+          )}
+
+          <Line
+            type="linear"
+            dataKey="renterMedian"
+            name="Rent + Invest"
+            stroke="#12b886"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 4 }}
+          />
+          <Line
+            type="linear"
+            dataKey="ownerMedian"
+            name="Buy"
+            stroke="#4c6ef5"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 4 }}
+          />
+
+          {crossover && (
+            <ReferenceLine
+              x={Math.round(crossover.year)}
+              stroke="#868e96"
+              strokeDasharray="4 4"
+              label={{
+                value: `Break-even ≈ Yr ${crossover.year.toFixed(0)}`,
+                position: "top",
+                fontSize: 11,
+                fill: "#868e96",
+              }}
+            />
+          )}
+        </ComposedChart>
+      </ResponsiveContainer>
       {!crossover && (
         <Text size="sm" c="dimmed">
-          {data[0].difference >= 0
+          {chartData[0].renterMedian >= chartData[0].ownerMedian
             ? "Renting leads for the entire horizon."
             : "Buying leads for the entire horizon."}
         </Text>

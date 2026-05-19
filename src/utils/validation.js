@@ -28,6 +28,24 @@ export const FIELD_CONSTRAINTS = {
   dividendYield: { min: 0, max: undefined, step: 0.5 },
   dividendTaxRate: { min: 0, max: undefined, step: 1 },
   investmentGainTax: { min: 0, max: undefined, step: 1 },
+  homePriceGrowthSigma: { min: 0, max: 10, step: 0.25 },
+  investmentReturnSigma: { min: 0, max: 10, step: 0.25 },
+  rentIncreaseSigma: { min: 0, max: 5, step: 0.25 },
+  mortgageRateSigma: { min: 0, max: 5, step: 0.25 },
+  maintenanceSigma: { min: 0, max: 5, step: 0.1 },
+  propertyTaxSigma: { min: 0, max: 2, step: 0.05 },
+  dividendYieldSigma: { min: 0, max: 5, step: 0.1 },
+};
+
+// Draggable track domain for the single-value sliders, keyed by base field.
+export const SLIDER_BOUNDS = {
+  homePriceGrowthRate: { min: -10, max: 15, step: 0.5 },
+  investmentReturnRate: { min: 0, max: 15, step: 0.25 },
+  rentIncreaseRate: { min: -5, max: 12, step: 0.25 },
+  annualMortgageInterestRate: { min: 0, max: 12, step: 0.25 },
+  maintenanceCostPercentage: { min: 0, max: 6, step: 0.1 },
+  propertyTaxRate: { min: 0, max: 5, step: 0.05 },
+  dividendYield: { min: 0, max: 8, step: 0.25 },
 };
 
 function isEmpty(value) {

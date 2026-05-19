@@ -4,20 +4,59 @@ import {
   Group,
   SimpleGrid,
   Stack,
+  Switch,
   Text,
 } from "@mantine/core";
 import UserInputFormItem from "./UserInputFormItem";
+import UserInputRangeItem from "./UserInputRangeItem";
 import { PRESETS } from "../utils/presets";
-import { FIELD_CONSTRAINTS } from "../utils/validation";
+import { FIELD_CONSTRAINTS, SLIDER_BOUNDS } from "../utils/validation";
 
 export default function UserInputForm({
   userInput,
   handleChange,
+  handleRangeChange,
   handlePreset,
+  simulateUncertainty,
+  setSimulateUncertainty,
   errors,
 }) {
   const bind = (id) => (value) => handleChange(id, value);
   const c = (id) => FIELD_CONSTRAINTS[id];
+
+  // Perturbed variables: two-thumb range slider in advanced mode, plain
+  // single-value input otherwise.
+  const perturbed = (
+    baseField,
+    sigmaField,
+    { label, helperText, disabled, maxOverride },
+  ) =>
+    simulateUncertainty ? (
+      <UserInputRangeItem
+        label={label}
+        helperText={helperText}
+        baseValue={userInput[baseField]}
+        sigma={userInput[sigmaField]}
+        bounds={SLIDER_BOUNDS[baseField]}
+        onChange={(range) =>
+          handleRangeChange(baseField, sigmaField, range)
+        }
+        disabled={disabled}
+        maxOverride={maxOverride}
+      />
+    ) : (
+      <UserInputFormItem
+        id={baseField}
+        label={label}
+        helperText={helperText}
+        value={userInput[baseField]}
+        onChange={bind(baseField)}
+        error={errors[baseField]}
+        suffix="%"
+        disabled={disabled}
+        {...c(baseField)}
+      />
+    );
 
   return (
     <Stack gap="md">
@@ -39,6 +78,14 @@ export default function UserInputForm({
         </Group>
       </Stack>
 
+      <Switch
+        size="sm"
+        label="Simulate uncertainty (advanced)"
+        description="Set a plausible range per assumption and show 50% confidence bands on the chart."
+        checked={simulateUncertainty}
+        onChange={(e) => setSimulateUncertainty(e.currentTarget.checked)}
+      />
+
       <Accordion
         multiple
         defaultValue={["rent", "property", "mortgage"]}
@@ -58,16 +105,11 @@ export default function UserInputForm({
                 thousandSeparator
                 {...c("monthlyRent")}
               />
-              <UserInputFormItem
-                id="rentIncreaseRate"
-                label="Rent Change"
-                helperText="Expected annual change in rent. Historically tracks inflation (~2%). Can be negative."
-                value={userInput.rentIncreaseRate}
-                onChange={bind("rentIncreaseRate")}
-                error={errors.rentIncreaseRate}
-                suffix="%"
-                {...c("rentIncreaseRate")}
-              />
+              {perturbed("rentIncreaseRate", "rentIncreaseSigma", {
+                label: "Rent Change",
+                helperText:
+                  "Expected annual change in rent. Historically tracks inflation (~2%). Can be negative.",
+              })}
             </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>
@@ -86,36 +128,21 @@ export default function UserInputForm({
                 thousandSeparator
                 {...c("initialHomePrice")}
               />
-              <UserInputFormItem
-                id="homePriceGrowthRate"
-                label="Home Price Change"
-                helperText="Expected annual change in home price. Long-run world historical average is roughly 2–3.5% nominal. Can be negative."
-                value={userInput.homePriceGrowthRate}
-                onChange={bind("homePriceGrowthRate")}
-                error={errors.homePriceGrowthRate}
-                suffix="%"
-                {...c("homePriceGrowthRate")}
-              />
-              <UserInputFormItem
-                id="propertyTaxRate"
-                label="Property Tax Rate"
-                helperText="Annual property tax as a percentage of the home's market value. Typical range: 0.5–1.5% depending on municipality."
-                value={userInput.propertyTaxRate}
-                onChange={bind("propertyTaxRate")}
-                error={errors.propertyTaxRate}
-                suffix="%"
-                {...c("propertyTaxRate")}
-              />
-              <UserInputFormItem
-                id="maintenanceCostPercentage"
-                label="Maintenance"
-                helperText="Annual maintenance costs as a percentage of home price, including repairs, insurance, and condo fees (if applicable). Typically 1–2%, increasing as the home ages."
-                value={userInput.maintenanceCostPercentage}
-                onChange={bind("maintenanceCostPercentage")}
-                error={errors.maintenanceCostPercentage}
-                suffix="%"
-                {...c("maintenanceCostPercentage")}
-              />
+              {perturbed("homePriceGrowthRate", "homePriceGrowthSigma", {
+                label: "Home Price Change",
+                helperText:
+                  "Expected annual change in home price. Long-run world historical average is roughly 2–3.5% nominal. Can be negative.",
+              })}
+              {perturbed("propertyTaxRate", "propertyTaxSigma", {
+                label: "Property Tax Rate",
+                helperText:
+                  "Annual property tax as a percentage of the home's market value. Typical range: 0.5–1.5% depending on municipality.",
+              })}
+              {perturbed("maintenanceCostPercentage", "maintenanceSigma", {
+                label: "Maintenance",
+                helperText:
+                  "Annual maintenance costs as a percentage of home price, including repairs, insurance, and condo fees (if applicable). Typically 1–2%, increasing as the home ages.",
+              })}
             </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>
@@ -134,17 +161,12 @@ export default function UserInputForm({
                 suffix="%"
                 {...c("downPaymentPercentage")}
               />
-              <UserInputFormItem
-                id="annualMortgageInterestRate"
-                label="Mortgage Rate"
-                helperText="Annual mortgage interest rate. The default reflects the Bank of Canada's neutral policy rate (2.75%) plus a typical lender spread (1.75%)."
-                value={userInput.annualMortgageInterestRate}
-                onChange={bind("annualMortgageInterestRate")}
-                error={errors.annualMortgageInterestRate}
-                suffix="%"
-                disabled={userInput.downPaymentPercentage === 100}
-                {...c("annualMortgageInterestRate")}
-              />
+              {perturbed("annualMortgageInterestRate", "mortgageRateSigma", {
+                label: "Mortgage Rate",
+                helperText:
+                  "Annual mortgage interest rate. The default reflects the Bank of Canada's neutral policy rate (2.75%) plus a typical lender spread (1.75%).",
+                disabled: userInput.downPaymentPercentage === 100,
+              })}
               <UserInputFormItem
                 id="mortgageTerm"
                 label="Mortgage Term"
@@ -163,26 +185,17 @@ export default function UserInputForm({
           <Accordion.Control>Investment &amp; Tax</Accordion.Control>
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <UserInputFormItem
-                id="investmentReturnRate"
-                label="Total Portfolio Return"
-                helperText="Expected pre-tax annual return, including dividends and capital gains. Based on long-term capital market assumptions for a diversified growth portfolio (VGRO)."
-                value={userInput.investmentReturnRate}
-                onChange={bind("investmentReturnRate")}
-                error={errors.investmentReturnRate}
-                suffix="%"
-                {...c("investmentReturnRate")}
-              />
-              <UserInputFormItem
-                id="dividendYield"
-                label="Dividend Yield"
-                helperText="Portion of the total return paid as dividends each year, taxed annually. Remainder is capital appreciation deferred until sale."
-                value={userInput.dividendYield}
-                onChange={bind("dividendYield")}
-                error={errors.dividendYield}
-                suffix="%"
-                {...c("dividendYield")}
-              />
+              {perturbed("investmentReturnRate", "investmentReturnSigma", {
+                label: "Total Portfolio Return",
+                helperText:
+                  "Expected pre-tax annual return, including dividends and capital gains. Based on long-term capital market assumptions for a diversified growth portfolio (VGRO).",
+              })}
+              {perturbed("dividendYield", "dividendYieldSigma", {
+                label: "Dividend Yield",
+                helperText:
+                  "Portion of the total return paid as dividends each year, taxed annually. Remainder is capital appreciation deferred until sale. Capped at the portfolio return.",
+                maxOverride: userInput.investmentReturnRate,
+              })}
               <UserInputFormItem
                 id="dividendTaxRate"
                 label="Dividend Tax Rate"
