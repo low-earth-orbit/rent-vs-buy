@@ -27,15 +27,14 @@ function findCrossover(data) {
 function ChartTooltip({ payload }) {
   if (!payload || payload.length === 0) return null;
   const point = payload[0].payload;
-  const leader =
-    point.difference >= 0 ? "Renting leads" : "Buying leads";
+  const leader = point.difference >= 0 ? "Renting leads" : "Buying leads";
   return (
     <Paper px="md" py="sm" withBorder shadow="md" radius="md">
       <Text fw={600} mb={4}>
         Year {point.year}
       </Text>
       <Text size="sm" c="teal">
-        Rent & invest: {formatCAD(point.renterNetWorth)}
+        Rent + Invest: {formatCAD(point.renterNetWorth)}
       </Text>
       <Text size="sm" c="indigo">
         Buy: {formatCAD(point.ownerNetWorth)}
@@ -94,10 +93,10 @@ export default function NetWorthChart({ userInput }) {
         xAxisLabel="Year"
         tooltipProps={{ content: ChartTooltip }}
         series={[
-          { name: "renterNetWorth", label: "Rent + invest", color: "teal.6" },
+          { name: "renterNetWorth", label: "Rent + Invest", color: "teal.6" },
           {
             name: "ownerNetWorth",
-            label: "Buy — home equity",
+            label: "Buy",
             color: "indigo.6",
           },
         ]}

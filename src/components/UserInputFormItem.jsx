@@ -1,4 +1,5 @@
-import { Group, NumberInput, Stack, Text, Tooltip } from "@mantine/core";
+import { useState } from "react";
+import { Group, NumberInput, Popover, Text } from "@mantine/core";
 
 const InfoIcon = () => (
   <svg
@@ -28,48 +29,51 @@ export default function UserInputFormItem({
   allowNegative,
   ...rest
 }) {
+  const [opened, setOpened] = useState(false);
   const placeholderText = placeholder ?? `Enter ${label.toLowerCase()}`;
 
   const labelNode = helperText ? (
-    <Group
-      gap={4}
-      wrap="nowrap"
-      display="inline-flex"
-      style={{ alignItems: "center" }}
-    >
+    <Group gap={4} wrap="nowrap" display="inline-flex" style={{ alignItems: "center" }}>
       <span>{label}</span>
-      <Tooltip
-        label={helperText}
-        multiline
-        maw={260}
+      <Popover
+        opened={opened}
+        onChange={setOpened}
+        width={260}
         withArrow
+        shadow="md"
         position="top-start"
       >
-        <span style={{ display: "inline-flex", cursor: "help" }}>
-          <InfoIcon />
-        </span>
-      </Tooltip>
+        <Popover.Target>
+          <span
+            style={{ display: "inline-flex", cursor: "pointer" }}
+            onClick={(e) => { e.preventDefault(); setOpened((o) => !o); }}
+          >
+            <InfoIcon />
+          </span>
+        </Popover.Target>
+        <Popover.Dropdown>
+          <Text size="sm">{helperText}</Text>
+        </Popover.Dropdown>
+      </Popover>
     </Group>
   ) : (
     label
   );
 
   return (
-    <Stack gap={0}>
-      <NumberInput
-        id={id}
-        label={labelNode}
-        placeholder={placeholderText}
-        value={value}
-        onChange={onChange}
-        min={min}
-        max={max}
-        step={step}
-        disabled={disabled}
-        allowNegative={allowNegative ?? false}
-        thousandSeparator={thousandSeparator ? "," : undefined}
-        {...rest}
-      />
-    </Stack>
+    <NumberInput
+      id={id}
+      label={labelNode}
+      placeholder={placeholderText}
+      value={value}
+      onChange={onChange}
+      min={min}
+      max={max}
+      step={step}
+      disabled={disabled}
+      allowNegative={allowNegative ?? false}
+      thousandSeparator={thousandSeparator ? "," : undefined}
+      {...rest}
+    />
   );
 }

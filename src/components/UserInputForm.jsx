@@ -161,7 +161,7 @@ export default function UserInputForm({
               <UserInputFormItem
                 id="investmentReturnRate"
                 label="Total Portfolio Return"
-                helperText="Expected pre-tax annual return, including both dividends and capital gains. Typical 80/20 growth ETF (e.g. XGRO) returns ~6%."
+                helperText="Expected pre-tax annual return, including both dividends and capital gains. 80/20 growth ETF (e.g. XGRO) returns ~6%."
                 step={0.5}
                 value={userInput.investmentReturnRate}
                 onChange={bind("investmentReturnRate")}
@@ -188,7 +188,7 @@ export default function UserInputForm({
               <UserInputFormItem
                 id="investmentGainTax"
                 label="Capital Gain Tax Rate"
-                helperText="Tax rate applied to the whole amount of capital gains when the portfolio is liquidated. Use your marginal income tax rate x 50%."
+                helperText="Tax rate applied to the whole amount of capital gains when the portfolio is liquidated. Use your marginal income tax rate × 50%."
                 step={1}
                 value={userInput.investmentGainTax}
                 onChange={bind("investmentGainTax")}
