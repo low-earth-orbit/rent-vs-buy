@@ -76,7 +76,6 @@ function ChartTooltip({ payload, showBands }) {
 function SummaryBanner({ data, crossover }) {
   const last = data[data.length - 1];
   const renterWins = last.renterMedian >= last.ownerMedian;
-  const margin = formatCAD(Math.abs(last.renterMedian - last.ownerMedian));
   const color = renterWins ? "teal" : "indigo";
 
   let title, body;
@@ -84,13 +83,11 @@ function SummaryBanner({ data, crossover }) {
     const breakEvenYear = crossover.year.toFixed(0);
     title = `Break-even around year ${breakEvenYear}`;
     body = renterWins
-      ? `Renting leads until then; buying leads from year ${breakEvenYear} onward. At year 30, buying leads by ${margin}.`
-      : `Buying leads until then; renting leads from year ${breakEvenYear} onward. At year 30, renting leads by ${margin}.`;
+      ? `Buying leads until then; renting leads from year ${breakEvenYear} onward.`
+      : `Renting leads until then; buying leads from year ${breakEvenYear} onward.`;
   } else {
-    title = renterWins
-      ? "Renting leads for the entire 30 years"
-      : "Buying leads for the entire 30 years";
-    body = `By ${margin} at year 30.`;
+    title = renterWins ? "Renting leads" : "Buying leads";
+    body = `For the entire 30 years`;
   }
 
   return (
