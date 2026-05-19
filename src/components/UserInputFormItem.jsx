@@ -22,18 +22,22 @@ export default function UserInputFormItem({
   max,
   step,
   value,
-  placeholder,
   onChange,
   thousandSeparator,
   disabled,
   allowNegative,
+  error,
   ...rest
 }) {
   const [opened, setOpened] = useState(false);
-  const placeholderText = placeholder ?? `Enter ${label.toLowerCase()}`;
 
   const labelNode = helperText ? (
-    <Group gap={4} wrap="nowrap" display="inline-flex" style={{ alignItems: "center" }}>
+    <Group
+      gap={4}
+      wrap="nowrap"
+      display="inline-flex"
+      style={{ alignItems: "center" }}
+    >
       <span>{label}</span>
       <Popover
         opened={opened}
@@ -46,7 +50,10 @@ export default function UserInputFormItem({
         <Popover.Target>
           <span
             style={{ display: "inline-flex", cursor: "pointer" }}
-            onClick={(e) => { e.preventDefault(); setOpened((o) => !o); }}
+            onClick={(e) => {
+              e.preventDefault();
+              setOpened((o) => !o);
+            }}
           >
             <InfoIcon />
           </span>
@@ -64,7 +71,6 @@ export default function UserInputFormItem({
     <NumberInput
       id={id}
       label={labelNode}
-      placeholder={placeholderText}
       value={value}
       onChange={onChange}
       min={min}
@@ -73,6 +79,8 @@ export default function UserInputFormItem({
       disabled={disabled}
       allowNegative={allowNegative ?? false}
       thousandSeparator={thousandSeparator ? "," : undefined}
+      error={error}
+      clampBehavior="none"
       {...rest}
     />
   );
