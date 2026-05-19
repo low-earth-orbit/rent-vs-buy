@@ -225,6 +225,8 @@ function calculateRentersPortfolioValue({
   initialHomePrice,
   homePriceGrowthRate,
   investmentGainTax,
+  dividendYield,
+  dividendTaxRate,
 }) {
   const initialInvestment =
     (initialHomePrice * (downPaymentPercentage + buyersClosingCostPercentage)) /
@@ -236,6 +238,8 @@ function calculateRentersPortfolioValue({
   // assume surplus are invested in the middle of each year, i.e. surplus gains 1/2 year investment return within the given year.
   // use a simple calculation for the half-year investment return rate.
   const halfYearReturnFactor = 1 + investmentReturnRate / 100 / 2;
+  const dividendYieldRate = dividendYield / 100;
+  const dividendTaxFraction = dividendTaxRate / 100;
 
   for (var i = 1; i <= yearNumber; i++) {
     const surplus = calculateRentersSurplus({
@@ -251,21 +255,47 @@ function calculateRentersPortfolioValue({
       homePriceGrowthRate,
     });
 
-    bookValue += surplus;
+    // Dividends earned on start-of-year balance, taxed annually.
+    const grossDividends = portfolioValue * dividendYieldRate;
+    const afterTaxDividends = grossDividends * (1 - dividendTaxFraction);
 
+    // Portfolio grows at full gross rate, dividend tax paid out, surplus added mid-year.
     portfolioValue =
-      portfolioValue * (1 + investmentReturnRate / 100) +
+      portfolioValue * (1 + investmentReturnRate / 100) -
+      grossDividends * dividendTaxFraction +
       surplus * halfYearReturnFactor;
+
+    // After-tax dividends reinvested increase cost basis to prevent double-taxation at terminal sale.
+    bookValue += surplus + afterTaxDividends;
   }
 
+  // Cost basis cannot go negative, and investment losses do not generate a
+  // tax credit, so only positive gains are taxed.
+  const taxableGain = portfolioValue - Math.max(bookValue, 0);
   const afterTaxValue =
-    bookValue + (portfolioValue - bookValue) * (1 - investmentGainTax / 100);
+    taxableGain > 0
+      ? portfolioValue - taxableGain * (investmentGainTax / 100)
+      : portfolioValue;
 
   return afterTaxValue;
 }
 
-// Calculate renter's advantage over buying at the end of the given year
-export function calculateRentersAdvantageAtYearEnd({
+// CMHC default insurance is mandatory in Canada for down payments under 20%.
+// Premium is a % of the base loan, tiered by LTV, and capitalized into principal.
+function getCmhcPremiumRate(downPaymentPercentage) {
+  if (downPaymentPercentage >= 20) return 0;
+  if (downPaymentPercentage >= 15) return 2.8;
+  if (downPaymentPercentage >= 10) return 3.1;
+  return 4.0;
+}
+
+function calculateMortgagePrincipal(initialHomePrice, downPaymentPercentage) {
+  const baseLoan = initialHomePrice * (1 - downPaymentPercentage / 100);
+  return baseLoan * (1 + getCmhcPremiumRate(downPaymentPercentage) / 100);
+}
+
+// Renter's and owner's absolute net worth at the end of the given year
+export function calculateNetWorthAtYearEnd({
   monthlyRent,
   rentIncreaseRate,
   annualMortgageInterestRate,
@@ -280,11 +310,15 @@ export function calculateRentersAdvantageAtYearEnd({
   homePriceGrowthRate,
   sellersClosingCostPercentage,
   investmentGainTax,
+  dividendYield,
+  dividendTaxRate,
 }) {
-  const mortgagePrincipal =
-    initialHomePrice * (1 - downPaymentPercentage / 100);
+  const mortgagePrincipal = calculateMortgagePrincipal(
+    initialHomePrice,
+    downPaymentPercentage,
+  );
 
-  const rentersPortfolioValue = calculateRentersPortfolioValue({
+  const renterNetWorth = calculateRentersPortfolioValue({
     monthlyRent,
     rentIncreaseRate,
     mortgagePrincipal,
@@ -298,11 +332,12 @@ export function calculateRentersAdvantageAtYearEnd({
     maintenanceCostPercentage,
     initialHomePrice,
     homePriceGrowthRate,
-    sellersClosingCostPercentage,
     investmentGainTax,
+    dividendYield,
+    dividendTaxRate,
   });
 
-  const ownersEquity = calculateOwnersEquityAtYearEnd({
+  const ownerNetWorth = calculateOwnersEquityAtYearEnd({
     initialHomePrice,
     homePriceGrowthRate,
     yearNumber,
@@ -312,7 +347,15 @@ export function calculateRentersAdvantageAtYearEnd({
     sellersClosingCostPercentage,
   });
 
-  const result = rentersPortfolioValue - ownersEquity;
+  return {
+    year: yearNumber,
+    renterNetWorth,
+    ownerNetWorth,
+    difference: renterNetWorth - ownerNetWorth,
+  };
+}
 
-  return result;
+// Calculate renter's advantage over buying at the end of the given year
+export function calculateRentersAdvantageAtYearEnd(input) {
+  return calculateNetWorthAtYearEnd(input).difference;
 }

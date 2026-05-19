@@ -1,165 +1,240 @@
+import {
+  Accordion,
+  Button,
+  Group,
+  SimpleGrid,
+  Stack,
+  Text,
+} from "@mantine/core";
 import UserInputFormItem from "./UserInputFormItem";
+import { PRESETS } from "../utils/presets";
+import { FIELD_CONSTRAINTS } from "../utils/validation";
 
-export default function UserInputForm({ userInput, handleChange }) {
+export default function UserInputForm({
+  userInput,
+  handleChange,
+  handlePreset,
+  errors,
+}) {
+  const bind = (id) => (value) => handleChange(id, value);
+  const c = (id) => FIELD_CONSTRAINTS[id];
+
   return (
-    <form id="form">
-      <UserInputFormItem
-        id="monthlyRent"
-        label="Monthly Rent"
-        step="100"
-        min={0}
-        value={userInput.monthlyRent}
-        onChange={(event) => {
-          handleChange("monthlyRent", event.target.value);
-        }}
-        prependText="$"
-        appendText=".00"
-      />
+    <Stack gap="md">
+      <Stack gap={4}>
+        <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
+          Presets
+        </Text>
+        <Group gap="xs">
+          {PRESETS.map((preset) => (
+            <Button
+              key={preset.label}
+              variant="light"
+              size="xs"
+              onClick={() => handlePreset(preset.values)}
+            >
+              {preset.label}
+            </Button>
+          ))}
+        </Group>
+      </Stack>
 
-      <UserInputFormItem
-        id="initialHomePrice"
-        label="Property Price"
-        step="10000"
-        min={0}
-        value={userInput.initialHomePrice}
-        onChange={(event) => {
-          handleChange("initialHomePrice", event.target.value);
-        }}
-        prependText="$"
-        appendText=".00"
-      />
+      <Accordion
+        multiple
+        defaultValue={["rent", "property", "mortgage"]}
+        variant="contained"
+      >
+        <Accordion.Item value="rent">
+          <Accordion.Control>Rent</Accordion.Control>
+          <Accordion.Panel>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <UserInputFormItem
+                id="monthlyRent"
+                label="Monthly Rent"
+                value={userInput.monthlyRent}
+                onChange={bind("monthlyRent")}
+                error={errors.monthlyRent}
+                prefix="$"
+                thousandSeparator
+                {...c("monthlyRent")}
+              />
+              <UserInputFormItem
+                id="rentIncreaseRate"
+                label="Rent Change"
+                helperText="Expected annual change in rent. Historically tracks inflation (~2%). Can be negative."
+                value={userInput.rentIncreaseRate}
+                onChange={bind("rentIncreaseRate")}
+                error={errors.rentIncreaseRate}
+                suffix="%"
+                {...c("rentIncreaseRate")}
+              />
+            </SimpleGrid>
+          </Accordion.Panel>
+        </Accordion.Item>
 
-      <UserInputFormItem
-        id="propertyTaxRate"
-        label="Property Tax Rate"
-        step="0.1"
-        value={userInput.propertyTaxRate}
-        onChange={(event) => {
-          handleChange("propertyTaxRate", event.target.value);
-        }}
-        appendText="%"
-      />
+        <Accordion.Item value="property">
+          <Accordion.Control>Property</Accordion.Control>
+          <Accordion.Panel>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <UserInputFormItem
+                id="initialHomePrice"
+                label="Property Price"
+                value={userInput.initialHomePrice}
+                onChange={bind("initialHomePrice")}
+                error={errors.initialHomePrice}
+                prefix="$"
+                thousandSeparator
+                {...c("initialHomePrice")}
+              />
+              <UserInputFormItem
+                id="homePriceGrowthRate"
+                label="Home Price Change"
+                helperText="Expected annual change in home price. Long-run world historical average is roughly 2–3.5% nominal. Can be negative."
+                value={userInput.homePriceGrowthRate}
+                onChange={bind("homePriceGrowthRate")}
+                error={errors.homePriceGrowthRate}
+                suffix="%"
+                {...c("homePriceGrowthRate")}
+              />
+              <UserInputFormItem
+                id="propertyTaxRate"
+                label="Property Tax Rate"
+                helperText="Annual property tax as a percentage of the home's market value. Typical range: 0.5–1.5% depending on municipality."
+                value={userInput.propertyTaxRate}
+                onChange={bind("propertyTaxRate")}
+                error={errors.propertyTaxRate}
+                suffix="%"
+                {...c("propertyTaxRate")}
+              />
+              <UserInputFormItem
+                id="maintenanceCostPercentage"
+                label="Maintenance"
+                helperText="Annual maintenance costs as a percentage of home price, including repairs, insurance, and condo fees (if applicable). Typically 1–2%, increasing as the home ages."
+                value={userInput.maintenanceCostPercentage}
+                onChange={bind("maintenanceCostPercentage")}
+                error={errors.maintenanceCostPercentage}
+                suffix="%"
+                {...c("maintenanceCostPercentage")}
+              />
+            </SimpleGrid>
+          </Accordion.Panel>
+        </Accordion.Item>
 
-      <UserInputFormItem
-        id="maintenanceCostPercentage"
-        label="Depreciation & Maintenance"
-        helperText="Enter annual depreciation and maintenance as a percentage of home price."
-        step="0.1"
-        value={userInput.maintenanceCostPercentage}
-        onChange={(event) => {
-          handleChange("maintenanceCostPercentage", event.target.value);
-        }}
-        appendText="%"
-      />
+        <Accordion.Item value="mortgage">
+          <Accordion.Control>Mortgage</Accordion.Control>
+          <Accordion.Panel>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <UserInputFormItem
+                id="downPaymentPercentage"
+                label="Down Payment"
+                helperText="Minimum is 5% in Canada. Down payments below 20% require CMHC mortgage insurance, which is added to the loan principal."
+                value={userInput.downPaymentPercentage}
+                onChange={bind("downPaymentPercentage")}
+                error={errors.downPaymentPercentage}
+                suffix="%"
+                {...c("downPaymentPercentage")}
+              />
+              <UserInputFormItem
+                id="annualMortgageInterestRate"
+                label="Mortgage Rate"
+                helperText="Annual mortgage interest rate. The default reflects the Bank of Canada's neutral policy rate (2.75%) plus a typical lender spread (1.75%)."
+                value={userInput.annualMortgageInterestRate}
+                onChange={bind("annualMortgageInterestRate")}
+                error={errors.annualMortgageInterestRate}
+                suffix="%"
+                disabled={userInput.downPaymentPercentage === 100}
+                {...c("annualMortgageInterestRate")}
+              />
+              <UserInputFormItem
+                id="mortgageTerm"
+                label="Mortgage Term"
+                value={userInput.mortgageTerm}
+                onChange={bind("mortgageTerm")}
+                error={errors.mortgageTerm}
+                suffix=" Years"
+                disabled={userInput.downPaymentPercentage === 100}
+                {...c("mortgageTerm")}
+              />
+            </SimpleGrid>
+          </Accordion.Panel>
+        </Accordion.Item>
 
-      <UserInputFormItem
-        id="downPaymentPercentage"
-        label="Down Payment"
-        step="5"
-        min={5}
-        max={100}
-        value={userInput.downPaymentPercentage}
-        onChange={(event) => {
-          handleChange("downPaymentPercentage", event.target.value);
-        }}
-        appendText="%"
-      />
+        <Accordion.Item value="investment">
+          <Accordion.Control>Investment &amp; Tax</Accordion.Control>
+          <Accordion.Panel>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <UserInputFormItem
+                id="investmentReturnRate"
+                label="Total Portfolio Return"
+                helperText="Expected pre-tax annual return, including dividends and capital gains. Based on long-term capital market assumptions for a diversified growth portfolio (VGRO)."
+                value={userInput.investmentReturnRate}
+                onChange={bind("investmentReturnRate")}
+                error={errors.investmentReturnRate}
+                suffix="%"
+                {...c("investmentReturnRate")}
+              />
+              <UserInputFormItem
+                id="dividendYield"
+                label="Dividend Yield"
+                helperText="Portion of the total return paid as dividends each year, taxed annually. Remainder is capital appreciation deferred until sale."
+                value={userInput.dividendYield}
+                onChange={bind("dividendYield")}
+                error={errors.dividendYield}
+                suffix="%"
+                {...c("dividendYield")}
+              />
+              <UserInputFormItem
+                id="dividendTaxRate"
+                label="Dividend Tax Rate"
+                helperText="Effective tax rate on annual dividends. Eligible Canadian dividends taxed at a lower rate; foreign dividends at marginal income tax rate."
+                value={userInput.dividendTaxRate}
+                onChange={bind("dividendTaxRate")}
+                error={errors.dividendTaxRate}
+                suffix="%"
+                {...c("dividendTaxRate")}
+              />
+              <UserInputFormItem
+                id="investmentGainTax"
+                label="Capital Gain Tax Rate"
+                helperText="Tax rate on capital gains when the portfolio is sold. In Canada, 50% of gains are included in taxable income — multiply your marginal rate by 50% to get this number."
+                value={userInput.investmentGainTax}
+                onChange={bind("investmentGainTax")}
+                error={errors.investmentGainTax}
+                suffix="%"
+                {...c("investmentGainTax")}
+              />
+            </SimpleGrid>
+          </Accordion.Panel>
+        </Accordion.Item>
 
-      <UserInputFormItem
-        id="annualMortgageInterestRate"
-        label="Mortgage Rate"
-        step="0.1"
-        value={userInput.annualMortgageInterestRate}
-        onChange={(event) => {
-          handleChange("annualMortgageInterestRate", event.target.value);
-        }}
-        appendText="%"
-        disabled={userInput.downPaymentPercentage === 100}
-      />
-
-      <UserInputFormItem
-        id="mortgageTerm"
-        label="Mortgage Term"
-        step="5"
-        min={5}
-        max={30}
-        value={userInput.mortgageTerm}
-        onChange={(event) => {
-          handleChange("mortgageTerm", event.target.value);
-        }}
-        appendText="Years"
-        disabled={userInput.downPaymentPercentage === 100}
-      />
-
-      <UserInputFormItem
-        id="investmentReturnRate"
-        label="Investment Return"
-        helperText="Enter the expected pre-tax return of your investment portfolio. The default value is expected return of an 80/20 growth portfolio."
-        step="0.1"
-        value={userInput.investmentReturnRate}
-        onChange={(event) => {
-          handleChange("investmentReturnRate", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="investmentGainTax"
-        label="Investment Gain Tax"
-        helperText="Tax rate on investment gains."
-        step="1"
-        value={userInput.investmentGainTax}
-        onChange={(event) => {
-          handleChange("investmentGainTax", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="rentIncreaseRate"
-        label="Rent Change"
-        step="0.1"
-        value={userInput.rentIncreaseRate}
-        onChange={(event) => {
-          handleChange("rentIncreaseRate", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="homePriceGrowthRate"
-        label="Home Price Change"
-        step="0.1"
-        value={userInput.homePriceGrowthRate}
-        onChange={(event) => {
-          handleChange("homePriceGrowthRate", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="buyersClosingCostPercentage"
-        label="Buyer's Closing Cost"
-        helperText="Closing cost for home buyers as percentage of house price."
-        step="0.1"
-        value={userInput.buyersClosingCostPercentage}
-        onChange={(event) => {
-          handleChange("buyersClosingCostPercentage", event.target.value);
-        }}
-        appendText="%"
-      />
-
-      <UserInputFormItem
-        id="sellersClosingCostPercentage"
-        label="Seller's Closing Cost"
-        helperText="Closing cost for home sellers as percentage of house price."
-        step="0.1"
-        value={userInput.sellersClosingCostPercentage}
-        onChange={(event) => {
-          handleChange("sellersClosingCostPercentage", event.target.value);
-        }}
-        appendText="%"
-      />
-    </form>
+        <Accordion.Item value="costs">
+          <Accordion.Control>Transaction Costs</Accordion.Control>
+          <Accordion.Panel>
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <UserInputFormItem
+                id="buyersClosingCostPercentage"
+                label="Buyer's Closing Cost"
+                helperText="Closing costs for home buyers as a percentage of home price, including land transfer tax, legal fees, and inspections. Typically 1.5–4% nationally; higher in provinces with larger land transfer taxes."
+                value={userInput.buyersClosingCostPercentage}
+                onChange={bind("buyersClosingCostPercentage")}
+                error={errors.buyersClosingCostPercentage}
+                suffix="%"
+                {...c("buyersClosingCostPercentage")}
+              />
+              <UserInputFormItem
+                id="sellersClosingCostPercentage"
+                label="Seller's Closing Cost"
+                helperText="Closing costs for home sellers as a percentage of home price, primarily realtor commission and legal fees. Typically 3–5% nationally."
+                value={userInput.sellersClosingCostPercentage}
+                onChange={bind("sellersClosingCostPercentage")}
+                error={errors.sellersClosingCostPercentage}
+                suffix="%"
+                {...c("sellersClosingCostPercentage")}
+              />
+            </SimpleGrid>
+          </Accordion.Panel>
+        </Accordion.Item>
+      </Accordion>
+    </Stack>
   );
 }
