@@ -8,6 +8,7 @@ import { validateUserInput } from "../utils/validation";
 
 const Main = () => {
   const [userInput, setUserInput] = useState(DEFAULTS);
+  const [simulateUncertainty, setSimulateUncertainty] = useState(false);
   const errors = validateUserInput(userInput);
 
   function handleChange(inputIdentifier, newValue) {
@@ -19,6 +20,14 @@ const Main = () => {
     });
   }
 
+  function handleRangeChange(baseField, sigmaField, [low, high]) {
+    setUserInput((prev) => ({
+      ...prev,
+      [baseField]: (low + high) / 2,
+      [sigmaField]: (high - low) / 4,
+    }));
+  }
+
   function handlePreset(values) {
     setUserInput(values);
   }
@@ -27,16 +36,23 @@ const Main = () => {
     <>
       <Container size="lg" py="md">
         <Grid gutter="xl">
-          <Grid.Col span={{ base: 12, lg: 6 }}>
+          <Grid.Col span={{ base: 12, lg: 7 }}>
             <UserInputForm
               userInput={userInput}
               handleChange={handleChange}
+              handleRangeChange={handleRangeChange}
               handlePreset={handlePreset}
+              simulateUncertainty={simulateUncertainty}
+              setSimulateUncertainty={setSimulateUncertainty}
               errors={errors}
             />
           </Grid.Col>
-          <Grid.Col span={{ base: 12, lg: 6 }}>
-            <Result userInput={userInput} errors={errors} />
+          <Grid.Col span={{ base: 12, lg: 5 }}>
+            <Result
+              userInput={userInput}
+              errors={errors}
+              simulateUncertainty={simulateUncertainty}
+            />
           </Grid.Col>
         </Grid>
       </Container>
