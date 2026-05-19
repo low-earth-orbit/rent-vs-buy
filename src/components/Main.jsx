@@ -4,7 +4,7 @@ import UserInputForm from "./UserInputForm";
 
 const Main = () => {
   const [userInput, setUserInput] = useState({
-    monthlyRent: 5200,
+    monthlyRent: 5000,
     rentIncreaseRate: 2.5,
     initialHomePrice: 1000000,
     homePriceGrowthRate: 2,
