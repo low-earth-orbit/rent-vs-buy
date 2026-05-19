@@ -162,18 +162,19 @@ export default function UserInputForm({
               {perturbed("annualMortgageInterestRate", "mortgageRateSigma", {
                 label: "Mortgage Rate",
                 helperText:
-                  "Annual mortgage interest rate. The default reflects the Bank of Canada's neutral policy rate (2.75%) plus a typical lender spread (1.75%).",
+                  "Annual mortgage interest rate, modeled as variable for the full amortization period. The default reflects the Bank of Canada's neutral policy rate (2.75%) plus a typical lender spread (1.75%).",
                 disabled: userInput.downPaymentPercentage === 100,
               })}
               <UserInputFormItem
-                id="mortgageTerm"
-                label="Mortgage Term"
-                value={userInput.mortgageTerm}
-                onChange={bind("mortgageTerm")}
-                error={errors.mortgageTerm}
+                id="amortizationPeriod"
+                label="Amortization Period"
+                helperText="Total length of the mortgage. Canadian maximum is 25 years for insured mortgages (down payment <20%) and 30 years for uninsured."
+                value={userInput.amortizationPeriod}
+                onChange={bind("amortizationPeriod")}
+                error={errors.amortizationPeriod}
                 suffix=" Years"
                 disabled={userInput.downPaymentPercentage === 100}
-                {...c("mortgageTerm")}
+                {...c("amortizationPeriod")}
               />
             </SimpleGrid>
           </Accordion.Panel>
@@ -205,14 +206,14 @@ export default function UserInputForm({
                 {...c("dividendTaxRate")}
               />
               <UserInputFormItem
-                id="investmentGainTax"
+                id="capitalGainTaxRate"
                 label="Capital Gain Tax Rate"
                 helperText="Tax rate on capital gains when the portfolio is sold. In Canada, 50% of gains are included in taxable income — multiply your marginal rate by 50% to get this number."
-                value={userInput.investmentGainTax}
-                onChange={bind("investmentGainTax")}
-                error={errors.investmentGainTax}
+                value={userInput.capitalGainTaxRate}
+                onChange={bind("capitalGainTaxRate")}
+                error={errors.capitalGainTaxRate}
                 suffix="%"
-                {...c("investmentGainTax")}
+                {...c("capitalGainTaxRate")}
               />
             </SimpleGrid>
           </Accordion.Panel>
