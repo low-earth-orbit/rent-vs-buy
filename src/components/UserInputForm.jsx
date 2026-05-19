@@ -38,9 +38,7 @@ export default function UserInputForm({
         baseValue={userInput[baseField]}
         sigma={userInput[sigmaField]}
         bounds={SLIDER_BOUNDS[baseField]}
-        onChange={(range) =>
-          handleRangeChange(baseField, sigmaField, range)
-        }
+        onChange={(range) => handleRangeChange(baseField, sigmaField, range)}
         disabled={disabled}
         maxOverride={maxOverride}
       />
@@ -188,7 +186,7 @@ export default function UserInputForm({
               {perturbed("investmentReturnRate", "investmentReturnSigma", {
                 label: "Total Portfolio Return",
                 helperText:
-                  "Expected pre-tax annual return, including dividends and capital gains. Based on long-term capital market assumptions for a diversified growth portfolio (VGRO).",
+                  "Expected pre-tax annual return, including dividends and capital gains. Based on long-term capital market assumptions for a diversified growth portfolio (XGRO).",
               })}
               {perturbed("dividendYield", "dividendYieldSigma", {
                 label: "Dividend Yield",

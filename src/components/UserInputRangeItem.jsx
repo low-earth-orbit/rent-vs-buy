@@ -26,7 +26,7 @@ export default function UserInputRangeItem({
         <FieldLabel label={label} helperText={helperText} />
       </Input.Label>
       <RangeSlider
-        size="sm"
+        size="xs"
         min={bounds.min}
         max={trackMax}
         step={bounds.step}
