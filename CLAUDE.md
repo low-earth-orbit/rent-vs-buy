@@ -23,11 +23,11 @@ The application has three main layers:
 - **Main.jsx**: Manages application state. Contains default assumptions and handles input changes from the form. Uses `userInput` state object passed to form and results components.
 - **UserInputForm.jsx**: Renders form with 13 configurable inputs covering rent, property, mortgage, tax, and investment assumptions.
 - **UserInputFormItem.jsx**: Reusable form input component with labels, validation feedback, and currency/percentage formatting.
-- **Result.jsx**: Validates user input and displays a 30-year table comparing renting vs buying. Calls math.calculateRentersAdvantageAtYearEnd() for each year.
+- **Result.jsx**: Validates user input and renders the 30-year net worth chart via NetWorthChart.
 - **Header.jsx / Footer.jsx**: Static UI components.
 
 ### 2. Calculation Layer (utils/math.jsx)
-The exported function `calculateRentersAdvantageAtYearEnd()` is the public API. It computes the net worth difference between renting and buying for a given year, accounting for:
+The exported function `calculateNetWorthAtYearEnd()` is the public API. It returns `{ year, renterNetWorth, ownerNetWorth, difference }` for a given year, accounting for:
 
 - **Renter side**: Initial investment (down payment + closing costs), annual rent paid, portfolio growth with tax on investment gains
 - **Owner side**: Mortgage payments (amortizing principal + interest with semi-annual compounding), property taxes, maintenance, home price appreciation, equity from mortgage payoff
@@ -35,7 +35,7 @@ The exported function `calculateRentersAdvantageAtYearEnd()` is the public API. 
 Key helper functions:
 - `calculateFutureValue()`: Compound growth calculator
 - `calculateMonthlyMortgagePayment()`: Standard loan formula
-- `calculateMortgageBalanceAtYearEnd()`: Iterates month-by-month through mortgage term
+- `calculateMortgageBalanceAtYearEnd()`: Iterates month-by-month through the amortization period
 - `calculateRentersPortfolioValue()`: Assumes surplus (difference between owner's cost and renter's cost) is invested annually
 - `calculateOwnersEquityAtYearEnd()`: Home value minus mortgage balance
 

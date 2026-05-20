@@ -20,17 +20,21 @@ function buildBaseData(userInput) {
   );
 }
 
-function findCrossover(data, renterKey, ownerKey) {
+function findCrossovers(data, renterKey, ownerKey) {
+  const crossovers = [];
   for (let i = 1; i < data.length; i++) {
     const a = data[i - 1][renterKey] - data[i - 1][ownerKey];
     const b = data[i][renterKey] - data[i][ownerKey];
-    if (a === 0) return { year: data[i - 1].year };
-    if ((a < 0) !== (b < 0)) {
+    if (a === 0) {
+      crossovers.push({ year: data[i - 1].year });
+      continue;
+    }
+    if (a < 0 !== b < 0) {
       const t = a / (a - b);
-      return { year: data[i - 1].year + t };
+      crossovers.push({ year: data[i - 1].year + t });
     }
   }
-  return null;
+  return crossovers;
 }
 
 function ChartTooltip({ payload, showBands }) {
@@ -73,21 +77,26 @@ function ChartTooltip({ payload, showBands }) {
   );
 }
 
-function SummaryBanner({ data, crossover }) {
+function Summary({ data, crossovers }) {
   const last = data[data.length - 1];
   const renterWins = last.renterMedian >= last.ownerMedian;
-  const color = renterWins ? "teal" : "indigo";
+  const color =
+    crossovers.length >= 2 ? "gray" : renterWins ? "teal" : "indigo";
 
   let title, body;
-  if (crossover) {
-    const breakEvenYear = crossover.year.toFixed(0);
+  if (crossovers.length === 0) {
+    title = renterWins ? "Renting leads" : "Buying leads";
+    body = "For the entire 30 years.";
+  } else if (crossovers.length === 1) {
+    const breakEvenYear = crossovers[0].year.toFixed(0);
     title = `Break-even around year ${breakEvenYear}`;
     body = renterWins
       ? `Buying leads until then; renting leads from year ${breakEvenYear} onward.`
       : `Renting leads until then; buying leads from year ${breakEvenYear} onward.`;
   } else {
-    title = renterWins ? "Renting leads" : "Buying leads";
-    body = `For the entire 30 years`;
+    const lastCrossYear = crossovers[crossovers.length - 1].year.toFixed(0);
+    title = `Lead changes ${crossovers.length} times`;
+    body = `The two paths cross ${crossovers.length} times over 30 years — the outcome depends heavily on your time horizon. ${renterWins ? "Renting" : "Buying"} leads from year ${lastCrossYear} onward.`;
   }
 
   return (
@@ -128,7 +137,7 @@ export default function NetWorthChart({ userInput, showBands }) {
     }));
   }, [baseData, mcData, showBands]);
 
-  const crossover = findCrossover(chartData, "renterMedian", "ownerMedian");
+  const crossovers = findCrossovers(chartData, "renterMedian", "ownerMedian");
 
   const allValues = chartData
     .flatMap((d) =>
@@ -148,7 +157,7 @@ export default function NetWorthChart({ userInput, showBands }) {
 
   return (
     <Stack gap="xs">
-      <SummaryBanner data={chartData} crossover={crossover} />
+      <Summary data={chartData} crossovers={crossovers} />
       <Text fw={600} size="lg">
         Net worth: rent vs buy
       </Text>
@@ -232,28 +241,25 @@ export default function NetWorthChart({ userInput, showBands }) {
             activeDot={{ r: 4 }}
           />
 
-          {crossover && (
+          {crossovers.map((c, i) => (
             <ReferenceLine
-              x={Math.round(crossover.year)}
+              key={i}
+              x={Math.round(c.year)}
               stroke="#868e96"
               strokeDasharray="4 4"
               label={{
-                value: `Break-even ≈ Yr ${crossover.year.toFixed(0)}`,
+                value:
+                  crossovers.length === 1
+                    ? `Break-even ≈ Yr ${c.year.toFixed(0)}`
+                    : `Yr ${c.year.toFixed(0)}`,
                 position: "top",
                 fontSize: 11,
                 fill: "#868e96",
               }}
             />
-          )}
+          ))}
         </ComposedChart>
       </ResponsiveContainer>
-      {!crossover && (
-        <Text size="sm" c="dimmed">
-          {chartData[0].renterMedian >= chartData[0].ownerMedian
-            ? "Renting leads for the entire horizon."
-            : "Buying leads for the entire horizon."}
-        </Text>
-      )}
     </Stack>
   );
 }

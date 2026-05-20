@@ -19,7 +19,7 @@ export const FIELD_CONSTRAINTS = {
   maintenanceCostPercentage: { min: 0, max: undefined, step: 0.1 },
   downPaymentPercentage: { min: 5, max: 100, step: 5 },
   annualMortgageInterestRate: { min: 0, max: undefined, step: 0.25 },
-  mortgageTerm: { min: 5, max: 30, step: 5 },
+  amortizationPeriod: { min: 5, max: 30, step: 5 },
   investmentReturnRate: {
     min: 0,
     max: undefined,
@@ -27,7 +27,7 @@ export const FIELD_CONSTRAINTS = {
   },
   dividendYield: { min: 0, max: undefined, step: 0.5 },
   dividendTaxRate: { min: 0, max: undefined, step: 1 },
-  investmentGainTax: { min: 0, max: undefined, step: 1 },
+  capitalGainTaxRate: { min: 0, max: undefined, step: 1 },
   homePriceGrowthSigma: { min: 0, max: 10, step: 0.25 },
   investmentReturnSigma: { min: 0, max: 10, step: 0.25 },
   rentIncreaseSigma: { min: 0, max: 5, step: 0.25 },
@@ -64,7 +64,7 @@ export function validateUserInput(input) {
   for (const [field, { min, max }] of Object.entries(FIELD_CONSTRAINTS)) {
     if (
       mortgageDisabled &&
-      (field === "annualMortgageInterestRate" || field === "mortgageTerm")
+      (field === "annualMortgageInterestRate" || field === "amortizationPeriod")
     ) {
       continue;
     }

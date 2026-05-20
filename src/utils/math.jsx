@@ -1,9 +1,8 @@
-// Calculate the compounded growth over a number of mortgageTerm
-function calculateFutureValue(baseValue, growthRatePercentage, mortgageTerm) {
-  if (mortgageTerm < 0) {
+function calculateFutureValue(baseValue, growthRatePercentage, years) {
+  if (years < 0) {
     throw new Error("Number of compounding periods must not be negative.");
   }
-  return baseValue * Math.pow(1 + growthRatePercentage / 100, mortgageTerm);
+  return baseValue * Math.pow(1 + growthRatePercentage / 100, years);
 }
 
 // home price at the start of the given year
@@ -52,23 +51,23 @@ function calculateMonthlyMortgageInterestRate(annualMortgageInterestRate) {
 function calculateMonthlyMortgagePayment(
   mortgagePrincipal,
   annualMortgageInterestRate,
-  mortgageTerm,
+  amortizationPeriod,
 ) {
-  if (mortgageTerm <= 0) {
-    throw new Error("loan term must be greater than zero.");
+  if (amortizationPeriod <= 0) {
+    throw new Error("Amortization period must be greater than zero.");
   }
 
   if (mortgagePrincipal <= 0) return 0;
 
   if (annualMortgageInterestRate === 0) {
-    return mortgagePrincipal / (mortgageTerm * 12);
+    return mortgagePrincipal / (amortizationPeriod * 12);
   }
 
   const monthlyRate = calculateMonthlyMortgageInterestRate(
     annualMortgageInterestRate,
   );
 
-  const totalPayments = mortgageTerm * 12;
+  const totalPayments = amortizationPeriod * 12;
 
   if (monthlyRate === 0) {
     return mortgagePrincipal / totalPayments;
@@ -85,16 +84,16 @@ function calculateMonthlyMortgagePayment(
 function getAnnualMortgagePayment(
   mortgagePrincipal,
   annualMortgageInterestRate,
-  mortgageTerm,
+  amortizationPeriod,
   yearNumber,
 ) {
-  if (yearNumber > mortgageTerm) return 0;
+  if (yearNumber > amortizationPeriod) return 0;
 
   return (
     calculateMonthlyMortgagePayment(
       mortgagePrincipal,
       annualMortgageInterestRate,
-      mortgageTerm,
+      amortizationPeriod,
     ) * 12
   );
 }
@@ -103,21 +102,21 @@ function getAnnualMortgagePayment(
 function calculateMortgageBalanceAtYearEnd(
   mortgagePrincipal,
   annualMortgageInterestRate,
-  mortgageTerm,
+  amortizationPeriod,
   yearNumber,
 ) {
-  if (mortgageTerm <= 0 || yearNumber <= 0) {
+  if (amortizationPeriod <= 0 || yearNumber <= 0) {
     throw new Error("Invalid input values.");
   }
 
-  if (yearNumber > mortgageTerm || mortgagePrincipal <= 0) {
+  if (yearNumber > amortizationPeriod || mortgagePrincipal <= 0) {
     return 0;
   }
 
   const monthlyPayment = calculateMonthlyMortgagePayment(
     mortgagePrincipal,
     annualMortgageInterestRate,
-    mortgageTerm,
+    amortizationPeriod,
   );
 
   const monthlyRate = calculateMonthlyMortgageInterestRate(
@@ -145,7 +144,7 @@ function calculateOwnersEquityAtYearEnd({
   yearNumber,
   mortgagePrincipal,
   annualMortgageInterestRate,
-  mortgageTerm,
+  amortizationPeriod,
   sellersClosingCostPercentage,
 }) {
   const homeValue =
@@ -155,7 +154,7 @@ function calculateOwnersEquityAtYearEnd({
   const mortgageBalance = calculateMortgageBalanceAtYearEnd(
     mortgagePrincipal,
     annualMortgageInterestRate,
-    mortgageTerm,
+    amortizationPeriod,
     yearNumber,
   );
 
@@ -181,7 +180,7 @@ function calculateRentersSurplus({
   rentIncreaseRate,
   mortgagePrincipal,
   annualMortgageInterestRate,
-  mortgageTerm,
+  amortizationPeriod,
   yearNumber,
   propertyTaxRate,
   maintenanceCostPercentage,
@@ -191,7 +190,7 @@ function calculateRentersSurplus({
   const annualMortgagePayment = getAnnualMortgagePayment(
     mortgagePrincipal,
     annualMortgageInterestRate,
-    mortgageTerm,
+    amortizationPeriod,
     yearNumber,
   );
   const homePriceAtYearStart = getHomePriceAtYearStart(
@@ -215,7 +214,7 @@ function calculateRentersPortfolioValue({
   rentIncreaseRate,
   mortgagePrincipal,
   annualMortgageInterestRate,
-  mortgageTerm,
+  amortizationPeriod,
   yearNumber,
   investmentReturnRate,
   downPaymentPercentage,
@@ -224,7 +223,7 @@ function calculateRentersPortfolioValue({
   maintenanceCostPercentage,
   initialHomePrice,
   homePriceGrowthRate,
-  investmentGainTax,
+  capitalGainTaxRate,
   dividendYield,
   dividendTaxRate,
 }) {
@@ -247,7 +246,7 @@ function calculateRentersPortfolioValue({
       rentIncreaseRate,
       mortgagePrincipal,
       annualMortgageInterestRate,
-      mortgageTerm,
+      amortizationPeriod,
       yearNumber: i,
       propertyTaxRate,
       maintenanceCostPercentage,
@@ -274,7 +273,7 @@ function calculateRentersPortfolioValue({
   const taxableGain = portfolioValue - Math.max(bookValue, 0);
   const afterTaxValue =
     taxableGain > 0
-      ? portfolioValue - taxableGain * (investmentGainTax / 100)
+      ? portfolioValue - taxableGain * (capitalGainTaxRate / 100)
       : portfolioValue;
 
   return afterTaxValue;
@@ -299,7 +298,7 @@ export function calculateNetWorthAtYearEnd({
   monthlyRent,
   rentIncreaseRate,
   annualMortgageInterestRate,
-  mortgageTerm,
+  amortizationPeriod,
   yearNumber,
   investmentReturnRate,
   downPaymentPercentage,
@@ -309,7 +308,7 @@ export function calculateNetWorthAtYearEnd({
   initialHomePrice,
   homePriceGrowthRate,
   sellersClosingCostPercentage,
-  investmentGainTax,
+  capitalGainTaxRate,
   dividendYield,
   dividendTaxRate,
 }) {
@@ -323,7 +322,7 @@ export function calculateNetWorthAtYearEnd({
     rentIncreaseRate,
     mortgagePrincipal,
     annualMortgageInterestRate,
-    mortgageTerm,
+    amortizationPeriod,
     yearNumber,
     investmentReturnRate,
     downPaymentPercentage,
@@ -332,7 +331,7 @@ export function calculateNetWorthAtYearEnd({
     maintenanceCostPercentage,
     initialHomePrice,
     homePriceGrowthRate,
-    investmentGainTax,
+    capitalGainTaxRate,
     dividendYield,
     dividendTaxRate,
   });
@@ -343,7 +342,7 @@ export function calculateNetWorthAtYearEnd({
     yearNumber,
     mortgagePrincipal,
     annualMortgageInterestRate,
-    mortgageTerm,
+    amortizationPeriod,
     sellersClosingCostPercentage,
   });
 
@@ -355,7 +354,3 @@ export function calculateNetWorthAtYearEnd({
   };
 }
 
-// Calculate renter's advantage over buying at the end of the given year
-export function calculateRentersAdvantageAtYearEnd(input) {
-  return calculateNetWorthAtYearEnd(input).difference;
-}
