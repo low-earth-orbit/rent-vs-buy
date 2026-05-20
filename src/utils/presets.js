@@ -1,3 +1,13 @@
+export const UNCERTAINTIES = {
+  homePriceGrowthSigma: 2.0,
+  investmentReturnSigma: 3.0,
+  rentIncreaseSigma: 0.75,
+  mortgageRateSigma: 1.5,
+  maintenanceSigma: 0.4,
+  propertyTaxSigma: 0.25,
+  dividendYieldSigma: 0.3,
+};
+
 export const DEFAULTS = {
   monthlyRent: 5000,
   rentIncreaseRate: 2.5,
@@ -14,13 +24,7 @@ export const DEFAULTS = {
   dividendYield: 1.5,
   dividendTaxRate: 30,
   capitalGainTaxRate: 15,
-  homePriceGrowthSigma: 1.5,
-  investmentReturnSigma: 2,
-  rentIncreaseSigma: 0.75,
-  mortgageRateSigma: 0.5,
-  maintenanceSigma: 0.4,
-  propertyTaxSigma: 0.15,
-  dividendYieldSigma: 0.3,
+  ...UNCERTAINTIES,
 };
 
 export const PRESETS = [

@@ -41,14 +41,14 @@ function getAnnualRent(monthlyRent, rentIncreaseRate, yearNumber) {
 }
 
 // monthly interest rate, semi-annual compounding
-function calculateMonthlyMortgageInterestRate(annualMortgageInterestRate) {
+export function calculateMonthlyMortgageInterestRate(annualMortgageInterestRate) {
   const rate =
     Math.pow(Math.pow(annualMortgageInterestRate / 2 / 100 + 1, 2), 1 / 12) - 1;
   return rate;
 }
 
 // monthly mortgage payment
-function calculateMonthlyMortgagePayment(
+export function calculateMonthlyMortgagePayment(
   mortgagePrincipal,
   annualMortgageInterestRate,
   amortizationPeriod,
@@ -288,7 +288,7 @@ function getCmhcPremiumRate(downPaymentPercentage) {
   return 4.0;
 }
 
-function calculateMortgagePrincipal(initialHomePrice, downPaymentPercentage) {
+export function calculateMortgagePrincipal(initialHomePrice, downPaymentPercentage) {
   const baseLoan = initialHomePrice * (1 - downPaymentPercentage / 100);
   return baseLoan * (1 + getCmhcPremiumRate(downPaymentPercentage) / 100);
 }

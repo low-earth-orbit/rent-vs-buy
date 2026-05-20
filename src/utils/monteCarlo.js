@@ -1,4 +1,8 @@
-import { calculateNetWorthAtYearEnd } from "./math";
+import {
+  calculateMonthlyMortgageInterestRate,
+  calculateMonthlyMortgagePayment,
+  calculateMortgagePrincipal,
+} from "./math";
 
 function normalRandom() {
   const u1 = Math.random();
@@ -11,76 +15,257 @@ function percentile(sorted, p) {
   return sorted[idx];
 }
 
-export function runMonteCarlo(userInput, numSimulations = 500) {
-  const {
-    homePriceGrowthSigma = 1.5,
-    investmentReturnSigma = 2,
-    rentIncreaseSigma = 0.75,
-    mortgageRateSigma = 0.5,
-    maintenanceSigma = 0.4,
-    propertyTaxSigma = 0.15,
+// Annual volatility — represents year-to-year noise, not user-tunable.
+// User-facing sigmas in presets.js capture uncertainty about the long-run mean;
+// these constants capture realized volatility around that mean.
+const ANNUAL_VOL = {
+  inflation: 1.0, // hidden common factor σ
+  homePriceIdio: 4.0, // idiosyncratic real housing σ
+  investment: 14.0, // equity lognormal σ (annual)
+  rentIdio: 1.0,
+  maintenance: 0.5,
+  propertyTax: 0.1,
+  dividend: 0.2,
+  mortgageRenewal: 1.0, // shock at each 5-year renewal
+};
 
-    dividendYieldSigma = 0.3,
-  } = userInput;
+// Loadings of the hidden inflation factor on observable variables.
+const INFLATION_BETA = {
+  homePrice: 0.8,
+  rent: 0.8,
+  mortgageRate: 0.5,
+};
 
-  const horizon = 30;
-  const yearlyRenter = Array.from({ length: horizon }, () => []);
-  const yearlyOwner = Array.from({ length: horizon }, () => []);
+const MORTGAGE_TERM_YEARS = 5;
 
-  for (let sim = 0; sim < numSimulations; sim++) {
-    const scenario = {
-      ...userInput,
-      homePriceGrowthRate:
-        userInput.homePriceGrowthRate + normalRandom() * homePriceGrowthSigma,
-      investmentReturnRate: Math.max(
-        0,
-        userInput.investmentReturnRate + normalRandom() * investmentReturnSigma,
-      ),
-      rentIncreaseRate:
-        userInput.rentIncreaseRate + normalRandom() * rentIncreaseSigma,
-      annualMortgageInterestRate: Math.max(
-        0.1,
-        userInput.annualMortgageInterestRate +
-          normalRandom() * mortgageRateSigma,
-      ),
-      maintenanceCostPercentage: Math.max(
-        0,
-        userInput.maintenanceCostPercentage + normalRandom() * maintenanceSigma,
-      ),
-      propertyTaxRate: Math.max(
-        0,
-        userInput.propertyTaxRate + normalRandom() * propertyTaxSigma,
-      ),
+function drawScenario(userInput) {
+  return {
+    homePriceGrowthMean:
+      userInput.homePriceGrowthRate +
+      normalRandom() * userInput.homePriceGrowthSigma,
+    investmentReturnMean:
+      userInput.investmentReturnRate +
+      normalRandom() * userInput.investmentReturnSigma,
+    rentIncreaseMean:
+      userInput.rentIncreaseRate +
+      normalRandom() * userInput.rentIncreaseSigma,
+    mortgageRateMean:
+      userInput.annualMortgageInterestRate +
+      normalRandom() * userInput.mortgageRateSigma,
+    maintenanceMean: Math.max(
+      0,
+      userInput.maintenanceCostPercentage +
+        normalRandom() * userInput.maintenanceSigma,
+    ),
+    propertyTaxMean: Math.max(
+      0,
+      userInput.propertyTaxRate + normalRandom() * userInput.propertyTaxSigma,
+    ),
+    dividendYieldMean: Math.max(
+      0,
+      userInput.dividendYield + normalRandom() * userInput.dividendYieldSigma,
+    ),
+  };
+}
 
-    };
-    // dividendYield must not exceed investmentReturnRate after both are perturbed
-    scenario.dividendYield = Math.min(
-      Math.max(0, userInput.dividendYield + normalRandom() * dividendYieldSigma),
-      scenario.investmentReturnRate,
+// Year-by-year rate realizations and the mortgage rate path for one scenario.
+function drawPath(scenario, horizon) {
+  const annual = [];
+  const inflationShocks = [];
+
+  for (let y = 0; y < horizon; y++) {
+    const inflShock = normalRandom() * ANNUAL_VOL.inflation;
+    inflationShocks.push(inflShock);
+
+    const homePriceGrowth =
+      scenario.homePriceGrowthMean +
+      INFLATION_BETA.homePrice * inflShock +
+      normalRandom() * ANNUAL_VOL.homePriceIdio;
+
+    // Lognormal draw preserves the scenario arithmetic mean.
+    const muArith = scenario.investmentReturnMean / 100;
+    const sigma = ANNUAL_VOL.investment / 100;
+    const logMean = Math.log(1 + muArith) - 0.5 * sigma * sigma;
+    const investmentReturn =
+      (Math.exp(logMean + normalRandom() * sigma) - 1) * 100;
+
+    const rentIncrease =
+      scenario.rentIncreaseMean +
+      INFLATION_BETA.rent * inflShock +
+      normalRandom() * ANNUAL_VOL.rentIdio;
+
+    const maintenance = Math.max(
+      0,
+      scenario.maintenanceMean + normalRandom() * ANNUAL_VOL.maintenance,
+    );
+    const propertyTax = Math.max(
+      0,
+      scenario.propertyTaxMean + normalRandom() * ANNUAL_VOL.propertyTax,
+    );
+    const dividendYield = Math.max(
+      0,
+      Math.min(
+        scenario.dividendYieldMean + normalRandom() * ANNUAL_VOL.dividend,
+        Math.max(scenario.investmentReturnMean, 0),
+      ),
     );
 
-    for (let year = 1; year <= horizon; year++) {
-      const { renterNetWorth, ownerNetWorth } = calculateNetWorthAtYearEnd({
-        ...scenario,
-        yearNumber: year,
-      });
-      yearlyRenter[year - 1].push(renterNetWorth);
-      yearlyOwner[year - 1].push(ownerNetWorth);
+    annual.push({
+      homePriceGrowth,
+      investmentReturn,
+      rentIncrease,
+      maintenance,
+      propertyTax,
+      dividendYield,
+    });
+  }
+
+  // Mortgage rate: redrawn at each 5-year renewal, with inflation pressure.
+  const mortgageRates = [];
+  let currentRate =
+    scenario.mortgageRateMean + normalRandom() * ANNUAL_VOL.mortgageRenewal;
+  for (let y = 0; y < horizon; y++) {
+    if (y > 0 && y % MORTGAGE_TERM_YEARS === 0) {
+      currentRate =
+        scenario.mortgageRateMean +
+        INFLATION_BETA.mortgageRate * inflationShocks[y] +
+        normalRandom() * ANNUAL_VOL.mortgageRenewal;
+    }
+    mortgageRates.push(Math.max(0, currentRate));
+  }
+
+  return { annual, mortgageRates };
+}
+
+// Walk one year-by-year wealth path for owner and renter.
+function simulatePath(userInput, annual, mortgageRates) {
+  const horizon = annual.length;
+  const capGainTaxFrac = userInput.capitalGainTaxRate / 100;
+  const dividendTaxFrac = userInput.dividendTaxRate / 100;
+  const netOfSellingFees = 1 - userInput.sellersClosingCostPercentage / 100;
+
+  const initialPrincipal = calculateMortgagePrincipal(
+    userInput.initialHomePrice,
+    userInput.downPaymentPercentage,
+  );
+  const initialPortfolio =
+    (userInput.initialHomePrice *
+      (userInput.downPaymentPercentage +
+        userInput.buyersClosingCostPercentage)) /
+    100;
+
+  let homePrice = userInput.initialHomePrice;
+  let mortgageBalance = initialPrincipal;
+  let portfolioValue = initialPortfolio;
+  let bookValue = initialPortfolio;
+  let annualRent = userInput.monthlyRent * 12;
+  let remainingYears = userInput.amortizationPeriod;
+  let currentMortgageRate = mortgageRates[0];
+  let monthlyPayment = calculateMonthlyMortgagePayment(
+    mortgageBalance,
+    currentMortgageRate,
+    remainingYears,
+  );
+
+  const results = [];
+
+  for (let y = 1; y <= horizon; y++) {
+    const yr = annual[y - 1];
+
+    // Re-amortize remaining balance at each renewal boundary.
+    if (
+      y > 1 &&
+      (y - 1) % MORTGAGE_TERM_YEARS === 0 &&
+      mortgageBalance > 0 &&
+      remainingYears > 0
+    ) {
+      currentMortgageRate = mortgageRates[y - 1];
+      monthlyPayment = calculateMonthlyMortgagePayment(
+        mortgageBalance,
+        currentMortgageRate,
+        remainingYears,
+      );
+    }
+
+    let annualMortgagePayment = 0;
+    if (mortgageBalance > 0 && remainingYears > 0) {
+      const monthlyRate =
+        calculateMonthlyMortgageInterestRate(currentMortgageRate);
+      for (let m = 0; m < 12; m++) {
+        if (mortgageBalance <= 0) break;
+        const interest = mortgageBalance * monthlyRate;
+        let principalPay = monthlyPayment - interest;
+        if (principalPay > mortgageBalance) principalPay = mortgageBalance;
+        mortgageBalance -= principalPay;
+        annualMortgagePayment += interest + principalPay;
+      }
+      remainingYears -= 1;
+      if (mortgageBalance < 0.01) mortgageBalance = 0;
+    }
+
+    const ownersCashOutflow =
+      annualMortgagePayment +
+      (homePrice * (yr.propertyTax + yr.maintenance)) / 100;
+    const surplus = ownersCashOutflow - annualRent;
+
+    const r = yr.investmentReturn / 100;
+    const grossDividends = (portfolioValue * yr.dividendYield) / 100;
+    const afterTaxDividends = grossDividends * (1 - dividendTaxFrac);
+
+    portfolioValue =
+      portfolioValue * (1 + r) -
+      grossDividends * dividendTaxFrac +
+      surplus * (1 + r / 2);
+    bookValue += surplus + afterTaxDividends;
+
+    homePrice = homePrice * (1 + yr.homePriceGrowth / 100);
+    annualRent = annualRent * (1 + yr.rentIncrease / 100);
+
+    const taxableGain = portfolioValue - Math.max(bookValue, 0);
+    const renterNetWorth =
+      taxableGain > 0
+        ? portfolioValue - taxableGain * capGainTaxFrac
+        : portfolioValue;
+    const ownerNetWorth = homePrice * netOfSellingFees - mortgageBalance;
+
+    results.push({ year: y, renterNetWorth, ownerNetWorth });
+  }
+
+  return results;
+}
+
+export function runMonteCarlo(userInput, numSimulations = 1000) {
+  const horizon = userInput.amortizationPeriod;
+  const renterByYear = Array.from({ length: horizon }, () => []);
+  const ownerByYear = Array.from({ length: horizon }, () => []);
+  const renterWinsByYear = Array.from({ length: horizon }, () => 0);
+
+  for (let sim = 0; sim < numSimulations; sim++) {
+    const scenario = drawScenario(userInput);
+    const { annual, mortgageRates } = drawPath(scenario, horizon);
+    const path = simulatePath(userInput, annual, mortgageRates);
+    for (let y = 0; y < horizon; y++) {
+      renterByYear[y].push(path[y].renterNetWorth);
+      ownerByYear[y].push(path[y].ownerNetWorth);
+      if (path[y].renterNetWorth > path[y].ownerNetWorth) {
+        renterWinsByYear[y]++;
+      }
     }
   }
 
-  return Array.from({ length: horizon }, (_, i) => {
-    const renter = [...yearlyRenter[i]].sort((a, b) => a - b);
-    const owner = [...yearlyOwner[i]].sort((a, b) => a - b);
-
+  return renterByYear.map((renterVals, i) => {
+    const ownerVals = ownerByYear[i];
+    renterVals.sort((a, b) => a - b);
+    ownerVals.sort((a, b) => a - b);
     return {
       year: i + 1,
-      renterP25: percentile(renter, 0.25),
-      renterMedian: percentile(renter, 0.5),
-      renterP75: percentile(renter, 0.75),
-      ownerP25: percentile(owner, 0.25),
-      ownerMedian: percentile(owner, 0.5),
-      ownerP75: percentile(owner, 0.75),
+      renterP25: percentile(renterVals, 0.25),
+      renterMedian: percentile(renterVals, 0.5),
+      renterP75: percentile(renterVals, 0.75),
+      ownerP25: percentile(ownerVals, 0.25),
+      ownerMedian: percentile(ownerVals, 0.5),
+      ownerP75: percentile(ownerVals, 0.75),
+      renterWinPct: renterWinsByYear[i] / numSimulations,
     };
   });
 }

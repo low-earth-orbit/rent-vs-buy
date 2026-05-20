@@ -78,8 +78,8 @@ export default function UserInputForm({
 
       <Switch
         size="sm"
-        label="Simulate uncertainty (advanced)"
-        description="Set a plausible range per assumption and show 50% confidence bands on the chart."
+        label="Set assumption ranges (advanced)"
+        description="Specify expected values and ±95% confidence ranges for each assumption over your time horizon. Default values are used when disabled."
         checked={simulateUncertainty}
         onChange={(e) => setSimulateUncertainty(e.currentTarget.checked)}
       />
@@ -168,7 +168,7 @@ export default function UserInputForm({
               <UserInputFormItem
                 id="amortizationPeriod"
                 label="Amortization Period"
-                helperText="Total length of the mortgage. Canadian maximum is 25 years for insured mortgages (down payment <20%) and 30 years for uninsured."
+                helperText="Total length of the mortgage. Canadian maximum is 25 or 30 years."
                 value={userInput.amortizationPeriod}
                 onChange={bind("amortizationPeriod")}
                 error={errors.amortizationPeriod}

@@ -21,9 +21,10 @@ export const FIELD_CONSTRAINTS = {
   annualMortgageInterestRate: { min: 0, max: undefined, step: 0.25 },
   amortizationPeriod: { min: 5, max: 30, step: 5 },
   investmentReturnRate: {
-    min: 0,
+    min: undefined,
     max: undefined,
     step: 0.5,
+    allowNegative: true,
   },
   dividendYield: { min: 0, max: undefined, step: 0.5 },
   dividendTaxRate: { min: 0, max: undefined, step: 1 },
@@ -40,9 +41,9 @@ export const FIELD_CONSTRAINTS = {
 // Draggable track domain for the single-value sliders, keyed by base field.
 export const SLIDER_BOUNDS = {
   homePriceGrowthRate: { min: -10, max: 15, step: 0.5 },
-  investmentReturnRate: { min: 0, max: 15, step: 0.25 },
+  investmentReturnRate: { min: -20, max: 20, step: 0.25 },
   rentIncreaseRate: { min: -5, max: 12, step: 0.25 },
-  annualMortgageInterestRate: { min: 0, max: 12, step: 0.25 },
+  annualMortgageInterestRate: { min: 0, max: 15, step: 0.25 },
   maintenanceCostPercentage: { min: 0, max: 6, step: 0.1 },
   propertyTaxRate: { min: 0, max: 5, step: 0.05 },
   dividendYield: { min: 0, max: 8, step: 0.25 },
@@ -85,6 +86,7 @@ export function validateUserInput(input) {
     !errors.dividendYield &&
     !isEmpty(input.dividendYield) &&
     !isEmpty(input.investmentReturnRate) &&
+    input.investmentReturnRate >= 0 &&
     input.dividendYield > input.investmentReturnRate
   ) {
     errors.dividendYield = "Cannot exceed total portfolio return";
