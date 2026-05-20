@@ -1,10 +1,10 @@
 export const UNCERTAINTIES = {
-  homePriceGrowthSigma: 1.5,
-  investmentReturnSigma: 2,
+  homePriceGrowthSigma: 2.0,
+  investmentReturnSigma: 3.0,
   rentIncreaseSigma: 0.75,
-  mortgageRateSigma: 0.5,
+  mortgageRateSigma: 1.5,
   maintenanceSigma: 0.4,
-  propertyTaxSigma: 0.15,
+  propertyTaxSigma: 0.25,
   dividendYieldSigma: 0.3,
 };
 

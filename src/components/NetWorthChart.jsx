@@ -79,24 +79,50 @@ function ChartTooltip({ payload, showBands }) {
 
 function Summary({ data, crossovers, horizon }) {
   const last = data[data.length - 1];
-  const renterWins = last.renterMedian >= last.ownerMedian;
-  const color =
-    crossovers.length >= 2 ? "gray" : renterWins ? "teal" : "indigo";
 
-  let title, body;
-  if (crossovers.length === 0) {
-    title = renterWins ? "Renting leads" : "Buying leads";
-    body = `For the entire ${horizon} years.`;
-  } else if (crossovers.length === 1) {
-    const breakEvenYear = crossovers[0].year.toFixed(0);
-    title = `Break-even around year ${breakEvenYear}`;
-    body = renterWins
-      ? `Buying leads until then; renting leads from year ${breakEvenYear} onward.`
-      : `Renting leads until then; buying leads from year ${breakEvenYear} onward.`;
+  // Median-based fallback when MC data is unavailable.
+  if (last.renterWinPct == null) {
+    const renterWins = last.renterMedian >= last.ownerMedian;
+    const color = renterWins ? "teal" : "indigo";
+    return (
+      <Alert
+        color={color}
+        title={renterWins ? "Renting leads" : "Buying leads"}
+        radius="md"
+      >
+        <Text size="sm">For the entire {horizon} years.</Text>
+      </Alert>
+    );
+  }
+
+  const winPct = Math.round(last.renterWinPct * 100);
+  const renterFavored = last.renterWinPct >= 0.5;
+  const winnerPct = renterFavored ? winPct : 100 - winPct;
+  const winner = renterFavored ? "Renting" : "Buying";
+
+  let title, color;
+  if (winnerPct >= 80) {
+    title = `${winner} clearly leads`;
+    color = renterFavored ? "teal" : "indigo";
+  } else if (winnerPct >= 65) {
+    title = `${winner} likely leads`;
+    color = renterFavored ? "teal" : "indigo";
   } else {
-    const lastCrossYear = crossovers[crossovers.length - 1].year.toFixed(0);
-    title = `Lead changes ${crossovers.length} times`;
-    body = `The two paths cross ${crossovers.length} times over ${horizon} years — the outcome depends heavily on your time horizon. ${renterWins ? "Renting" : "Buying"} leads from year ${lastCrossYear} onward.`;
+    title = "Too close to call";
+    color = "gray";
+  }
+
+  const sims = `${winner} comes out ahead in ${winnerPct}% of simulations over ${horizon} years.`;
+
+  let body;
+  if (winnerPct < 65) {
+    body = `${sims} Small changes in your assumptions could flip the outcome.`;
+  } else if (crossovers.length === 0) {
+    body = sims;
+  } else if (crossovers.length === 1) {
+    body = `${sims} Median paths cross around year ${crossovers[0].year.toFixed(0)}.`;
+  } else {
+    body = `${sims} Median paths cross ${crossovers.length} times — outcome depends on your time horizon.`;
   }
 
   return (
@@ -134,6 +160,7 @@ export default function NetWorthChart({ userInput, showBands }) {
       ownerP75: mc.ownerP75,
       ownerBandBase: mc.ownerP25,
       ownerBandWidth: mc.ownerP75 - mc.ownerP25,
+      renterWinPct: mc.renterWinPct,
     }));
   }, [baseData, mcData, showBands]);
 

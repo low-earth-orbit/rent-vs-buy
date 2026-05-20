@@ -78,8 +78,8 @@ export default function UserInputForm({
 
       <Switch
         size="sm"
-        label="Simulate uncertainty (advanced)"
-        description="Set a plausible range per assumption and show 50% confidence bands on the chart."
+        label="Set assumption ranges (advanced)"
+        description="Specify expected values and ±95% confidence ranges for each assumption over your time horizon. Default values are used when disabled."
         checked={simulateUncertainty}
         onChange={(e) => setSimulateUncertainty(e.currentTarget.checked)}
       />

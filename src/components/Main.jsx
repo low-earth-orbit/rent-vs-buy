@@ -51,7 +51,6 @@ const Main = () => {
             <Result
               userInput={userInput}
               errors={errors}
-              simulateUncertainty={simulateUncertainty}
             />
           </Grid.Col>
         </Grid>
