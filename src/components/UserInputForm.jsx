@@ -168,7 +168,7 @@ export default function UserInputForm({
               <UserInputFormItem
                 id="amortizationPeriod"
                 label="Amortization Period"
-                helperText="Total length of the mortgage. Canadian maximum is 25 years for insured mortgages (down payment <20%) and 30 years for uninsured."
+                helperText="Total length of the mortgage. Canadian maximum is 25 or 30 years."
                 value={userInput.amortizationPeriod}
                 onChange={bind("amortizationPeriod")}
                 error={errors.amortizationPeriod}

@@ -11,19 +11,18 @@ function percentile(sorted, p) {
   return sorted[idx];
 }
 
-export function runMonteCarlo(userInput, numSimulations = 500) {
+export function runMonteCarlo(userInput, numSimulations = 1000) {
   const {
-    homePriceGrowthSigma = 1.5,
-    investmentReturnSigma = 2,
-    rentIncreaseSigma = 0.75,
-    mortgageRateSigma = 0.5,
-    maintenanceSigma = 0.4,
-    propertyTaxSigma = 0.15,
-
-    dividendYieldSigma = 0.3,
+    homePriceGrowthSigma,
+    investmentReturnSigma,
+    rentIncreaseSigma,
+    mortgageRateSigma,
+    maintenanceSigma,
+    propertyTaxSigma,
+    dividendYieldSigma,
   } = userInput;
 
-  const horizon = 30;
+  const horizon = userInput.amortizationPeriod;
   const yearlyRenter = Array.from({ length: horizon }, () => []);
   const yearlyOwner = Array.from({ length: horizon }, () => []);
 
@@ -51,11 +50,13 @@ export function runMonteCarlo(userInput, numSimulations = 500) {
         0,
         userInput.propertyTaxRate + normalRandom() * propertyTaxSigma,
       ),
-
     };
     // dividendYield must not exceed investmentReturnRate after both are perturbed
     scenario.dividendYield = Math.min(
-      Math.max(0, userInput.dividendYield + normalRandom() * dividendYieldSigma),
+      Math.max(
+        0,
+        userInput.dividendYield + normalRandom() * dividendYieldSigma,
+      ),
       scenario.investmentReturnRate,
     );
 

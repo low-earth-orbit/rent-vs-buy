@@ -15,7 +15,7 @@ import { runMonteCarlo } from "../utils/monteCarlo";
 import { formatCAD, formatCADCompact } from "../utils/format";
 
 function buildBaseData(userInput) {
-  return Array.from({ length: 30 }, (_, i) =>
+  return Array.from({ length: userInput.amortizationPeriod }, (_, i) =>
     calculateNetWorthAtYearEnd({ ...userInput, yearNumber: i + 1 }),
   );
 }
@@ -77,7 +77,7 @@ function ChartTooltip({ payload, showBands }) {
   );
 }
 
-function Summary({ data, crossovers }) {
+function Summary({ data, crossovers, horizon }) {
   const last = data[data.length - 1];
   const renterWins = last.renterMedian >= last.ownerMedian;
   const color =
@@ -86,7 +86,7 @@ function Summary({ data, crossovers }) {
   let title, body;
   if (crossovers.length === 0) {
     title = renterWins ? "Renting leads" : "Buying leads";
-    body = "For the entire 30 years.";
+    body = `For the entire ${horizon} years.`;
   } else if (crossovers.length === 1) {
     const breakEvenYear = crossovers[0].year.toFixed(0);
     title = `Break-even around year ${breakEvenYear}`;
@@ -96,7 +96,7 @@ function Summary({ data, crossovers }) {
   } else {
     const lastCrossYear = crossovers[crossovers.length - 1].year.toFixed(0);
     title = `Lead changes ${crossovers.length} times`;
-    body = `The two paths cross ${crossovers.length} times over 30 years — the outcome depends heavily on your time horizon. ${renterWins ? "Renting" : "Buying"} leads from year ${lastCrossYear} onward.`;
+    body = `The two paths cross ${crossovers.length} times over ${horizon} years — the outcome depends heavily on your time horizon. ${renterWins ? "Renting" : "Buying"} leads from year ${lastCrossYear} onward.`;
   }
 
   return (
@@ -157,7 +157,7 @@ export default function NetWorthChart({ userInput, showBands }) {
 
   return (
     <Stack gap="xs">
-      <Summary data={chartData} crossovers={crossovers} />
+      <Summary data={chartData} crossovers={crossovers} horizon={userInput.amortizationPeriod} />
       <Text fw={600} size="lg">
         Net worth: rent vs buy
       </Text>
@@ -260,6 +260,14 @@ export default function NetWorthChart({ userInput, showBands }) {
           ))}
         </ComposedChart>
       </ResponsiveContainer>
+      {showBands && (
+        <Text size="xs" c="dimmed">
+          Bands show 25th–75th percentile from 1,000 Monte Carlo simulations.
+        </Text>
+      )}
+      <Text size="xs" c="dimmed">
+        These projections are based on your assumptions and are illustrative only — results are subject to modelling error, uncertain inputs, and real-world complexity. This is not financial advice.
+      </Text>
     </Stack>
   );
 }
