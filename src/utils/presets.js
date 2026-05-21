@@ -31,7 +31,7 @@ export const PRESETS = [
   { id: "defaults", label: "Base Case", values: DEFAULTS },
   {
     id: "bay-street",
-    label: "Starter condo (Bay Street)",
+    label: "Bay Street starter condo",
     values: {
       ...DEFAULTS,
       monthlyRent: 2700,
