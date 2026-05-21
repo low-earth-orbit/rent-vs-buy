@@ -18,7 +18,6 @@ export default function UserInputRangeItem({
 
   const low = Math.max(bounds.min, baseValue - 2 * sigma);
   const high = Math.min(trackMax, baseValue + 2 * sigma);
-  const expected = (low + high) / 2;
 
   return (
     <Stack gap={4}>
@@ -39,7 +38,7 @@ export default function UserInputRangeItem({
         mb={4}
       />
       <Text size="xs" c="dimmed">
-        expected {fmt(expected)}% · range {fmt(low)}%–{fmt(high)}%
+        expected {fmt(baseValue)}% · range {fmt(low)}%–{fmt(high)}%
       </Text>
     </Stack>
   );
