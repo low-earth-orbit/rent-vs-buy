@@ -1,26 +1,90 @@
+import { useState } from "react";
 import {
   Accordion,
+  ActionIcon,
+  Badge,
   Button,
   Group,
+  Modal,
   SimpleGrid,
   Stack,
   Switch,
   Text,
+  TextInput,
 } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import UserInputFormItem from "./UserInputFormItem";
 import UserInputRangeItem from "./UserInputRangeItem";
-import { PRESETS } from "../utils/presets";
 import { FIELD_CONSTRAINTS, SLIDER_BOUNDS } from "../utils/validation";
+
+const PlusIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+
+const XIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="12"
+    height="12"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M18 6L6 18M6 6l12 12" />
+  </svg>
+);
 
 export default function UserInputForm({
   userInput,
   handleChange,
   handleRangeChange,
   handlePreset,
+  handleReset,
   simulateUncertainty,
   setSimulateUncertainty,
   errors,
+  activePreset,
+  visibleBuiltins,
+  customPresets,
+  onSavePreset,
+  onDeletePreset,
 }) {
+  const [saveOpen, { open: openSave, close: closeSave }] = useDisclosure(false);
+  const [resetOpen, { open: openReset, close: closeReset }] =
+    useDisclosure(false);
+  const [presetName, setPresetName] = useState("");
+
+  const confirmReset = () => {
+    handleReset();
+    closeReset();
+  };
+
+  const variantFor = (preset) =>
+    activePreset?.id === preset.id ? "filled" : "light";
+
+  const submitSave = () => {
+    const trimmed = presetName.trim();
+    if (!trimmed) return;
+    onSavePreset(trimmed);
+    setPresetName("");
+    closeSave();
+  };
+
   const bind = (id) => (value) => handleChange(id, value);
   const c = (id) => FIELD_CONSTRAINTS[id];
 
@@ -59,27 +123,106 @@ export default function UserInputForm({
   return (
     <Stack gap="md">
       <Stack gap={4}>
-        <Text size="xs" c="dimmed" tt="uppercase" fw={600} lts={0.5}>
-          Presets
-        </Text>
         <Group gap="xs">
-          {PRESETS.map((preset) => (
-            <Button
-              key={preset.label}
-              variant="light"
-              size="xs"
-              onClick={() => handlePreset(preset.values)}
-            >
-              {preset.label}
-            </Button>
+          {[...visibleBuiltins, ...customPresets].map((preset) => (
+            <Group key={preset.id} gap={0} wrap="nowrap">
+              <Button
+                variant={variantFor(preset)}
+                size="xs"
+                radius="lg"
+                onClick={() => handlePreset(preset)}
+              >
+                {preset.label}
+              </Button>
+              <ActionIcon
+                variant="transparent"
+                color="gray"
+                size="xs"
+                onClick={() => onDeletePreset(preset)}
+                aria-label={`Delete ${preset.label}`}
+              >
+                <XIcon />
+              </ActionIcon>
+            </Group>
           ))}
+          <Button
+            variant="subtle"
+            size="xs"
+            color="gray"
+            leftSection={<PlusIcon />}
+            onClick={openSave}
+          >
+            Save as preset
+          </Button>
+          <Button variant="subtle" size="xs" color="red" onClick={openReset}>
+            Reset all
+          </Button>
         </Group>
       </Stack>
 
+      <Modal
+        opened={resetOpen}
+        onClose={closeReset}
+        title="Reset everything?"
+        size="sm"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            This will remove all custom presets, restore any deleted built-in
+            presets, discard your edits, and turn off the advanced toggle.
+          </Text>
+          <Group justify="flex-end" gap="xs">
+            <Button variant="subtle" color="gray" onClick={closeReset}>
+              Cancel
+            </Button>
+            <Button color="red" onClick={confirmReset}>
+              Reset all
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Modal
+        opened={saveOpen}
+        onClose={closeSave}
+        title="Save as preset"
+        size="sm"
+        centered
+      >
+        <Stack gap="md">
+          <TextInput
+            label="Name"
+            placeholder="e.g. My place"
+            value={presetName}
+            onChange={(e) => setPresetName(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submitSave();
+              }
+            }}
+            data-autofocus
+          />
+          <Group justify="flex-end" gap="xs">
+            <Button variant="subtle" color="gray" onClick={closeSave}>
+              Cancel
+            </Button>
+            <Button onClick={submitSave} disabled={!presetName.trim()}>
+              Save
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
       <Switch
         size="sm"
-        label="Set assumption ranges (advanced)"
-        description="Specify expected values and ±95% confidence ranges for each assumption over your time horizon. Default values are used when disabled."
+        label="Set assumption by range"
+        description={
+          simulateUncertainty
+            ? "Specify expected values and ±95% confidence ranges for each assumption over your time horizon."
+            : undefined
+        }
         checked={simulateUncertainty}
         onChange={(e) => setSimulateUncertainty(e.currentTarget.checked)}
       />

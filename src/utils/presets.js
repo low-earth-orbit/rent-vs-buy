@@ -9,7 +9,7 @@ export const UNCERTAINTIES = {
 };
 
 export const DEFAULTS = {
-  monthlyRent: 5000,
+  monthlyRent: 3500,
   rentIncreaseRate: 2.5,
   initialHomePrice: 1000000,
   homePriceGrowthRate: 2.5,
@@ -28,9 +28,10 @@ export const DEFAULTS = {
 };
 
 export const PRESETS = [
-  { label: "Defaults", values: DEFAULTS },
+  { id: "defaults", label: "Base Case", values: DEFAULTS },
   {
-    label: "Bay Street Condo",
+    id: "bay-street",
+    label: "Starter condo (Bay Street)",
     values: {
       ...DEFAULTS,
       monthlyRent: 2700,
@@ -46,7 +47,8 @@ export const PRESETS = [
     },
   },
   {
-    label: "Vancouver Townhouse",
+    id: "vancouver",
+    label: "Raincouver townhouse",
     values: {
       ...DEFAULTS,
       monthlyRent: 4000,
@@ -61,6 +63,7 @@ export const PRESETS = [
     },
   },
   {
+    id: "calgary",
     label: "Calgary SFH",
     values: {
       ...DEFAULTS,
@@ -75,3 +78,11 @@ export const PRESETS = [
     },
   },
 ];
+
+export function getActivePreset(userInput, allPresets) {
+  return (
+    allPresets.find((p) =>
+      Object.keys(p.values).every((k) => p.values[k] === userInput[k]),
+    ) ?? null
+  );
+}

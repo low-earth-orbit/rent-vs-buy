@@ -3,33 +3,139 @@ import { Container, Grid } from "@mantine/core";
 import Result from "./Result";
 import UserInputForm from "./UserInputForm";
 import GitHubCorners from "@uiw/react-github-corners";
-import { DEFAULTS } from "../utils/presets";
+import { DEFAULTS, PRESETS, getActivePreset } from "../utils/presets";
 import { validateUserInput } from "../utils/validation";
+import {
+  loadInput,
+  saveInput,
+  clearInput,
+  loadAdvanced,
+  saveAdvanced,
+  loadCustomPresets,
+  saveCustomPresets,
+  loadHiddenBuiltins,
+  saveHiddenBuiltins,
+  loadActivePresetId,
+  saveActivePresetId,
+  clearAll,
+} from "../utils/storage";
 
 const Main = () => {
-  const [userInput, setUserInput] = useState(DEFAULTS);
-  const [simulateUncertainty, setSimulateUncertainty] = useState(false);
+  const [userInput, setUserInput] = useState(() => {
+    const loaded = loadInput();
+    return loaded ? { ...DEFAULTS, ...loaded } : DEFAULTS;
+  });
+  const [simulateUncertainty, setSimulateUncertaintyState] = useState(
+    () => loadAdvanced() ?? false,
+  );
+  const [customPresets, setCustomPresets] = useState(
+    () => loadCustomPresets() ?? [],
+  );
+  const [hiddenBuiltins, setHiddenBuiltins] = useState(
+    () => loadHiddenBuiltins() ?? [],
+  );
+  const [activePresetId, setActivePresetIdState] = useState(
+    () => loadActivePresetId() ?? "defaults",
+  );
   const errors = validateUserInput(userInput);
 
+  const visibleBuiltins = PRESETS.filter((p) => !hiddenBuiltins.includes(p.id));
+  const allPresets = [...visibleBuiltins, ...customPresets];
+
+  // Highlight by explicit selection when valid; otherwise fall back to value match.
+  let activePreset =
+    allPresets.find((p) => p.id === activePresetId) ?? null;
+  if (
+    activePreset &&
+    !Object.keys(activePreset.values).every(
+      (k) => activePreset.values[k] === userInput[k],
+    )
+  ) {
+    activePreset = null;
+  }
+  if (!activePreset) {
+    activePreset = getActivePreset(userInput, allPresets);
+  }
+
+  function setActivePresetId(id) {
+    setActivePresetIdState(id);
+    saveActivePresetId(id);
+  }
+
   function handleChange(inputIdentifier, newValue) {
-    setUserInput((prevUserInput) => {
-      return {
-        ...prevUserInput,
+    setUserInput((prev) => {
+      const next = {
+        ...prev,
         [inputIdentifier]: newValue ? +newValue : newValue,
-      }; // + converts string to number
+      };
+      saveInput(next);
+      return next;
     });
+    if (activePresetId !== null) setActivePresetId(null);
   }
 
   function handleRangeChange(baseField, sigmaField, [low, high]) {
-    setUserInput((prev) => ({
-      ...prev,
-      [baseField]: (low + high) / 2,
-      [sigmaField]: (high - low) / 4,
-    }));
+    setUserInput((prev) => {
+      const next = {
+        ...prev,
+        [baseField]: (low + high) / 2,
+        [sigmaField]: (high - low) / 4,
+      };
+      saveInput(next);
+      return next;
+    });
+    if (activePresetId !== null) setActivePresetId(null);
   }
 
-  function handlePreset(values) {
-    setUserInput(values);
+  function handlePreset(preset) {
+    setUserInput(preset.values);
+    clearInput();
+    setActivePresetId(preset.id);
+  }
+
+  function setSimulateUncertainty(b) {
+    setSimulateUncertaintyState(b);
+    saveAdvanced(b);
+  }
+
+  function handleSavePreset(name) {
+    const label = name.trim();
+    if (!label) return;
+    const entry = {
+      id:
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `cp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      label,
+      values: userInput,
+      custom: true,
+    };
+    const next = [...customPresets, entry];
+    setCustomPresets(next);
+    saveCustomPresets(next);
+    setActivePresetId(entry.id);
+  }
+
+  function handleDeletePreset(preset) {
+    if (preset.custom) {
+      const next = customPresets.filter((p) => p.id !== preset.id);
+      setCustomPresets(next);
+      saveCustomPresets(next);
+    } else {
+      const next = [...hiddenBuiltins, preset.id];
+      setHiddenBuiltins(next);
+      saveHiddenBuiltins(next);
+    }
+    if (activePresetId === preset.id) setActivePresetId(null);
+  }
+
+  function handleReset() {
+    clearAll();
+    setUserInput(DEFAULTS);
+    setSimulateUncertaintyState(false);
+    setCustomPresets([]);
+    setHiddenBuiltins([]);
+    setActivePresetIdState("defaults");
   }
 
   return (
@@ -42,9 +148,15 @@ const Main = () => {
               handleChange={handleChange}
               handleRangeChange={handleRangeChange}
               handlePreset={handlePreset}
+              handleReset={handleReset}
               simulateUncertainty={simulateUncertainty}
               setSimulateUncertainty={setSimulateUncertainty}
               errors={errors}
+              activePreset={activePreset}
+              visibleBuiltins={visibleBuiltins}
+              customPresets={customPresets}
+              onSavePreset={handleSavePreset}
+              onDeletePreset={handleDeletePreset}
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, lg: 5 }}>
