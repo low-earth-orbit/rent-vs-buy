@@ -3,7 +3,12 @@ import { Container, Grid } from "@mantine/core";
 import Result from "./Result";
 import UserInputForm from "./UserInputForm";
 import GitHubCorners from "@uiw/react-github-corners";
-import { DEFAULTS, PRESETS, getActivePreset } from "../utils/presets";
+import {
+  DEFAULTS,
+  PRESETS,
+  UNCERTAINTIES,
+  getActivePreset,
+} from "../utils/presets";
 import { validateUserInput } from "../utils/validation";
 import {
   loadInput,
@@ -103,14 +108,24 @@ const Main = () => {
     setActivePresetId(preset.id);
   }
 
-  function toggleFieldExpanded(baseField) {
+  function toggleFieldExpanded(baseField, sigmaField) {
+    const wasExpanded = expandedFields.includes(baseField);
     setExpandedFieldsState((prev) => {
-      const next = prev.includes(baseField)
+      const next = wasExpanded
         ? prev.filter((f) => f !== baseField)
         : [...prev, baseField];
       saveExpandedFields(next);
       return next;
     });
+    // Collapsing acts as "Reset": restore sigma to its global default.
+    if (wasExpanded && sigmaField && UNCERTAINTIES[sigmaField] != null) {
+      setUserInput((prev) => {
+        if (prev[sigmaField] === UNCERTAINTIES[sigmaField]) return prev;
+        const next = { ...prev, [sigmaField]: UNCERTAINTIES[sigmaField] };
+        saveInput(next);
+        return next;
+      });
+    }
   }
 
   function handleSavePreset(name) {

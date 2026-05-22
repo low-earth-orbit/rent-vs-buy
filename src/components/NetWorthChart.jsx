@@ -195,13 +195,10 @@ export default function NetWorthChart({ userInput, showBands }) {
         crossovers={crossovers}
         holdingPeriod={userInput.holdingPeriod}
       />
-      <Text fw={600} size="lg">
-        Net worth: rent vs buy
-      </Text>
       <ResponsiveContainer width="100%" height={400}>
         <ComposedChart
           data={chartData}
-          margin={{ top: 5, right: 10, left: 10, bottom: 20 }}
+          margin={{ top: 25, right: 10, left: 10, bottom: 20 }}
         >
           <XAxis
             dataKey="year"
@@ -278,23 +275,28 @@ export default function NetWorthChart({ userInput, showBands }) {
             activeDot={{ r: 4 }}
           />
 
-          {crossovers.map((c, i) => (
-            <ReferenceLine
-              key={i}
-              x={Math.round(c.year)}
-              stroke="#868e96"
-              strokeDasharray="4 4"
-              label={{
-                value:
-                  crossovers.length === 1
-                    ? `Break-even ≈ Yr ${c.year.toFixed(0)}`
-                    : `Yr ${c.year.toFixed(0)}`,
-                position: "top",
-                fontSize: 11,
-                fill: "#868e96",
-              }}
-            />
-          ))}
+          {crossovers.map((c, i) => {
+            const x = Math.round(c.year);
+            const lineTop = yDomain[0] + (yDomain[1] - yDomain[0]) * 0.9;
+            const labelPrefix = crossovers.length === 1 ? "Break-even Yr " : "";
+            return (
+              <ReferenceLine
+                key={i}
+                segment={[
+                  { x, y: yDomain[0] },
+                  { x, y: lineTop },
+                ]}
+                stroke="#868e96"
+                strokeDasharray="4 4"
+                label={{
+                  value: `${labelPrefix}${x}`,
+                  position: "top",
+                  fontSize: 11,
+                  fill: "#868e96",
+                }}
+              />
+            );
+          })}
 
           <ReferenceLine
             x={userInput.holdingPeriod}
@@ -322,11 +324,7 @@ export default function NetWorthChart({ userInput, showBands }) {
         </Group>
         {crossovers.length > 0 && (
           <Group gap={6} wrap="nowrap">
-            <Box
-              w={18}
-              h={0}
-              style={{ borderTop: "2px dashed #868e96" }}
-            />
+            <Box w={18} h={0} style={{ borderTop: "2px dashed #868e96" }} />
             <Text size="xs" c="dimmed">
               <Text span fw={600}>
                 Break-even
@@ -344,7 +342,9 @@ export default function NetWorthChart({ userInput, showBands }) {
         </Text>
       )}
       <Text size="xs" c="dimmed">
-        These projections are based on your assumptions and are illustrative only — results are subject to modelling error, uncertain inputs, and real-world complexity. This is not financial advice.
+        These projections are based on your assumptions and are illustrative
+        only — results are subject to modelling error, uncertain inputs, and
+        real-world complexity. This is not financial advice.
       </Text>
     </Stack>
   );

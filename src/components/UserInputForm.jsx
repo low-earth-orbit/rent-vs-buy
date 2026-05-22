@@ -111,7 +111,7 @@ export default function UserInputForm({
       onSigmaChange={bind(sigmaField)}
       baseError={errors[baseField]}
       expanded={expandedFields.includes(baseField)}
-      onToggleExpand={() => toggleFieldExpanded(baseField)}
+      onToggleExpand={() => toggleFieldExpanded(baseField, sigmaField)}
       disabled={disabled}
     />
   );

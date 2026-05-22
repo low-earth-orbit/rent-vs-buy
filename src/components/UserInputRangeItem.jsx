@@ -1,4 +1,5 @@
 import { Anchor, Group, NumberInput, Stack, Text } from "@mantine/core";
+import { IconArrowBackUp, IconPlusMinus } from "@tabler/icons-react";
 import FieldLabel from "./FieldLabel";
 
 const fmt = (n) => String(Number(Number(n).toFixed(2)));
@@ -24,10 +25,7 @@ export default function UserInputRangeItem({
   const low = baseNum - 2 * sigmaNum;
   const high = baseNum + 2 * sigmaNum;
   const rangeKnown =
-    baseValue !== "" &&
-    baseValue != null &&
-    sigma !== "" &&
-    sigma != null;
+    baseValue !== "" && baseValue != null && sigma !== "" && sigma != null;
 
   const composedLabel = (
     <Group justify="space-between" wrap="nowrap" gap="xs">
@@ -37,15 +35,21 @@ export default function UserInputRangeItem({
         type="button"
         size="xs"
         c="dimmed"
-        underline="hover"
         onClick={onToggleExpand}
         disabled={disabled}
-        style={{
-          opacity: disabled ? 0.5 : 1,
-          pointerEvents: disabled ? "none" : "auto",
-        }}
+        underline="never"
       >
-        {expanded ? "remove" : "± add uncertainty"}
+        <span style={{ display: "inline-flex", alignItems: "center" }}>
+          {expanded ? (
+            <>
+              <IconArrowBackUp stroke={2} size={12} /> Reset
+            </>
+          ) : (
+            <>
+              <IconPlusMinus stroke={2} size={12} /> Customize
+            </>
+          )}
+        </span>
       </Anchor>
     </Group>
   );
@@ -65,12 +69,13 @@ export default function UserInputRangeItem({
         max={baseConstraint.max}
         step={baseConstraint.step}
         clampBehavior="none"
+        styles={{ label: { display: "block" } }}
       />
       {expanded && (
         <>
           <NumberInput
             id={sigmaField}
-            size="xs"
+            variant="filled"
             value={2 * sigmaNum}
             onChange={(v) => {
               if (v === "" || v == null) {
@@ -89,9 +94,7 @@ export default function UserInputRangeItem({
             allowNegative={false}
           />
           <Text size="xs" c="dimmed">
-            {rangeKnown
-              ? `range ${fmt(low)}% to ${fmt(high)}%`
-              : "range —"}
+            {rangeKnown ? `range ${fmt(low)}% to ${fmt(high)}%` : "range —"}
           </Text>
         </>
       )}

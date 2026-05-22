@@ -73,8 +73,16 @@ export function validateUserInput(input) {
       continue;
     }
 
-    if (value < min || value > max) {
-      errors[field] = `Must be between ${min} and ${max}`;
+    const hasMin = min != null;
+    const hasMax = max != null;
+    if ((hasMin && value < min) || (hasMax && value > max)) {
+      if (hasMin && hasMax) {
+        errors[field] = `Must be between ${min} and ${max}`;
+      } else if (hasMin) {
+        errors[field] = `Must be at least ${min}`;
+      } else {
+        errors[field] = `Must be at most ${max}`;
+      }
     }
   }
 
