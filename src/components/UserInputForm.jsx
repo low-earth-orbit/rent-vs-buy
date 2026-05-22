@@ -2,10 +2,12 @@ import { useState } from "react";
 import {
   Accordion,
   ActionIcon,
-  Badge,
   Button,
   Group,
+  Input,
   Modal,
+  NumberInput,
+  SegmentedControl,
   SimpleGrid,
   Stack,
   Switch,
@@ -13,6 +15,7 @@ import {
   TextInput,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import FieldLabel from "./FieldLabel";
 import UserInputFormItem from "./UserInputFormItem";
 import UserInputRangeItem from "./UserInputRangeItem";
 import { FIELD_CONSTRAINTS, SLIDER_BOUNDS } from "../utils/validation";
@@ -68,6 +71,8 @@ export default function UserInputForm({
   const [resetOpen, { open: openReset, close: closeReset }] =
     useDisclosure(false);
   const [presetName, setPresetName] = useState("");
+  const [propertyTaxUnit, setPropertyTaxUnit] = useState("$");
+  const [maintenanceUnit, setMaintenanceUnit] = useState("%");
 
   const confirmReset = () => {
     handleReset();
@@ -217,7 +222,7 @@ export default function UserInputForm({
 
       <Switch
         size="sm"
-        label="Set assumption by range"
+        label="Set assumption by range (advanced)"
         description={
           simulateUncertainty
             ? "Specify expected values and ±95% confidence ranges for each assumption over your time horizon."
@@ -229,7 +234,7 @@ export default function UserInputForm({
 
       <Accordion
         multiple
-        defaultValue={["rent", "property", "mortgage"]}
+        defaultValue={["rent", "property"]}
         variant="contained"
       >
         <Accordion.Item value="rent">
@@ -258,6 +263,11 @@ export default function UserInputForm({
         <Accordion.Item value="property">
           <Accordion.Control>Property</Accordion.Control>
           <Accordion.Panel>
+            <Text size="xs" c="dimmed" mb="xs">
+              Modeling note: maintenance and condo fees grow at the same rate as
+              rent (all three are inflation-driven). Property tax tracks home
+              price — that's how assessed value works.
+            </Text>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 id="initialHomePrice"
@@ -274,16 +284,169 @@ export default function UserInputForm({
                 helperText:
                   "Expected annual change in home price. Long-run world historical average is roughly 2–3.5% nominal. Can be negative.",
               })}
-              {perturbed("propertyTaxRate", "propertyTaxSigma", {
-                label: "Property Tax Rate",
-                helperText:
-                  "Annual property tax as a percentage of the home's market value. Typical range: 0.5–1.5% depending on municipality.",
-              })}
-              {perturbed("maintenanceCostPercentage", "maintenanceSigma", {
-                label: "Maintenance",
-                helperText:
-                  "Annual maintenance costs as a percentage of home price, including repairs, insurance, and condo fees (if applicable). Typically 1–2%, increasing as the home ages.",
-              })}
+              {(() => {
+                const homePrice = userInput.initialHomePrice;
+                const taxHelper =
+                  "Annual property tax. Switch between dollar amount and rate (% of home value). Typical range: 0.5–1.5% depending on municipality.";
+                const taxLabel = "Property Tax";
+
+                const rate = userInput.propertyTaxRate;
+                const rateIsEmpty = rate === "" || rate == null;
+                const displayValue =
+                  propertyTaxUnit === "$"
+                    ? rateIsEmpty
+                      ? ""
+                      : homePrice > 0
+                        ? Math.round((+rate / 100) * homePrice)
+                        : 0
+                    : rate;
+
+                const handleTaxChange = (next) => {
+                  if (next === "" || next == null) {
+                    handleChange("propertyTaxRate", next);
+                    return;
+                  }
+                  if (propertyTaxUnit === "%") {
+                    handleChange("propertyTaxRate", next);
+                    return;
+                  }
+                  if (!homePrice || homePrice <= 0) return;
+                  // 4 dp avoids floating-point noise like 0.8500000000000001
+                  // while preserving $1/yr precision at a $1M home.
+                  const pct = (+next / homePrice) * 100;
+                  handleChange(
+                    "propertyTaxRate",
+                    Math.round(pct * 10000) / 10000,
+                  );
+                };
+
+                return (
+                  <Stack gap={4}>
+                    <Group
+                      justify="space-between"
+                      align="center"
+                      wrap="nowrap"
+                      gap="xs"
+                    >
+                      <Input.Label>
+                        <FieldLabel label={taxLabel} helperText={taxHelper} />
+                      </Input.Label>
+                      <SegmentedControl
+                        size="xs"
+                        value={propertyTaxUnit}
+                        onChange={setPropertyTaxUnit}
+                        data={[
+                          { label: "$", value: "$" },
+                          { label: "%", value: "%" },
+                        ]}
+                      />
+                    </Group>
+                    <NumberInput
+                      id="propertyTaxRate"
+                      value={displayValue}
+                      onChange={handleTaxChange}
+                      error={errors.propertyTaxRate}
+                      prefix={propertyTaxUnit === "$" ? "$" : undefined}
+                      suffix={propertyTaxUnit === "$" ? " /yr" : "%"}
+                      thousandSeparator={
+                        propertyTaxUnit === "$" ? "," : undefined
+                      }
+                      min={0}
+                      step={propertyTaxUnit === "$" ? 100 : 0.1}
+                      allowNegative={false}
+                      clampBehavior="none"
+                    />
+                  </Stack>
+                );
+              })()}
+              {(() => {
+                const homePrice = userInput.initialHomePrice;
+                const maintHelper =
+                  "Annual repairs and insurance. Toggle % of today's home price or $/yr. Excludes condo fees. Typically 0.5–1% for condos and 1–2% for detached homes.";
+                const maintLabel = "Maintenance & Insurance";
+
+                const rate = userInput.maintenanceCostPercentage;
+                const rateIsEmpty = rate === "" || rate == null;
+                const displayValue =
+                  maintenanceUnit === "$"
+                    ? rateIsEmpty
+                      ? ""
+                      : homePrice > 0
+                        ? Math.round((+rate / 100) * homePrice)
+                        : 0
+                    : rate;
+
+                const handleMaintChange = (next) => {
+                  if (next === "" || next == null) {
+                    handleChange("maintenanceCostPercentage", next);
+                    return;
+                  }
+                  if (maintenanceUnit === "%") {
+                    handleChange("maintenanceCostPercentage", next);
+                    return;
+                  }
+                  if (!homePrice || homePrice <= 0) return;
+                  const pct = (+next / homePrice) * 100;
+                  handleChange(
+                    "maintenanceCostPercentage",
+                    Math.round(pct * 10000) / 10000,
+                  );
+                };
+
+                return (
+                  <Stack gap={4}>
+                    <Group
+                      justify="space-between"
+                      align="center"
+                      wrap="nowrap"
+                      gap="xs"
+                    >
+                      <Input.Label>
+                        <FieldLabel
+                          label={maintLabel}
+                          helperText={maintHelper}
+                        />
+                      </Input.Label>
+                      <SegmentedControl
+                        size="xs"
+                        value={maintenanceUnit}
+                        onChange={setMaintenanceUnit}
+                        data={[
+                          { label: "$", value: "$" },
+                          { label: "%", value: "%" },
+                        ]}
+                      />
+                    </Group>
+                    <NumberInput
+                      id="maintenanceCostPercentage"
+                      value={displayValue}
+                      onChange={handleMaintChange}
+                      error={errors.maintenanceCostPercentage}
+                      prefix={maintenanceUnit === "$" ? "$" : undefined}
+                      suffix={maintenanceUnit === "$" ? " /yr" : "%"}
+                      thousandSeparator={
+                        maintenanceUnit === "$" ? "," : undefined
+                      }
+                      min={0}
+                      step={maintenanceUnit === "$" ? 100 : 0.1}
+                      allowNegative={false}
+                      clampBehavior="none"
+                    />
+                  </Stack>
+                );
+              })()}
+              <UserInputFormItem
+                id="condoFeesPerMonth"
+                label="Condo Fees"
+                helperText="Monthly condo or strata fees in today's dollars. Set to $0 for detached homes."
+                value={userInput.condoFeesPerMonth}
+                onChange={bind("condoFeesPerMonth")}
+                error={errors.condoFeesPerMonth}
+                prefix="$"
+                suffix=" /mo"
+                thousandSeparator
+                {...c("condoFeesPerMonth")}
+              />
             </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>

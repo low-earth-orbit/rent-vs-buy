@@ -17,6 +17,7 @@ export const FIELD_CONSTRAINTS = {
   sellersClosingCostPercentage: { min: 0, max: undefined, step: 0.25 },
   propertyTaxRate: { min: 0, max: undefined, step: 0.1 },
   maintenanceCostPercentage: { min: 0, max: undefined, step: 0.1 },
+  condoFeesPerMonth: { min: 0, max: undefined, step: 50 },
   downPaymentPercentage: { min: 5, max: 100, step: 5 },
   annualMortgageInterestRate: { min: 0, max: undefined, step: 0.25 },
   amortizationPeriod: { min: 5, max: 30, step: 5 },
@@ -33,8 +34,6 @@ export const FIELD_CONSTRAINTS = {
   investmentReturnSigma: { min: 0, max: 10, step: 0.25 },
   rentIncreaseSigma: { min: 0, max: 5, step: 0.25 },
   mortgageRateSigma: { min: 0, max: 5, step: 0.25 },
-  maintenanceSigma: { min: 0, max: 5, step: 0.1 },
-  propertyTaxSigma: { min: 0, max: 2, step: 0.05 },
   dividendYieldSigma: { min: 0, max: 5, step: 0.1 },
 };
 
@@ -44,8 +43,6 @@ export const SLIDER_BOUNDS = {
   investmentReturnRate: { min: -20, max: 20, step: 0.25 },
   rentIncreaseRate: { min: -5, max: 12, step: 0.25 },
   annualMortgageInterestRate: { min: 0, max: 15, step: 0.25 },
-  maintenanceCostPercentage: { min: 0, max: 6, step: 0.1 },
-  propertyTaxRate: { min: 0, max: 5, step: 0.05 },
   dividendYield: { min: 0, max: 8, step: 0.25 },
 };
 

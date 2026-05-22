@@ -2,6 +2,7 @@ import { Input, RangeSlider, Stack, Text } from "@mantine/core";
 import FieldLabel from "./FieldLabel";
 
 const fmt = (n) => String(Number(Number(n).toFixed(2)));
+const defaultFormatter = (v) => `${fmt(v)}%`;
 
 export default function UserInputRangeItem({
   label,
@@ -12,12 +13,15 @@ export default function UserInputRangeItem({
   onChange,
   disabled,
   maxOverride,
+  formatter,
 }) {
   const trackMax =
     maxOverride != null ? Math.min(bounds.max, maxOverride) : bounds.max;
 
   const low = Math.max(bounds.min, baseValue - 2 * sigma);
   const high = Math.min(trackMax, baseValue + 2 * sigma);
+
+  const fmtValue = formatter ?? defaultFormatter;
 
   return (
     <Stack gap={4}>
@@ -33,12 +37,12 @@ export default function UserInputRangeItem({
         value={[low, high]}
         onChange={onChange}
         disabled={disabled}
-        label={(v) => `${fmt(v)}%`}
+        label={fmtValue}
         mt={4}
         mb={4}
       />
       <Text size="xs" c="dimmed">
-        expected {fmt(baseValue)}% · range {fmt(low)}%–{fmt(high)}%
+        expected {fmtValue(baseValue)} · range {fmtValue(low)}–{fmtValue(high)}
       </Text>
     </Stack>
   );
