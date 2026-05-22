@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Alert, Paper, Stack, Text } from "@mantine/core";
+import { Alert, Box, Group, Paper, Stack, Text } from "@mantine/core";
 import {
   ComposedChart,
   Area,
@@ -15,7 +15,11 @@ import { runMonteCarlo } from "../utils/monteCarlo";
 import { formatCAD, formatCADCompact } from "../utils/format";
 
 function buildBaseData(userInput) {
-  return Array.from({ length: userInput.amortizationPeriod }, (_, i) =>
+  const horizon = Math.max(
+    userInput.amortizationPeriod,
+    userInput.holdingPeriod ?? 0,
+  );
+  return Array.from({ length: horizon }, (_, i) =>
     calculateNetWorthAtYearEnd({ ...userInput, yearNumber: i + 1 }),
   );
 }
@@ -77,12 +81,14 @@ function ChartTooltip({ payload, showBands }) {
   );
 }
 
-function Summary({ data, crossovers, horizon }) {
-  const last = data[data.length - 1];
+function Summary({ data, crossovers, holdingPeriod }) {
+  const decision =
+    data.find((d) => d.year === holdingPeriod) ?? data[data.length - 1];
+  const priorCrossovers = crossovers.filter((c) => c.year <= holdingPeriod);
 
   // Median-based fallback when MC data is unavailable.
-  if (last.renterWinPct == null) {
-    const renterWins = last.renterMedian >= last.ownerMedian;
+  if (decision.renterWinPct == null) {
+    const renterWins = decision.renterMedian >= decision.ownerMedian;
     const color = renterWins ? "teal" : "indigo";
     return (
       <Alert
@@ -90,13 +96,13 @@ function Summary({ data, crossovers, horizon }) {
         title={renterWins ? "Renting leads" : "Buying leads"}
         radius="md"
       >
-        <Text size="sm">For the entire {horizon} years.</Text>
+        <Text size="sm">At sale (year {holdingPeriod}).</Text>
       </Alert>
     );
   }
 
-  const winPct = Math.round(last.renterWinPct * 100);
-  const renterFavored = last.renterWinPct >= 0.5;
+  const winPct = Math.round(decision.renterWinPct * 100);
+  const renterFavored = decision.renterWinPct >= 0.5;
   const winnerPct = renterFavored ? winPct : 100 - winPct;
   const winner = renterFavored ? "Renting" : "Buying";
 
@@ -112,17 +118,17 @@ function Summary({ data, crossovers, horizon }) {
     color = "gray";
   }
 
-  const sims = `${winner} comes out ahead in ${winnerPct}% of simulations over ${horizon} years.`;
+  const sims = `${winner} comes out ahead in ${winnerPct}% of simulations at sale (year ${holdingPeriod}).`;
 
   let body;
   if (winnerPct < 65) {
     body = `${sims} Small changes in your assumptions could flip the outcome.`;
-  } else if (crossovers.length === 0) {
+  } else if (priorCrossovers.length === 0) {
     body = sims;
-  } else if (crossovers.length === 1) {
-    body = `${sims} Median paths cross around year ${crossovers[0].year.toFixed(0)}.`;
+  } else if (priorCrossovers.length === 1) {
+    body = `${sims} Median paths cross around year ${priorCrossovers[0].year.toFixed(0)}.`;
   } else {
-    body = `${sims} Median paths cross ${crossovers.length} times — outcome depends on your time horizon.`;
+    body = `${sims} Median paths cross ${priorCrossovers.length} times before sale — outcome depends on your time horizon.`;
   }
 
   return (
@@ -184,7 +190,11 @@ export default function NetWorthChart({ userInput, showBands }) {
 
   return (
     <Stack gap="xs">
-      <Summary data={chartData} crossovers={crossovers} horizon={userInput.amortizationPeriod} />
+      <Summary
+        data={chartData}
+        crossovers={crossovers}
+        holdingPeriod={userInput.holdingPeriod}
+      />
       <Text fw={600} size="lg">
         Net worth: rent vs buy
       </Text>
@@ -285,11 +295,52 @@ export default function NetWorthChart({ userInput, showBands }) {
               }}
             />
           ))}
+
+          <ReferenceLine
+            x={userInput.holdingPeriod}
+            stroke="#fd7e14"
+            strokeWidth={1.5}
+            label={{
+              value: `Sale (Yr ${userInput.holdingPeriod})`,
+              position: "top",
+              fontSize: 11,
+              fill: "#fd7e14",
+              fontWeight: 600,
+            }}
+          />
         </ComposedChart>
       </ResponsiveContainer>
+      <Group gap="lg" wrap="wrap">
+        <Group gap={6} wrap="nowrap">
+          <Box w={18} h={2} style={{ backgroundColor: "#fd7e14" }} />
+          <Text size="xs" c="dimmed">
+            <Text span fw={600} c="orange.7">
+              Sale
+            </Text>{" "}
+            — year you sell (your holding period). Win % is decided here.
+          </Text>
+        </Group>
+        {crossovers.length > 0 && (
+          <Group gap={6} wrap="nowrap">
+            <Box
+              w={18}
+              h={0}
+              style={{ borderTop: "2px dashed #868e96" }}
+            />
+            <Text size="xs" c="dimmed">
+              <Text span fw={600}>
+                Break-even
+              </Text>{" "}
+              — year the median rent vs. buy paths cross.
+            </Text>
+          </Group>
+        )}
+      </Group>
       {showBands && (
         <Text size="xs" c="dimmed">
-          Bands show 25th–75th percentile from 1,000 Monte Carlo simulations.
+          Shaded bands show 25th–75th percentile from 1,000 Monte Carlo
+          simulations. The chart extends past the sale year to show what would
+          happen if you held longer.
         </Text>
       )}
       <Text size="xs" c="dimmed">

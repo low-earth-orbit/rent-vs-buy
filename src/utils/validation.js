@@ -21,6 +21,7 @@ export const FIELD_CONSTRAINTS = {
   downPaymentPercentage: { min: 5, max: 100, step: 5 },
   annualMortgageInterestRate: { min: 0, max: undefined, step: 0.25 },
   amortizationPeriod: { min: 5, max: 30, step: 5 },
+  holdingPeriod: { min: 1, max: 30, step: 1 },
   investmentReturnRate: {
     min: undefined,
     max: undefined,

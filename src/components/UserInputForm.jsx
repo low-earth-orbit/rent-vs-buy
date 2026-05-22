@@ -447,6 +447,16 @@ export default function UserInputForm({
                 thousandSeparator
                 {...c("condoFeesPerMonth")}
               />
+              <UserInputFormItem
+                id="holdingPeriod"
+                label="Holding Period"
+                helperText="How long until you sell. The simulation compares net worth at this year. Canadian homeowners sell after ~10–13 years on average, even with a 25-year mortgage."
+                value={userInput.holdingPeriod}
+                onChange={bind("holdingPeriod")}
+                error={errors.holdingPeriod}
+                suffix=" Years"
+                {...c("holdingPeriod")}
+              />
             </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>

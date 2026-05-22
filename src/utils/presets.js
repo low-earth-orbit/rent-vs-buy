@@ -19,6 +19,7 @@ export const DEFAULTS = {
   downPaymentPercentage: 20,
   annualMortgageInterestRate: 4.5,
   amortizationPeriod: 25,
+  holdingPeriod: 12,
   investmentReturnRate: 6,
   dividendYield: 1.5,
   dividendTaxRate: 30,

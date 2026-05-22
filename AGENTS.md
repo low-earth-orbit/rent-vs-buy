@@ -47,7 +47,7 @@ Uses **Mantine** UI components (`@mantine/core`) and **Recharts** for charts. La
    - **Capital gains**: Tax applied at sale (year N) on `portfolioValue − bookValue`. No tax credit on losses.
    - **Principal residence**: Capital gains on the home are exempt (Canadian rule).
 6. **Selling costs**: Owner's terminal net worth = `homePrice × (1 − sellersClosingCostPercentage) − mortgageBalance`.
-7. **Simulation horizon**: Equals `amortizationPeriod`.
+7. **Holding period vs amortization**: `holdingPeriod` (default 12, matching the ~10–13y Canadian median tenure) is the year at which the owner sells and the renter–vs–buyer comparison is decided. `amortizationPeriod` only drives mortgage payment size and the rate-renewal schedule. The two are independent: the simulation horizon is `max(amortizationPeriod, holdingPeriod)`. Net-worth paths beyond `holdingPeriod` are shown on the chart as hypothetical (if-held-longer) extrapolation; the Summary's win % is computed at `holdingPeriod`.
 
 ## Monte Carlo Simulation Architecture
 

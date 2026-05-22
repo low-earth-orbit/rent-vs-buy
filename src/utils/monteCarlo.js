@@ -239,7 +239,10 @@ function simulatePath(userInput, annual, mortgageRates, scenario) {
 }
 
 export function runMonteCarlo(userInput, numSimulations = 1000) {
-  const horizon = userInput.amortizationPeriod;
+  const horizon = Math.max(
+    userInput.amortizationPeriod,
+    userInput.holdingPeriod ?? 0,
+  );
   const renterByYear = Array.from({ length: horizon }, () => []);
   const ownerByYear = Array.from({ length: horizon }, () => []);
   const renterWinsByYear = Array.from({ length: horizon }, () => 0);
