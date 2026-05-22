@@ -31,7 +31,7 @@ export const PRESETS = [
   { id: "defaults", label: "Base Case", values: DEFAULTS },
   {
     id: "bay-street",
-    label: "Bay Street starter condo",
+    label: "Starter condo @ Bay Street",
     values: {
       ...DEFAULTS,
       monthlyRent: 2700,
@@ -43,6 +43,7 @@ export const PRESETS = [
       maintenanceCostPercentage: 0.5,
       condoFeesPerMonth: 600,
       propertyTaxRate: 0.49,
+      holdingPeriod: 5,
       buyersClosingCostPercentage: 4,
       sellersClosingCostPercentage: 4,
     },
@@ -59,6 +60,7 @@ export const PRESETS = [
       maintenanceCostPercentage: 1.3,
       condoFeesPerMonth: 350,
       propertyTaxRate: 0.29,
+      holdingPeriod: 15,
       buyersClosingCostPercentage: 2.5,
       sellersClosingCostPercentage: 4,
       amortizationPeriod: 30,
@@ -75,6 +77,7 @@ export const PRESETS = [
       homePriceGrowthRate: 2.5,
       maintenanceCostPercentage: 1.5,
       propertyTaxRate: 0.62,
+      holdingPeriod: 10,
       buyersClosingCostPercentage: 0.75,
       sellersClosingCostPercentage: 4,
     },
