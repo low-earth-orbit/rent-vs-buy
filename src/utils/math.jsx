@@ -282,18 +282,11 @@ function calculateRentersPortfolioValue({
   return afterTaxValue;
 }
 
-// CMHC default insurance is mandatory in Canada for down payments under 20%.
-// Premium is a % of the base loan, tiered by LTV, and capitalized into principal.
-function getCmhcPremiumRate(downPaymentPercentage) {
-  if (downPaymentPercentage >= 20) return 0;
-  if (downPaymentPercentage >= 15) return 2.8;
-  if (downPaymentPercentage >= 10) return 3.1;
-  return 4.0;
-}
-
-export function calculateMortgagePrincipal(initialHomePrice, downPaymentPercentage) {
-  const baseLoan = initialHomePrice * (1 - downPaymentPercentage / 100);
-  return baseLoan * (1 + getCmhcPremiumRate(downPaymentPercentage) / 100);
+export function calculateMortgagePrincipal(
+  initialHomePrice,
+  downPaymentPercentage,
+) {
+  return initialHomePrice * (1 - downPaymentPercentage / 100);
 }
 
 // Renter's and owner's absolute net worth at the end of the given year

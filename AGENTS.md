@@ -39,7 +39,7 @@ Uses **Mantine** UI components (`@mantine/core`) and **Recharts** for charts. La
 ## Key Modeling Assumptions
 
 1. **Renter invests the surplus**: Each year, the renter invests the difference between the owner's total cost (mortgage + property tax + maintenance) and the renter's rent. Surplus is added mid-year (earns half-year return).
-2. **CMHC insurance**: Down payments under 20% trigger CMHC premium, capitalized into the loan principal.
+2. **Mortgage scope**: The calculator only models conventional mortgages with at least 20% down and amortization up to 25 years. CMHC-insured high-ratio loans and 30-year insured eligibility are intentionally out of scope.
 3. **Mortgage compounding**: Semi-annual compounding (Canadian convention).
 4. **Mortgage renewal**: 5-year terms. Rate redrawn at each renewal in the Monte Carlo path; deterministic path holds rate constant.
 5. **Tax treatment**:

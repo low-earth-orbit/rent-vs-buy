@@ -472,7 +472,7 @@ export default function UserInputForm({
               <UserInputFormItem
                 id="downPaymentPercentage"
                 label="Down Payment"
-                helperText="Minimum is 5% in Canada. Down payments below 20% require CMHC mortgage insurance, which is added to the loan principal."
+                helperText="Minimum is 20%. This calculator only models conventional mortgages."
                 value={userInput.downPaymentPercentage}
                 onChange={bind("downPaymentPercentage")}
                 error={errors.downPaymentPercentage}
@@ -488,7 +488,7 @@ export default function UserInputForm({
               <UserInputFormItem
                 id="amortizationPeriod"
                 label="Amortization Period"
-                helperText="Total length of the mortgage. Canadian maximum is 25 or 30 years."
+                helperText="Total length of the mortgage. This calculator caps amortization at 25 years."
                 value={userInput.amortizationPeriod}
                 onChange={bind("amortizationPeriod")}
                 error={errors.amortizationPeriod}
