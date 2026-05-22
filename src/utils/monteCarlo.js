@@ -18,14 +18,12 @@ function percentile(sorted, p) {
 // Annual volatility — represents year-to-year noise, not user-tunable.
 // User-facing sigmas in presets.js capture uncertainty about the long-run mean;
 // these constants capture realized volatility around that mean.
-// Note: maintenance has no independent annual vol — it inherits rent's annual
-// vol (via the inflation common factor) because both are operating-cost-driven.
 const ANNUAL_VOL = {
   inflation: 1.0, // hidden common factor σ
   homePriceIdio: 4.0, // idiosyncratic real housing σ
   investment: 14.0, // equity lognormal σ (annual)
   rentIdio: 1.0,
-  propertyTax: 0.1,
+  ownerCostIdio: 1.0,
   dividend: 0.2,
   mortgageRenewal: 1.0, // shock at each 5-year renewal
 };
@@ -34,6 +32,7 @@ const ANNUAL_VOL = {
 const INFLATION_BETA = {
   homePrice: 0.8,
   rent: 0.8,
+  ownerCost: 0.8,
   mortgageRate: 0.5,
 };
 
@@ -50,15 +49,18 @@ function drawScenario(userInput) {
     rentIncreaseMean:
       userInput.rentIncreaseRate +
       normalRandom() * userInput.rentIncreaseSigma,
+    ownerCostGrowthMean:
+      (userInput.ownerCostGrowthRate ?? 2.5) +
+      normalRandom() * (userInput.ownerCostGrowthSigma ?? 0.75),
     mortgageRateMean:
       userInput.annualMortgageInterestRate +
       normalRandom() * userInput.mortgageRateSigma,
-    // Maintenance baseline is a known user input (today's % of home value);
-    // its long-run path uncertainty is already captured by rent growth, which
-    // maintenance inherits in drawPath. No anchor sigma.
+    // Maintenance/insurance baseline is a known user input (today's % of home
+    // value). Its path is governed by ownerCostGrowthMean, not rent growth or
+    // home price appreciation.
     maintenanceMean: Math.max(0, userInput.maintenanceCostPercentage),
-    // Mill rates are publicly known per municipality; no anchor sigma.
-    // ANNUAL_VOL.propertyTax still captures small year-to-year budget noise.
+    // Initial property tax level is user-known; future dollar amounts are
+    // governed by ownerCostGrowthMean.
     propertyTaxMean: Math.max(0, userInput.propertyTaxRate),
     dividendYieldMean: Math.max(
       0,
@@ -93,10 +95,11 @@ function drawPath(scenario, horizon) {
       INFLATION_BETA.rent * inflShock +
       normalRandom() * ANNUAL_VOL.rentIdio;
 
-    const propertyTax = Math.max(
-      0,
-      scenario.propertyTaxMean + normalRandom() * ANNUAL_VOL.propertyTax,
-    );
+    const ownerCostGrowth =
+      scenario.ownerCostGrowthMean +
+      INFLATION_BETA.ownerCost * inflShock +
+      normalRandom() * ANNUAL_VOL.ownerCostIdio;
+
     const dividendYield = Math.max(
       0,
       Math.min(
@@ -109,7 +112,7 @@ function drawPath(scenario, horizon) {
       homePriceGrowth,
       investmentReturn,
       rentIncrease,
-      propertyTax,
+      ownerCostGrowth,
       dividendYield,
     });
   }
@@ -153,8 +156,10 @@ function simulatePath(userInput, annual, mortgageRates, scenario) {
   let portfolioValue = initialPortfolio;
   let bookValue = initialPortfolio;
   let annualRent = userInput.monthlyRent * 12;
-  // Year-0 anchored operating costs. Each grows with realized rent inflation,
-  // matching the empirical pattern that labor / insurance / utilities track CPI.
+  // Year-0 anchored operating costs. Each grows with realized owner cost growth,
+  // independent of rent growth and home price appreciation.
+  let annualPropertyTax =
+    (userInput.initialHomePrice * scenario.propertyTaxMean) / 100;
   let annualMaintenance =
     (userInput.initialHomePrice * scenario.maintenanceMean) / 100;
   let monthlyCondoFees = userInput.condoFeesPerMonth ?? 0;
@@ -204,7 +209,7 @@ function simulatePath(userInput, annual, mortgageRates, scenario) {
 
     const ownersCashOutflow =
       annualMortgagePayment +
-      (homePrice * yr.propertyTax) / 100 +
+      annualPropertyTax +
       annualMaintenance +
       monthlyCondoFees * 12;
     const surplus = ownersCashOutflow - annualRent;
@@ -221,9 +226,11 @@ function simulatePath(userInput, annual, mortgageRates, scenario) {
 
     homePrice = homePrice * (1 + yr.homePriceGrowth / 100);
     const rentGrowth = 1 + yr.rentIncrease / 100;
+    const ownerCostGrowth = Math.max(0, 1 + yr.ownerCostGrowth / 100);
     annualRent = annualRent * rentGrowth;
-    annualMaintenance = annualMaintenance * rentGrowth;
-    monthlyCondoFees = monthlyCondoFees * rentGrowth;
+    annualPropertyTax = annualPropertyTax * ownerCostGrowth;
+    annualMaintenance = annualMaintenance * ownerCostGrowth;
+    monthlyCondoFees = monthlyCondoFees * ownerCostGrowth;
 
     const taxableGain = portfolioValue - Math.max(bookValue, 0);
     const renterNetWorth =

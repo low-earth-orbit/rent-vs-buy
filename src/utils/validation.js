@@ -6,6 +6,12 @@ export const FIELD_CONSTRAINTS = {
     step: 0.5,
     allowNegative: true,
   },
+  ownerCostGrowthRate: {
+    min: undefined,
+    max: undefined,
+    step: 0.5,
+    allowNegative: true,
+  },
   initialHomePrice: { min: 1, max: undefined, step: 10000 },
   homePriceGrowthRate: {
     min: undefined,
@@ -34,6 +40,7 @@ export const FIELD_CONSTRAINTS = {
   homePriceGrowthSigma: { min: 0, max: 10, step: 0.25 },
   investmentReturnSigma: { min: 0, max: 10, step: 0.25 },
   rentIncreaseSigma: { min: 0, max: 5, step: 0.25 },
+  ownerCostGrowthSigma: { min: 0, max: 5, step: 0.25 },
   mortgageRateSigma: { min: 0, max: 5, step: 0.25 },
   dividendYieldSigma: { min: 0, max: 5, step: 0.1 },
 };
@@ -43,6 +50,7 @@ export const SLIDER_BOUNDS = {
   homePriceGrowthRate: { min: -10, max: 15, step: 0.5 },
   investmentReturnRate: { min: -20, max: 20, step: 0.25 },
   rentIncreaseRate: { min: -5, max: 12, step: 0.25 },
+  ownerCostGrowthRate: { min: -5, max: 12, step: 0.25 },
   annualMortgageInterestRate: { min: 0, max: 15, step: 0.25 },
   dividendYield: { min: 0, max: 8, step: 0.25 },
 };

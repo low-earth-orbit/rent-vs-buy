@@ -252,9 +252,9 @@ export default function UserInputForm({
                 {...c("monthlyRent")}
               />
               {perturbed("rentIncreaseRate", "rentIncreaseSigma", {
-                label: "Rent Change",
+                label: "Rent Growth",
                 helperText:
-                  "Expected annual change in rent. Historically tracks inflation (~2%). Can be negative.",
+                  "Expected annual growth in rent payments. Typically at or slightly above inflation (2–3%).",
               })}
             </SimpleGrid>
           </Accordion.Panel>
@@ -263,11 +263,6 @@ export default function UserInputForm({
         <Accordion.Item value="property">
           <Accordion.Control>Property</Accordion.Control>
           <Accordion.Panel>
-            <Text size="xs" c="dimmed" mb="xs">
-              Modeling note: maintenance and condo fees grow at the same rate as
-              rent (all three are inflation-driven). Property tax tracks home
-              price — that's how assessed value works.
-            </Text>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 id="initialHomePrice"
@@ -279,15 +274,17 @@ export default function UserInputForm({
                 thousandSeparator
                 {...c("initialHomePrice")}
               />
+
               {perturbed("homePriceGrowthRate", "homePriceGrowthSigma", {
-                label: "Home Price Change",
+                label: "Home Price Appreciation",
                 helperText:
-                  "Expected annual change in home price. Long-run world historical average is roughly 2–3.5% nominal. Can be negative.",
+                  "Expected annual growth in the home's market value. Long-run world historical average is 0–2% above inflation, roughly 2–4% nominal.",
               })}
+
               {(() => {
                 const homePrice = userInput.initialHomePrice;
                 const taxHelper =
-                  "Annual property tax. Switch between dollar amount and rate (% of home value). Typical range: 0.5–1.5% depending on municipality.";
+                  "Current annual property tax. Switch between dollar amount and rate (% of today's home value). Typical range: 0.5–1.5% depending on municipality.";
                 const taxLabel = "Property Tax";
 
                 const rate = userInput.propertyTaxRate;
@@ -447,6 +444,13 @@ export default function UserInputForm({
                 thousandSeparator
                 {...c("condoFeesPerMonth")}
               />
+
+              {perturbed("ownerCostGrowthRate", "ownerCostGrowthSigma", {
+                label: "Owner Cost Growth",
+                helperText:
+                  "Expected annual growth in maintenance, property tax, insurance, and condo or strata fees. Typically slightly above inflation, around 2–3.5%.",
+              })}
+
               <UserInputFormItem
                 id="holdingPeriod"
                 label="Holding Period"

@@ -5,19 +5,6 @@ function calculateFutureValue(baseValue, growthRatePercentage, years) {
   return baseValue * Math.pow(1 + growthRatePercentage / 100, years);
 }
 
-// home price at the start of the given year
-function getHomePriceAtYearStart(
-  initialHomePrice,
-  homePriceGrowthRate,
-  yearNumber,
-) {
-  return calculateFutureValue(
-    initialHomePrice,
-    homePriceGrowthRate,
-    yearNumber - 1,
-  );
-}
-
 // home price at the end of the given year
 function getHomePriceAtYearEnd(
   initialHomePrice,
@@ -162,20 +149,18 @@ function calculateOwnersEquityAtYearEnd({
 }
 
 // Owner's cash outflow of a given year, including mortgage, property tax,
-// maintenance, condo fees — but not the initial down payment / closing costs.
-// Property tax scales with home price (mill rate × assessed value). Maintenance
-// and condo fees are operating costs that empirically track inflation, not
-// asset appreciation, so they're passed in as year-start dollar amounts.
+// maintenance/insurance, condo fees — but not the initial down payment /
+// closing costs. Recurring owner costs are passed in as year-start dollar
+// amounts so their growth is independent of home price appreciation.
 function calculateOwnersCashOutflow(
-  homePriceAtYearStart,
   mortgagePaymentOfYear,
-  propertyTaxRate,
+  propertyTaxAtYearStart,
   maintenanceAtYearStart,
   condoFeesAtYearStart,
 ) {
   return (
     mortgagePaymentOfYear +
-    (homePriceAtYearStart * propertyTaxRate) / 100 +
+    propertyTaxAtYearStart +
     maintenanceAtYearStart +
     condoFeesAtYearStart * 12
   );
@@ -185,6 +170,7 @@ function calculateOwnersCashOutflow(
 function calculateRentersSurplus({
   monthlyRent,
   rentIncreaseRate,
+  ownerCostGrowthRate = 2.5,
   mortgagePrincipal,
   annualMortgageInterestRate,
   amortizationPeriod,
@@ -193,7 +179,6 @@ function calculateRentersSurplus({
   maintenanceCostPercentage,
   condoFeesPerMonth,
   initialHomePrice,
-  homePriceGrowthRate,
 }) {
   const annualMortgagePayment = getAnnualMortgagePayment(
     mortgagePrincipal,
@@ -201,26 +186,22 @@ function calculateRentersSurplus({
     amortizationPeriod,
     yearNumber,
   );
-  const homePriceAtYearStart = getHomePriceAtYearStart(
-    initialHomePrice,
-    homePriceGrowthRate,
-    yearNumber,
-  );
-  // Anchor maintenance and condo fees in year-0 dollars, then compound with
-  // rent inflation (the model's CPI proxy). Insurance, repair labor and
-  // building operating costs all track inflation, not market price.
-  const inflationCompound = Math.pow(
-    1 + rentIncreaseRate / 100,
+  // Anchor owner costs in year-0 dollars, then compound them independently
+  // from both rent growth and home price appreciation.
+  const ownerCostCompound = Math.pow(
+    1 + ownerCostGrowthRate / 100,
     yearNumber - 1,
   );
+  const propertyTaxAtYearStart =
+    ((propertyTaxRate / 100) * initialHomePrice) * ownerCostCompound;
   const maintenanceAtYearStart =
-    ((maintenanceCostPercentage / 100) * initialHomePrice) * inflationCompound;
+    ((maintenanceCostPercentage / 100) * initialHomePrice) *
+    ownerCostCompound;
   const condoFeesAtYearStart =
-    (condoFeesPerMonth ?? 0) * inflationCompound;
+    (condoFeesPerMonth ?? 0) * ownerCostCompound;
   const ownersCashOutflow = calculateOwnersCashOutflow(
-    homePriceAtYearStart,
     annualMortgagePayment,
-    propertyTaxRate,
+    propertyTaxAtYearStart,
     maintenanceAtYearStart,
     condoFeesAtYearStart,
   );
@@ -232,6 +213,7 @@ function calculateRentersSurplus({
 function calculateRentersPortfolioValue({
   monthlyRent,
   rentIncreaseRate,
+  ownerCostGrowthRate = 2.5,
   mortgagePrincipal,
   annualMortgageInterestRate,
   amortizationPeriod,
@@ -243,7 +225,6 @@ function calculateRentersPortfolioValue({
   maintenanceCostPercentage,
   condoFeesPerMonth,
   initialHomePrice,
-  homePriceGrowthRate,
   capitalGainTaxRate,
   dividendYield,
   dividendTaxRate,
@@ -265,6 +246,7 @@ function calculateRentersPortfolioValue({
     const surplus = calculateRentersSurplus({
       monthlyRent,
       rentIncreaseRate,
+      ownerCostGrowthRate,
       mortgagePrincipal,
       annualMortgageInterestRate,
       amortizationPeriod,
@@ -273,7 +255,6 @@ function calculateRentersPortfolioValue({
       maintenanceCostPercentage,
       condoFeesPerMonth,
       initialHomePrice,
-      homePriceGrowthRate,
     });
 
     // Dividends earned on start-of-year balance, taxed annually.
@@ -319,6 +300,7 @@ export function calculateMortgagePrincipal(initialHomePrice, downPaymentPercenta
 export function calculateNetWorthAtYearEnd({
   monthlyRent,
   rentIncreaseRate,
+  ownerCostGrowthRate = 2.5,
   annualMortgageInterestRate,
   amortizationPeriod,
   yearNumber,
@@ -343,6 +325,7 @@ export function calculateNetWorthAtYearEnd({
   const renterNetWorth = calculateRentersPortfolioValue({
     monthlyRent,
     rentIncreaseRate,
+    ownerCostGrowthRate,
     mortgagePrincipal,
     annualMortgageInterestRate,
     amortizationPeriod,
@@ -354,7 +337,6 @@ export function calculateNetWorthAtYearEnd({
     maintenanceCostPercentage,
     condoFeesPerMonth,
     initialHomePrice,
-    homePriceGrowthRate,
     capitalGainTaxRate,
     dividendYield,
     dividendTaxRate,
@@ -377,4 +359,3 @@ export function calculateNetWorthAtYearEnd({
     difference: renterNetWorth - ownerNetWorth,
   };
 }
-

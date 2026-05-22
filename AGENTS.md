@@ -48,6 +48,7 @@ Uses **Mantine** UI components (`@mantine/core`) and **Recharts** for charts. La
    - **Principal residence**: Capital gains on the home are exempt (Canadian rule).
 6. **Selling costs**: Owner's terminal net worth = `homePrice × (1 − sellersClosingCostPercentage) − mortgageBalance`.
 7. **Holding period vs amortization**: `holdingPeriod` (default 12, matching the ~10–13y Canadian median tenure) is the year at which the owner sells and the renter–vs–buyer comparison is decided. `amortizationPeriod` only drives mortgage payment size and the rate-renewal schedule. The two are independent: the simulation horizon is `max(amortizationPeriod, holdingPeriod)`. Net-worth paths beyond `holdingPeriod` are shown on the chart as hypothetical (if-held-longer) extrapolation; the Summary's win % is computed at `holdingPeriod`.
+8. **Independent growth assumptions**: `rentIncreaseRate` applies only to rent payments, `ownerCostGrowthRate` applies to recurring owner costs (maintenance/insurance, property tax, condo fees), and `homePriceGrowthRate` applies only to the home's market value.
 
 ## Monte Carlo Simulation Architecture
 
@@ -61,10 +62,11 @@ User-facing sigmas in `UNCERTAINTIES` capture uncertainty about the long-run exp
 | `homePriceGrowthSigma` | 2.0 | Long-run home price growth mean |
 | `investmentReturnSigma` | 3.0 | Long-run portfolio return mean |
 | `rentIncreaseSigma` | 0.75 | Long-run rent growth mean |
+| `ownerCostGrowthSigma` | 0.75 | Long-run recurring owner cost growth mean |
 | `mortgageRateSigma` | 1.5 | Long-run mortgage rate mean |
 | `dividendYieldSigma` | 0.3 | Long-run dividend yield mean |
 
-Note: `maintenanceCostPercentage` and `propertyTaxRate` are user-known starting levels and intentionally have no anchor sigma. Maintenance inherits rent's growth path each year (so its long-run uncertainty rides on `rentIncreaseSigma`); property tax mill rates are publicly known per municipality.
+Note: `maintenanceCostPercentage` and `propertyTaxRate` are user-known starting levels and intentionally have no anchor sigma. Their future dollar path is driven by `ownerCostGrowthRate` / `ownerCostGrowthSigma`, independent of rent growth and home price appreciation.
 
 ### Layer 2: Annual realized volatility (hardcoded)
 `ANNUAL_VOL` constants in `monteCarlo.js` capture year-to-year noise around the long-run mean. Drawn each year in `drawPath()`:
@@ -75,12 +77,12 @@ Note: `maintenanceCostPercentage` and `propertyTaxRate` are user-known starting 
 | `homePriceIdio` | 4.0 | Idiosyncratic real housing σ |
 | `investment` | 14.0 | Equity lognormal σ (annual) |
 | `rentIdio` | 1.0 | Idiosyncratic rent σ |
-| `propertyTax` | 0.1 | |
+| `ownerCostIdio` | 1.0 | Idiosyncratic recurring owner cost σ |
 | `dividend` | 0.2 | |
 | `mortgageRenewal` | 1.0 | Shock at each 5-year renewal |
 
 ### Inflation common factor
-`INFLATION_BETA = { homePrice: 0.8, rent: 0.8, mortgageRate: 0.5 }` couples home prices, rents, and mortgage rates through a hidden inflation factor — so in high-inflation scenarios, all three rise together (realistic correlation structure).
+`INFLATION_BETA = { homePrice: 0.8, rent: 0.8, ownerCost: 0.8, mortgageRate: 0.5 }` couples home prices, rents, recurring owner costs, and mortgage rates through a hidden inflation factor — so in high-inflation scenarios, all four rise together (realistic correlation structure).
 
 ### Investment returns
 Drawn as **lognormal** to preserve the arithmetic mean: `logMean = log(1 + μ) − σ²/2`, then `R = exp(logMean + σ·Z) − 1`. This avoids volatility-drag bias that would result from naive normal sampling.

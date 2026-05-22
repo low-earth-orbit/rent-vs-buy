@@ -20,16 +20,22 @@ import {
   clearAll,
 } from "../utils/storage";
 
+const normalizeInput = (values) => ({ ...DEFAULTS, ...(values ?? {}) });
+
 const Main = () => {
   const [userInput, setUserInput] = useState(() => {
     const loaded = loadInput();
-    return loaded ? { ...DEFAULTS, ...loaded } : DEFAULTS;
+    return loaded ? normalizeInput(loaded) : DEFAULTS;
   });
   const [simulateUncertainty, setSimulateUncertaintyState] = useState(
     () => loadAdvanced() ?? false,
   );
   const [customPresets, setCustomPresets] = useState(
-    () => loadCustomPresets() ?? [],
+    () =>
+      (loadCustomPresets() ?? []).map((preset) => ({
+        ...preset,
+        values: normalizeInput(preset.values),
+      })),
   );
   const [hiddenBuiltins, setHiddenBuiltins] = useState(
     () => loadHiddenBuiltins() ?? [],
@@ -88,7 +94,7 @@ const Main = () => {
   }
 
   function handlePreset(preset) {
-    setUserInput(preset.values);
+    setUserInput(normalizeInput(preset.values));
     clearInput();
     setActivePresetId(preset.id);
   }
