@@ -41,7 +41,7 @@ const Footer = () => {
           >
             This One By Dr. Potato
           </Anchor>{" "}
-          (my implementation slightly differs), is used to give a more accurate
+          (my implementation details differ), is used to give a more accurate
           comparison.
         </Text>
         <Text size="sm" c="dimmed">

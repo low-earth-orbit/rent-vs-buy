@@ -5,19 +5,6 @@ function calculateFutureValue(baseValue, growthRatePercentage, years) {
   return baseValue * Math.pow(1 + growthRatePercentage / 100, years);
 }
 
-// home price at the start of the given year
-function getHomePriceAtYearStart(
-  initialHomePrice,
-  homePriceGrowthRate,
-  yearNumber,
-) {
-  return calculateFutureValue(
-    initialHomePrice,
-    homePriceGrowthRate,
-    yearNumber - 1,
-  );
-}
-
 // home price at the end of the given year
 function getHomePriceAtYearEnd(
   initialHomePrice,
@@ -161,16 +148,21 @@ function calculateOwnersEquityAtYearEnd({
   return homeValue - mortgageBalance;
 }
 
-// Owner's cash outflow of a given year, including mortgage, property tax, maintenance, but not including initial payment, i.e. down payment, closing fees.
+// Owner's cash outflow of a given year, including mortgage, property tax,
+// maintenance/insurance, condo fees — but not the initial down payment /
+// closing costs. Recurring owner costs are passed in as year-start dollar
+// amounts so their growth is independent of home price appreciation.
 function calculateOwnersCashOutflow(
-  homePriceAtYearStart,
   mortgagePaymentOfYear,
-  propertyTaxRate,
-  maintenanceCostPercentage,
+  propertyTaxAtYearStart,
+  maintenanceAtYearStart,
+  condoFeesAtYearStart,
 ) {
   return (
     mortgagePaymentOfYear +
-    (homePriceAtYearStart * (propertyTaxRate + maintenanceCostPercentage)) / 100
+    propertyTaxAtYearStart +
+    maintenanceAtYearStart +
+    condoFeesAtYearStart * 12
   );
 }
 
@@ -178,14 +170,15 @@ function calculateOwnersCashOutflow(
 function calculateRentersSurplus({
   monthlyRent,
   rentIncreaseRate,
+  ownerCostGrowthRate = 2.5,
   mortgagePrincipal,
   annualMortgageInterestRate,
   amortizationPeriod,
   yearNumber,
   propertyTaxRate,
   maintenanceCostPercentage,
+  condoFeesPerMonth,
   initialHomePrice,
-  homePriceGrowthRate,
 }) {
   const annualMortgagePayment = getAnnualMortgagePayment(
     mortgagePrincipal,
@@ -193,16 +186,24 @@ function calculateRentersSurplus({
     amortizationPeriod,
     yearNumber,
   );
-  const homePriceAtYearStart = getHomePriceAtYearStart(
-    initialHomePrice,
-    homePriceGrowthRate,
-    yearNumber,
+  // Anchor owner costs in year-0 dollars, then compound them independently
+  // from both rent growth and home price appreciation.
+  const ownerCostCompound = Math.pow(
+    1 + ownerCostGrowthRate / 100,
+    yearNumber - 1,
   );
+  const propertyTaxAtYearStart =
+    ((propertyTaxRate / 100) * initialHomePrice) * ownerCostCompound;
+  const maintenanceAtYearStart =
+    ((maintenanceCostPercentage / 100) * initialHomePrice) *
+    ownerCostCompound;
+  const condoFeesAtYearStart =
+    (condoFeesPerMonth ?? 0) * ownerCostCompound;
   const ownersCashOutflow = calculateOwnersCashOutflow(
-    homePriceAtYearStart,
     annualMortgagePayment,
-    propertyTaxRate,
-    maintenanceCostPercentage,
+    propertyTaxAtYearStart,
+    maintenanceAtYearStart,
+    condoFeesAtYearStart,
   );
   const annualRent = getAnnualRent(monthlyRent, rentIncreaseRate, yearNumber);
   return ownersCashOutflow - annualRent;
@@ -212,6 +213,7 @@ function calculateRentersSurplus({
 function calculateRentersPortfolioValue({
   monthlyRent,
   rentIncreaseRate,
+  ownerCostGrowthRate = 2.5,
   mortgagePrincipal,
   annualMortgageInterestRate,
   amortizationPeriod,
@@ -221,8 +223,8 @@ function calculateRentersPortfolioValue({
   buyersClosingCostPercentage,
   propertyTaxRate,
   maintenanceCostPercentage,
+  condoFeesPerMonth,
   initialHomePrice,
-  homePriceGrowthRate,
   capitalGainTaxRate,
   dividendYield,
   dividendTaxRate,
@@ -244,14 +246,15 @@ function calculateRentersPortfolioValue({
     const surplus = calculateRentersSurplus({
       monthlyRent,
       rentIncreaseRate,
+      ownerCostGrowthRate,
       mortgagePrincipal,
       annualMortgageInterestRate,
       amortizationPeriod,
       yearNumber: i,
       propertyTaxRate,
       maintenanceCostPercentage,
+      condoFeesPerMonth,
       initialHomePrice,
-      homePriceGrowthRate,
     });
 
     // Dividends earned on start-of-year balance, taxed annually.
@@ -279,24 +282,18 @@ function calculateRentersPortfolioValue({
   return afterTaxValue;
 }
 
-// CMHC default insurance is mandatory in Canada for down payments under 20%.
-// Premium is a % of the base loan, tiered by LTV, and capitalized into principal.
-function getCmhcPremiumRate(downPaymentPercentage) {
-  if (downPaymentPercentage >= 20) return 0;
-  if (downPaymentPercentage >= 15) return 2.8;
-  if (downPaymentPercentage >= 10) return 3.1;
-  return 4.0;
-}
-
-export function calculateMortgagePrincipal(initialHomePrice, downPaymentPercentage) {
-  const baseLoan = initialHomePrice * (1 - downPaymentPercentage / 100);
-  return baseLoan * (1 + getCmhcPremiumRate(downPaymentPercentage) / 100);
+export function calculateMortgagePrincipal(
+  initialHomePrice,
+  downPaymentPercentage,
+) {
+  return initialHomePrice * (1 - downPaymentPercentage / 100);
 }
 
 // Renter's and owner's absolute net worth at the end of the given year
 export function calculateNetWorthAtYearEnd({
   monthlyRent,
   rentIncreaseRate,
+  ownerCostGrowthRate = 2.5,
   annualMortgageInterestRate,
   amortizationPeriod,
   yearNumber,
@@ -305,6 +302,7 @@ export function calculateNetWorthAtYearEnd({
   buyersClosingCostPercentage,
   propertyTaxRate,
   maintenanceCostPercentage,
+  condoFeesPerMonth,
   initialHomePrice,
   homePriceGrowthRate,
   sellersClosingCostPercentage,
@@ -320,6 +318,7 @@ export function calculateNetWorthAtYearEnd({
   const renterNetWorth = calculateRentersPortfolioValue({
     monthlyRent,
     rentIncreaseRate,
+    ownerCostGrowthRate,
     mortgagePrincipal,
     annualMortgageInterestRate,
     amortizationPeriod,
@@ -329,8 +328,8 @@ export function calculateNetWorthAtYearEnd({
     buyersClosingCostPercentage,
     propertyTaxRate,
     maintenanceCostPercentage,
+    condoFeesPerMonth,
     initialHomePrice,
-    homePriceGrowthRate,
     capitalGainTaxRate,
     dividendYield,
     dividendTaxRate,
@@ -353,4 +352,3 @@ export function calculateNetWorthAtYearEnd({
     difference: renterNetWorth - ownerNetWorth,
   };
 }
-

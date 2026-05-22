@@ -23,8 +23,7 @@ const ANNUAL_VOL = {
   homePriceIdio: 4.0, // idiosyncratic real housing σ
   investment: 14.0, // equity lognormal σ (annual)
   rentIdio: 1.0,
-  maintenance: 0.5,
-  propertyTax: 0.1,
+  ownerCostIdio: 1.0,
   dividend: 0.2,
   mortgageRenewal: 1.0, // shock at each 5-year renewal
 };
@@ -33,6 +32,7 @@ const ANNUAL_VOL = {
 const INFLATION_BETA = {
   homePrice: 0.8,
   rent: 0.8,
+  ownerCost: 0.8,
   mortgageRate: 0.5,
 };
 
@@ -49,18 +49,19 @@ function drawScenario(userInput) {
     rentIncreaseMean:
       userInput.rentIncreaseRate +
       normalRandom() * userInput.rentIncreaseSigma,
+    ownerCostGrowthMean:
+      (userInput.ownerCostGrowthRate ?? 2.5) +
+      normalRandom() * (userInput.ownerCostGrowthSigma ?? 0.75),
     mortgageRateMean:
       userInput.annualMortgageInterestRate +
       normalRandom() * userInput.mortgageRateSigma,
-    maintenanceMean: Math.max(
-      0,
-      userInput.maintenanceCostPercentage +
-        normalRandom() * userInput.maintenanceSigma,
-    ),
-    propertyTaxMean: Math.max(
-      0,
-      userInput.propertyTaxRate + normalRandom() * userInput.propertyTaxSigma,
-    ),
+    // Maintenance/insurance baseline is a known user input (today's % of home
+    // value). Its path is governed by ownerCostGrowthMean, not rent growth or
+    // home price appreciation.
+    maintenanceMean: Math.max(0, userInput.maintenanceCostPercentage),
+    // Initial property tax level is user-known; future dollar amounts are
+    // governed by ownerCostGrowthMean.
+    propertyTaxMean: Math.max(0, userInput.propertyTaxRate),
     dividendYieldMean: Math.max(
       0,
       userInput.dividendYield + normalRandom() * userInput.dividendYieldSigma,
@@ -94,14 +95,11 @@ function drawPath(scenario, horizon) {
       INFLATION_BETA.rent * inflShock +
       normalRandom() * ANNUAL_VOL.rentIdio;
 
-    const maintenance = Math.max(
-      0,
-      scenario.maintenanceMean + normalRandom() * ANNUAL_VOL.maintenance,
-    );
-    const propertyTax = Math.max(
-      0,
-      scenario.propertyTaxMean + normalRandom() * ANNUAL_VOL.propertyTax,
-    );
+    const ownerCostGrowth =
+      scenario.ownerCostGrowthMean +
+      INFLATION_BETA.ownerCost * inflShock +
+      normalRandom() * ANNUAL_VOL.ownerCostIdio;
+
     const dividendYield = Math.max(
       0,
       Math.min(
@@ -114,8 +112,7 @@ function drawPath(scenario, horizon) {
       homePriceGrowth,
       investmentReturn,
       rentIncrease,
-      maintenance,
-      propertyTax,
+      ownerCostGrowth,
       dividendYield,
     });
   }
@@ -138,7 +135,7 @@ function drawPath(scenario, horizon) {
 }
 
 // Walk one year-by-year wealth path for owner and renter.
-function simulatePath(userInput, annual, mortgageRates) {
+function simulatePath(userInput, annual, mortgageRates, scenario) {
   const horizon = annual.length;
   const capGainTaxFrac = userInput.capitalGainTaxRate / 100;
   const dividendTaxFrac = userInput.dividendTaxRate / 100;
@@ -159,6 +156,13 @@ function simulatePath(userInput, annual, mortgageRates) {
   let portfolioValue = initialPortfolio;
   let bookValue = initialPortfolio;
   let annualRent = userInput.monthlyRent * 12;
+  // Year-0 anchored operating costs. Each grows with realized owner cost growth,
+  // independent of rent growth and home price appreciation.
+  let annualPropertyTax =
+    (userInput.initialHomePrice * scenario.propertyTaxMean) / 100;
+  let annualMaintenance =
+    (userInput.initialHomePrice * scenario.maintenanceMean) / 100;
+  let monthlyCondoFees = userInput.condoFeesPerMonth ?? 0;
   let remainingYears = userInput.amortizationPeriod;
   let currentMortgageRate = mortgageRates[0];
   let monthlyPayment = calculateMonthlyMortgagePayment(
@@ -205,7 +209,9 @@ function simulatePath(userInput, annual, mortgageRates) {
 
     const ownersCashOutflow =
       annualMortgagePayment +
-      (homePrice * (yr.propertyTax + yr.maintenance)) / 100;
+      annualPropertyTax +
+      annualMaintenance +
+      monthlyCondoFees * 12;
     const surplus = ownersCashOutflow - annualRent;
 
     const r = yr.investmentReturn / 100;
@@ -219,7 +225,12 @@ function simulatePath(userInput, annual, mortgageRates) {
     bookValue += surplus + afterTaxDividends;
 
     homePrice = homePrice * (1 + yr.homePriceGrowth / 100);
-    annualRent = annualRent * (1 + yr.rentIncrease / 100);
+    const rentGrowth = 1 + yr.rentIncrease / 100;
+    const ownerCostGrowth = Math.max(0, 1 + yr.ownerCostGrowth / 100);
+    annualRent = annualRent * rentGrowth;
+    annualPropertyTax = annualPropertyTax * ownerCostGrowth;
+    annualMaintenance = annualMaintenance * ownerCostGrowth;
+    monthlyCondoFees = monthlyCondoFees * ownerCostGrowth;
 
     const taxableGain = portfolioValue - Math.max(bookValue, 0);
     const renterNetWorth =
@@ -235,7 +246,10 @@ function simulatePath(userInput, annual, mortgageRates) {
 }
 
 export function runMonteCarlo(userInput, numSimulations = 1000) {
-  const horizon = userInput.amortizationPeriod;
+  const horizon = Math.max(
+    userInput.amortizationPeriod,
+    userInput.holdingPeriod ?? 0,
+  );
   const renterByYear = Array.from({ length: horizon }, () => []);
   const ownerByYear = Array.from({ length: horizon }, () => []);
   const renterWinsByYear = Array.from({ length: horizon }, () => 0);
@@ -243,7 +257,7 @@ export function runMonteCarlo(userInput, numSimulations = 1000) {
   for (let sim = 0; sim < numSimulations; sim++) {
     const scenario = drawScenario(userInput);
     const { annual, mortgageRates } = drawPath(scenario, horizon);
-    const path = simulatePath(userInput, annual, mortgageRates);
+    const path = simulatePath(userInput, annual, mortgageRates, scenario);
     for (let y = 0; y < horizon; y++) {
       renterByYear[y].push(path[y].renterNetWorth);
       ownerByYear[y].push(path[y].ownerNetWorth);

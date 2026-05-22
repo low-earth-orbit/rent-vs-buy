@@ -1,46 +1,103 @@
-import { Input, RangeSlider, Stack, Text } from "@mantine/core";
+import { Anchor, Group, NumberInput, Stack, Text } from "@mantine/core";
+import { IconArrowBackUp, IconPlusMinus } from "@tabler/icons-react";
 import FieldLabel from "./FieldLabel";
 
 const fmt = (n) => String(Number(Number(n).toFixed(2)));
 
 export default function UserInputRangeItem({
+  baseField,
+  sigmaField,
   label,
   helperText,
   baseValue,
   sigma,
-  bounds,
-  onChange,
+  baseConstraint,
+  sigmaConstraint,
+  onBaseChange,
+  onSigmaChange,
+  baseError,
+  expanded,
+  onToggleExpand,
   disabled,
-  maxOverride,
 }) {
-  const trackMax =
-    maxOverride != null ? Math.min(bounds.max, maxOverride) : bounds.max;
+  const sigmaNum = +sigma || 0;
+  const baseNum = +baseValue || 0;
+  const low = baseNum - 2 * sigmaNum;
+  const high = baseNum + 2 * sigmaNum;
+  const rangeKnown =
+    baseValue !== "" && baseValue != null && sigma !== "" && sigma != null;
 
-  const low = Math.max(bounds.min, baseValue - 2 * sigma);
-  const high = Math.min(trackMax, baseValue + 2 * sigma);
-  const expected = (low + high) / 2;
+  const composedLabel = (
+    <Group justify="space-between" wrap="nowrap" gap="xs">
+      <FieldLabel label={label} helperText={helperText} />
+      <Anchor
+        component="button"
+        type="button"
+        size="xs"
+        c="dimmed"
+        onClick={onToggleExpand}
+        disabled={disabled}
+        underline="never"
+      >
+        <span style={{ display: "inline-flex", alignItems: "center" }}>
+          {expanded ? (
+            <>
+              <IconArrowBackUp stroke={2} size={12} /> Reset
+            </>
+          ) : (
+            <>
+              <IconPlusMinus stroke={2} size={12} /> Customize
+            </>
+          )}
+        </span>
+      </Anchor>
+    </Group>
+  );
 
   return (
     <Stack gap={4}>
-      <Input.Label>
-        <FieldLabel label={label} helperText={helperText} />
-      </Input.Label>
-      <RangeSlider
-        size="xs"
-        min={bounds.min}
-        max={trackMax}
-        step={bounds.step}
-        minRange={0}
-        value={[low, high]}
-        onChange={onChange}
+      <NumberInput
+        id={baseField}
+        label={composedLabel}
+        value={baseValue}
+        onChange={onBaseChange}
+        error={baseError}
+        suffix="%"
         disabled={disabled}
-        label={(v) => `${fmt(v)}%`}
-        mt={4}
-        mb={4}
+        allowNegative={baseConstraint.allowNegative ?? false}
+        min={baseConstraint.min}
+        max={baseConstraint.max}
+        step={baseConstraint.step}
+        clampBehavior="none"
+        styles={{ label: { display: "block" } }}
       />
-      <Text size="xs" c="dimmed">
-        expected {fmt(expected)}% · range {fmt(low)}%–{fmt(high)}%
-      </Text>
+      {expanded && (
+        <>
+          <NumberInput
+            id={sigmaField}
+            variant="filled"
+            value={2 * sigmaNum}
+            onChange={(v) => {
+              if (v === "" || v == null) {
+                onSigmaChange(v);
+              } else {
+                onSigmaChange(+v / 2);
+              }
+            }}
+            prefix="± "
+            suffix="%"
+            min={0}
+            max={2 * sigmaConstraint.max}
+            step={2 * sigmaConstraint.step}
+            disabled={disabled}
+            clampBehavior="none"
+            allowNegative={false}
+          />
+          <Text size="xs" c="dimmed">
+            {rangeKnown ? `range ${fmt(low)}% to ${fmt(high)}%` : "range —"}
+          </Text>
+        </>
+      )}
     </Stack>
   );
 }
