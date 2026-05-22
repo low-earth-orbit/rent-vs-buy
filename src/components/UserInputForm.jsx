@@ -10,7 +10,6 @@ import {
   SegmentedControl,
   SimpleGrid,
   Stack,
-  Switch,
   Text,
   TextInput,
 } from "@mantine/core";
@@ -18,7 +17,7 @@ import { useDisclosure } from "@mantine/hooks";
 import FieldLabel from "./FieldLabel";
 import UserInputFormItem from "./UserInputFormItem";
 import UserInputRangeItem from "./UserInputRangeItem";
-import { FIELD_CONSTRAINTS, SLIDER_BOUNDS } from "../utils/validation";
+import { FIELD_CONSTRAINTS } from "../utils/validation";
 
 const PlusIcon = () => (
   <svg
@@ -55,11 +54,10 @@ const XIcon = () => (
 export default function UserInputForm({
   userInput,
   handleChange,
-  handleRangeChange,
   handlePreset,
   handleReset,
-  simulateUncertainty,
-  setSimulateUncertainty,
+  expandedFields,
+  toggleFieldExpanded,
   errors,
   activePreset,
   visibleBuiltins,
@@ -93,37 +91,30 @@ export default function UserInputForm({
   const bind = (id) => (value) => handleChange(id, value);
   const c = (id) => FIELD_CONSTRAINTS[id];
 
-  // Perturbed variables: two-thumb range slider in advanced mode, plain
-  // single-value input otherwise.
+  // Perturbed variables: base value always, plus an inline ±2σ input + range
+  // readout when the field's "± add uncertainty" affordance is expanded.
   const perturbed = (
     baseField,
     sigmaField,
-    { label, helperText, disabled, maxOverride },
-  ) =>
-    simulateUncertainty ? (
-      <UserInputRangeItem
-        label={label}
-        helperText={helperText}
-        baseValue={userInput[baseField]}
-        sigma={userInput[sigmaField]}
-        bounds={SLIDER_BOUNDS[baseField]}
-        onChange={(range) => handleRangeChange(baseField, sigmaField, range)}
-        disabled={disabled}
-        maxOverride={maxOverride}
-      />
-    ) : (
-      <UserInputFormItem
-        id={baseField}
-        label={label}
-        helperText={helperText}
-        value={userInput[baseField]}
-        onChange={bind(baseField)}
-        error={errors[baseField]}
-        suffix="%"
-        disabled={disabled}
-        {...c(baseField)}
-      />
-    );
+    { label, helperText, disabled },
+  ) => (
+    <UserInputRangeItem
+      baseField={baseField}
+      sigmaField={sigmaField}
+      label={label}
+      helperText={helperText}
+      baseValue={userInput[baseField]}
+      sigma={userInput[sigmaField]}
+      baseConstraint={c(baseField)}
+      sigmaConstraint={c(sigmaField)}
+      onBaseChange={bind(baseField)}
+      onSigmaChange={bind(sigmaField)}
+      baseError={errors[baseField]}
+      expanded={expandedFields.includes(baseField)}
+      onToggleExpand={() => toggleFieldExpanded(baseField)}
+      disabled={disabled}
+    />
+  );
 
   return (
     <Stack gap="md">
@@ -219,18 +210,6 @@ export default function UserInputForm({
           </Group>
         </Stack>
       </Modal>
-
-      <Switch
-        size="sm"
-        label="Set assumption by range (advanced)"
-        description={
-          simulateUncertainty
-            ? "Specify expected values and ±95% confidence ranges for each assumption over your time horizon."
-            : undefined
-        }
-        checked={simulateUncertainty}
-        onChange={(e) => setSimulateUncertainty(e.currentTarget.checked)}
-      />
 
       <Accordion
         multiple
@@ -513,7 +492,6 @@ export default function UserInputForm({
                 label: "Dividend Yield",
                 helperText:
                   "Portion of the total return paid as dividends each year, taxed annually. Remainder is capital appreciation deferred until sale. Capped at the portfolio return.",
-                maxOverride: userInput.investmentReturnRate,
               })}
               <UserInputFormItem
                 id="capitalGainTaxRate"

@@ -9,8 +9,9 @@ import {
   loadInput,
   saveInput,
   clearInput,
-  loadAdvanced,
-  saveAdvanced,
+  loadExpandedFields,
+  saveExpandedFields,
+  consumeLegacyAdvanced,
   loadCustomPresets,
   saveCustomPresets,
   loadHiddenBuiltins,
@@ -20,6 +21,15 @@ import {
   clearAll,
 } from "../utils/storage";
 
+const PERTURBED_FIELDS = [
+  "rentIncreaseRate",
+  "homePriceGrowthRate",
+  "ownerCostGrowthRate",
+  "annualMortgageInterestRate",
+  "investmentReturnRate",
+  "dividendYield",
+];
+
 const normalizeInput = (values) => ({ ...DEFAULTS, ...(values ?? {}) });
 
 const Main = () => {
@@ -27,9 +37,16 @@ const Main = () => {
     const loaded = loadInput();
     return loaded ? normalizeInput(loaded) : DEFAULTS;
   });
-  const [simulateUncertainty, setSimulateUncertaintyState] = useState(
-    () => loadAdvanced() ?? false,
-  );
+  const [expandedFields, setExpandedFieldsState] = useState(() => {
+    const loaded = loadExpandedFields();
+    if (loaded) return loaded;
+    const legacy = consumeLegacyAdvanced();
+    if (legacy) {
+      saveExpandedFields(PERTURBED_FIELDS);
+      return PERTURBED_FIELDS;
+    }
+    return [];
+  });
   const [customPresets, setCustomPresets] = useState(
     () =>
       (loadCustomPresets() ?? []).map((preset) => ({
@@ -80,28 +97,20 @@ const Main = () => {
     if (activePresetId !== null) setActivePresetId(null);
   }
 
-  function handleRangeChange(baseField, sigmaField, [low, high]) {
-    setUserInput((prev) => {
-      const next = {
-        ...prev,
-        [baseField]: (low + high) / 2,
-        [sigmaField]: (high - low) / 4,
-      };
-      saveInput(next);
-      return next;
-    });
-    if (activePresetId !== null) setActivePresetId(null);
-  }
-
   function handlePreset(preset) {
     setUserInput(normalizeInput(preset.values));
     clearInput();
     setActivePresetId(preset.id);
   }
 
-  function setSimulateUncertainty(b) {
-    setSimulateUncertaintyState(b);
-    saveAdvanced(b);
+  function toggleFieldExpanded(baseField) {
+    setExpandedFieldsState((prev) => {
+      const next = prev.includes(baseField)
+        ? prev.filter((f) => f !== baseField)
+        : [...prev, baseField];
+      saveExpandedFields(next);
+      return next;
+    });
   }
 
   function handleSavePreset(name) {
@@ -138,7 +147,7 @@ const Main = () => {
   function handleReset() {
     clearAll();
     setUserInput(DEFAULTS);
-    setSimulateUncertaintyState(false);
+    setExpandedFieldsState([]);
     setCustomPresets([]);
     setHiddenBuiltins([]);
     setActivePresetIdState("defaults");
@@ -152,11 +161,10 @@ const Main = () => {
             <UserInputForm
               userInput={userInput}
               handleChange={handleChange}
-              handleRangeChange={handleRangeChange}
               handlePreset={handlePreset}
               handleReset={handleReset}
-              simulateUncertainty={simulateUncertainty}
-              setSimulateUncertainty={setSimulateUncertainty}
+              expandedFields={expandedFields}
+              toggleFieldExpanded={toggleFieldExpanded}
               errors={errors}
               activePreset={activePreset}
               visibleBuiltins={visibleBuiltins}

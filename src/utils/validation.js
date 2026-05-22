@@ -45,16 +45,6 @@ export const FIELD_CONSTRAINTS = {
   dividendYieldSigma: { min: 0, max: 5, step: 0.1 },
 };
 
-// Draggable track domain for the single-value sliders, keyed by base field.
-export const SLIDER_BOUNDS = {
-  homePriceGrowthRate: { min: -10, max: 20, step: 0.5 },
-  investmentReturnRate: { min: -20, max: 50, step: 0.25 },
-  rentIncreaseRate: { min: -10, max: 20, step: 0.25 },
-  ownerCostGrowthRate: { min: -10, max: 20, step: 0.25 },
-  annualMortgageInterestRate: { min: -20, max: 50, step: 0.25 },
-  dividendYield: { min: -10, max: 10, step: 0.25 },
-};
-
 function isEmpty(value) {
   return (
     value === "" ||
