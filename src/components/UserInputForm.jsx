@@ -479,12 +479,6 @@ export default function UserInputForm({
                 suffix="%"
                 {...c("downPaymentPercentage")}
               />
-              {perturbed("annualMortgageInterestRate", "mortgageRateSigma", {
-                label: "Mortgage Rate",
-                helperText:
-                  "Annual mortgage interest rate, modeled as variable for the full amortization period. The default reflects the Bank of Canada's neutral policy rate (2.75%) plus a typical lender spread (1.75%).",
-                disabled: userInput.downPaymentPercentage === 100,
-              })}
               <UserInputFormItem
                 id="amortizationPeriod"
                 label="Amortization Period"
@@ -496,6 +490,12 @@ export default function UserInputForm({
                 disabled={userInput.downPaymentPercentage === 100}
                 {...c("amortizationPeriod")}
               />
+              {perturbed("annualMortgageInterestRate", "mortgageRateSigma", {
+                label: "Mortgage Rate",
+                helperText:
+                  "Annual mortgage interest rate, modeled as variable for the full amortization period. The default reflects the Bank of Canada's neutral policy rate (2.75%) plus a typical lender spread (1.75%).",
+                disabled: userInput.downPaymentPercentage === 100,
+              })}
             </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>
@@ -516,16 +516,6 @@ export default function UserInputForm({
                 maxOverride: userInput.investmentReturnRate,
               })}
               <UserInputFormItem
-                id="dividendTaxRate"
-                label="Dividend Tax Rate"
-                helperText="Effective tax rate on annual dividends. Eligible Canadian dividends taxed at a lower rate; foreign dividends at marginal income tax rate."
-                value={userInput.dividendTaxRate}
-                onChange={bind("dividendTaxRate")}
-                error={errors.dividendTaxRate}
-                suffix="%"
-                {...c("dividendTaxRate")}
-              />
-              <UserInputFormItem
                 id="capitalGainTaxRate"
                 label="Capital Gain Tax Rate"
                 helperText="Tax rate on capital gains when the portfolio is sold. In Canada, 50% of gains are included in taxable income — multiply your marginal rate by 50% to get this number."
@@ -534,6 +524,16 @@ export default function UserInputForm({
                 error={errors.capitalGainTaxRate}
                 suffix="%"
                 {...c("capitalGainTaxRate")}
+              />
+              <UserInputFormItem
+                id="dividendTaxRate"
+                label="Dividend Tax Rate"
+                helperText="Effective tax rate on annual dividends. Eligible Canadian dividends taxed at a lower rate; foreign dividends at marginal income tax rate."
+                value={userInput.dividendTaxRate}
+                onChange={bind("dividendTaxRate")}
+                error={errors.dividendTaxRate}
+                suffix="%"
+                {...c("dividendTaxRate")}
               />
             </SimpleGrid>
           </Accordion.Panel>
