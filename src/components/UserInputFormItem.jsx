@@ -30,6 +30,7 @@ export default function UserInputFormItem({
       thousandSeparator={thousandSeparator ? "," : undefined}
       error={error}
       clampBehavior="none"
+      styles={{ label: { display: "block" } }}
       {...rest}
     />
   );
