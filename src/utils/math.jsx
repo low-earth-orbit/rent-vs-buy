@@ -28,7 +28,9 @@ function getAnnualRent(monthlyRent, rentIncreaseRate, yearNumber) {
 }
 
 // monthly interest rate, semi-annual compounding
-export function calculateMonthlyMortgageInterestRate(annualMortgageInterestRate) {
+export function calculateMonthlyMortgageInterestRate(
+  annualMortgageInterestRate,
+) {
   const rate =
     Math.pow(Math.pow(annualMortgageInterestRate / 2 / 100 + 1, 2), 1 / 12) - 1;
   return rate;
@@ -132,11 +134,11 @@ function calculateOwnersEquityAtYearEnd({
   mortgagePrincipal,
   annualMortgageInterestRate,
   amortizationPeriod,
-  sellersClosingCostPercentage,
+  sellerClosingCostsPct,
 }) {
   const homeValue =
     getHomePriceAtYearEnd(initialHomePrice, homePriceGrowthRate, yearNumber) *
-    (1 - sellersClosingCostPercentage / 100);
+    (1 - sellerClosingCostsPct / 100);
 
   const mortgageBalance = calculateMortgageBalanceAtYearEnd(
     mortgagePrincipal,
@@ -176,7 +178,7 @@ function calculateRentersSurplus({
   amortizationPeriod,
   yearNumber,
   propertyTaxRate,
-  maintenanceCostPercentage,
+  maintPct,
   condoFeesPerMonth,
   initialHomePrice,
 }) {
@@ -193,12 +195,10 @@ function calculateRentersSurplus({
     yearNumber - 1,
   );
   const propertyTaxAtYearStart =
-    ((propertyTaxRate / 100) * initialHomePrice) * ownerCostCompound;
+    (propertyTaxRate / 100) * initialHomePrice * ownerCostCompound;
   const maintenanceAtYearStart =
-    ((maintenanceCostPercentage / 100) * initialHomePrice) *
-    ownerCostCompound;
-  const condoFeesAtYearStart =
-    (condoFeesPerMonth ?? 0) * ownerCostCompound;
+    (maintPct / 100) * initialHomePrice * ownerCostCompound;
+  const condoFeesAtYearStart = (condoFeesPerMonth ?? 0) * ownerCostCompound;
   const ownersCashOutflow = calculateOwnersCashOutflow(
     annualMortgagePayment,
     propertyTaxAtYearStart,
@@ -220,9 +220,9 @@ function calculateRentersPortfolioValue({
   yearNumber,
   investmentReturnRate,
   downPaymentPercentage,
-  buyersClosingCostPercentage,
+  buyerClosingCostsPct,
   propertyTaxRate,
-  maintenanceCostPercentage,
+  maintPct,
   condoFeesPerMonth,
   initialHomePrice,
   capitalGainTaxRate,
@@ -230,8 +230,7 @@ function calculateRentersPortfolioValue({
   dividendTaxRate,
 }) {
   const initialInvestment =
-    (initialHomePrice * (downPaymentPercentage + buyersClosingCostPercentage)) /
-    100;
+    (initialHomePrice * (downPaymentPercentage + buyerClosingCostsPct)) / 100;
 
   let portfolioValue = initialInvestment;
   let bookValue = initialInvestment;
@@ -252,7 +251,7 @@ function calculateRentersPortfolioValue({
       amortizationPeriod,
       yearNumber: i,
       propertyTaxRate,
-      maintenanceCostPercentage,
+      maintPct,
       condoFeesPerMonth,
       initialHomePrice,
     });
@@ -299,13 +298,13 @@ export function calculateNetWorthAtYearEnd({
   yearNumber,
   investmentReturnRate,
   downPaymentPercentage,
-  buyersClosingCostPercentage,
+  buyerClosingCostsPct,
   propertyTaxRate,
-  maintenanceCostPercentage,
+  maintPct,
   condoFeesPerMonth,
   initialHomePrice,
   homePriceGrowthRate,
-  sellersClosingCostPercentage,
+  sellerClosingCostsPct,
   capitalGainTaxRate,
   dividendYield,
   dividendTaxRate,
@@ -325,9 +324,9 @@ export function calculateNetWorthAtYearEnd({
     yearNumber,
     investmentReturnRate,
     downPaymentPercentage,
-    buyersClosingCostPercentage,
+    buyerClosingCostsPct,
     propertyTaxRate,
-    maintenanceCostPercentage,
+    maintPct,
     condoFeesPerMonth,
     initialHomePrice,
     capitalGainTaxRate,
@@ -342,7 +341,7 @@ export function calculateNetWorthAtYearEnd({
     mortgagePrincipal,
     annualMortgageInterestRate,
     amortizationPeriod,
-    sellersClosingCostPercentage,
+    sellerClosingCostsPct,
   });
 
   return {

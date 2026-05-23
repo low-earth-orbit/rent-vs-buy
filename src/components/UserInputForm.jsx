@@ -341,7 +341,7 @@ export default function UserInputForm({
                   "Annual repairs and insurance. Toggle % of today's home price or $/yr. Excludes condo fees. Typically 0.5–1% for condos and 1–2% for detached homes.";
                 const maintLabel = "Maintenance & Insurance";
 
-                const rate = userInput.maintenanceCostPercentage;
+                const rate = userInput.maintPct;
                 const rateIsEmpty = rate === "" || rate == null;
                 const displayValue =
                   maintenanceUnit === "$"
@@ -354,19 +354,16 @@ export default function UserInputForm({
 
                 const handleMaintChange = (next) => {
                   if (next === "" || next == null) {
-                    handleChange("maintenanceCostPercentage", next);
+                    handleChange("maintPct", next);
                     return;
                   }
                   if (maintenanceUnit === "%") {
-                    handleChange("maintenanceCostPercentage", next);
+                    handleChange("maintPct", next);
                     return;
                   }
                   if (!homePrice || homePrice <= 0) return;
                   const pct = (+next / homePrice) * 100;
-                  handleChange(
-                    "maintenanceCostPercentage",
-                    Math.round(pct * 10000) / 10000,
-                  );
+                  handleChange("maintPct", Math.round(pct * 10000) / 10000);
                 };
 
                 return (
@@ -394,10 +391,10 @@ export default function UserInputForm({
                       />
                     </Group>
                     <NumberInput
-                      id="maintenanceCostPercentage"
+                      id="maintPct"
                       value={displayValue}
                       onChange={handleMaintChange}
-                      error={errors.maintenanceCostPercentage}
+                      error={errors.maintPct}
                       prefix={maintenanceUnit === "$" ? "$" : undefined}
                       suffix={maintenanceUnit === "$" ? " /yr" : "%"}
                       thousandSeparator={
@@ -522,24 +519,24 @@ export default function UserInputForm({
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
-                id="buyersClosingCostPercentage"
+                id="buyerClosingCostsPct"
                 label="Buyer's Closing Cost"
                 helperText="Closing costs for home buyers as a percentage of home price, including land transfer tax, legal fees, and inspections. Typically 1.5–4% nationally; higher in provinces with larger land transfer taxes."
-                value={userInput.buyersClosingCostPercentage}
-                onChange={bind("buyersClosingCostPercentage")}
-                error={errors.buyersClosingCostPercentage}
+                value={userInput.buyerClosingCostsPct}
+                onChange={bind("buyerClosingCostsPct")}
+                error={errors.buyerClosingCostsPct}
                 suffix="%"
-                {...c("buyersClosingCostPercentage")}
+                {...c("buyerClosingCostsPct")}
               />
               <UserInputFormItem
-                id="sellersClosingCostPercentage"
+                id="sellerClosingCostsPct"
                 label="Seller's Closing Cost"
                 helperText="Closing costs for home sellers as a percentage of home price, primarily realtor commission and legal fees. Typically 3–5% nationally."
-                value={userInput.sellersClosingCostPercentage}
-                onChange={bind("sellersClosingCostPercentage")}
-                error={errors.sellersClosingCostPercentage}
+                value={userInput.sellerClosingCostsPct}
+                onChange={bind("sellerClosingCostsPct")}
+                error={errors.sellerClosingCostsPct}
                 suffix="%"
-                {...c("sellersClosingCostPercentage")}
+                {...c("sellerClosingCostsPct")}
               />
             </SimpleGrid>
           </Accordion.Panel>

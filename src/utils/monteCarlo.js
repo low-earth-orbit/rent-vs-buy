@@ -47,8 +47,7 @@ function drawScenario(userInput) {
       userInput.investmentReturnRate +
       normalRandom() * userInput.investmentReturnSigma,
     rentIncreaseMean:
-      userInput.rentIncreaseRate +
-      normalRandom() * userInput.rentIncreaseSigma,
+      userInput.rentIncreaseRate + normalRandom() * userInput.rentIncreaseSigma,
     ownerCostGrowthMean:
       (userInput.ownerCostGrowthRate ?? 2.5) +
       normalRandom() * (userInput.ownerCostGrowthSigma ?? 0.75),
@@ -58,7 +57,7 @@ function drawScenario(userInput) {
     // Maintenance/insurance baseline is a known user input (today's % of home
     // value). Its path is governed by ownerCostGrowthMean, not rent growth or
     // home price appreciation.
-    maintenanceMean: Math.max(0, userInput.maintenanceCostPercentage),
+    maintenanceMean: Math.max(0, userInput.maintPct),
     // Initial property tax level is user-known; future dollar amounts are
     // governed by ownerCostGrowthMean.
     propertyTaxMean: Math.max(0, userInput.propertyTaxRate),
@@ -139,7 +138,7 @@ function simulatePath(userInput, annual, mortgageRates, scenario) {
   const horizon = annual.length;
   const capGainTaxFrac = userInput.capitalGainTaxRate / 100;
   const dividendTaxFrac = userInput.dividendTaxRate / 100;
-  const netOfSellingFees = 1 - userInput.sellersClosingCostPercentage / 100;
+  const netOfSellingFees = 1 - userInput.sellerClosingCostsPct / 100;
 
   const initialPrincipal = calculateMortgagePrincipal(
     userInput.initialHomePrice,
@@ -147,8 +146,7 @@ function simulatePath(userInput, annual, mortgageRates, scenario) {
   );
   const initialPortfolio =
     (userInput.initialHomePrice *
-      (userInput.downPaymentPercentage +
-        userInput.buyersClosingCostPercentage)) /
+      (userInput.downPaymentPercentage + userInput.buyerClosingCostsPct)) /
     100;
 
   let homePrice = userInput.initialHomePrice;
@@ -245,7 +243,7 @@ function simulatePath(userInput, annual, mortgageRates, scenario) {
   return results;
 }
 
-export function runMonteCarlo(userInput, numSimulations = 1000) {
+export function runMonteCarlo(userInput, numSimulations) {
   const horizon = Math.max(
     userInput.amortizationPeriod,
     userInput.holdingPeriod ?? 0,

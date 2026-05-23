@@ -14,6 +14,8 @@ import { calculateNetWorthAtYearEnd } from "../utils/math";
 import { runMonteCarlo } from "../utils/monteCarlo";
 import { formatCAD, formatCADCompact } from "../utils/format";
 
+const NUM_SIMULATIONS = 1000;
+
 function buildBaseData(userInput) {
   const horizon = Math.max(
     userInput.amortizationPeriod,
@@ -142,7 +144,7 @@ export default function NetWorthChart({ userInput, showBands }) {
   const baseData = useMemo(() => buildBaseData(userInput), [userInput]);
 
   const mcData = useMemo(
-    () => (showBands ? runMonteCarlo(userInput) : null),
+    () => (showBands ? runMonteCarlo(userInput, NUM_SIMULATIONS) : null),
     [userInput, showBands],
   );
 
@@ -336,15 +338,16 @@ export default function NetWorthChart({ userInput, showBands }) {
       </Group>
       {showBands && (
         <Text size="xs" c="dimmed">
-          Shaded bands show 25th–75th percentile from 1,000 Monte Carlo
-          simulations. The chart extends past the sale year to show what would
-          happen if you held longer.
+          Shaded bands show 25th–75th percentile from{" "}
+          {NUM_SIMULATIONS.toLocaleString()} Monte Carlo simulations. The chart
+          extends past the sale year to show what would happen if you held
+          longer.
         </Text>
       )}
       <Text size="xs" c="dimmed">
         These projections are based on your assumptions and are illustrative
         only — results are subject to modelling error, uncertain inputs, and
-        real-world complexity. This is not financial advice.
+        real-world complexity.
       </Text>
     </Stack>
   );
