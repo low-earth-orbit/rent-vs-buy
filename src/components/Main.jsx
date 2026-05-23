@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Container, Grid } from "@mantine/core";
 import Result from "./Result";
 import UserInputForm from "./UserInputForm";
-import GitHubCorners from "@uiw/react-github-corners";
 import {
   DEFAULTS,
   PRESETS,
@@ -52,12 +51,11 @@ const Main = () => {
     }
     return [];
   });
-  const [customPresets, setCustomPresets] = useState(
-    () =>
-      (loadCustomPresets() ?? []).map((preset) => ({
-        ...preset,
-        values: normalizeInput(preset.values),
-      })),
+  const [customPresets, setCustomPresets] = useState(() =>
+    (loadCustomPresets() ?? []).map((preset) => ({
+      ...preset,
+      values: normalizeInput(preset.values),
+    })),
   );
   const [hiddenBuiltins, setHiddenBuiltins] = useState(
     () => loadHiddenBuiltins() ?? [],
@@ -71,8 +69,7 @@ const Main = () => {
   const allPresets = [...visibleBuiltins, ...customPresets];
 
   // Highlight by explicit selection when valid; otherwise fall back to value match.
-  let activePreset =
-    allPresets.find((p) => p.id === activePresetId) ?? null;
+  let activePreset = allPresets.find((p) => p.id === activePresetId) ?? null;
   if (
     activePreset &&
     !Object.keys(activePreset.values).every(
@@ -189,17 +186,10 @@ const Main = () => {
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, lg: 5 }}>
-            <Result
-              userInput={userInput}
-              errors={errors}
-            />
+            <Result userInput={userInput} errors={errors} />
           </Grid.Col>
         </Grid>
       </Container>
-      <GitHubCorners
-        position="left"
-        href="https://github.com/low-earth-orbit/rent-vs-buy"
-      />
     </>
   );
 };

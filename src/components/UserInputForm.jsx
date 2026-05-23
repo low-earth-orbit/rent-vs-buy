@@ -521,7 +521,7 @@ export default function UserInputForm({
               <UserInputFormItem
                 id="buyerClosingCostsPct"
                 label="Buyer's Closing Cost"
-                helperText="Closing costs for home buyers as a percentage of home price, including land transfer tax, legal fees, and inspections. Typically 1.5–4% nationally; higher in provinces with larger land transfer taxes."
+                helperText="Closing costs for home buyers as a percentage of home price, including land transfer tax, legal fees, and inspections. Typically 1–4% nationally; higher in provinces with larger land transfer taxes."
                 value={userInput.buyerClosingCostsPct}
                 onChange={bind("buyerClosingCostsPct")}
                 error={errors.buyerClosingCostsPct}
@@ -531,7 +531,7 @@ export default function UserInputForm({
               <UserInputFormItem
                 id="sellerClosingCostsPct"
                 label="Seller's Closing Cost"
-                helperText="Closing costs for home sellers as a percentage of home price, primarily realtor commission and legal fees. Typically 3–5% nationally."
+                helperText="Closing costs for home sellers as a percentage of home price, primarily realtor commission and legal fees. Typically 4–7% nationally."
                 value={userInput.sellerClosingCostsPct}
                 onChange={bind("sellerClosingCostsPct")}
                 error={errors.sellerClosingCostsPct}
