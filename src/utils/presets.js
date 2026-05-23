@@ -88,7 +88,6 @@ export const PRESETS = [
       maintPct: 0.8,
       condoFeesPerMonth: 420,
       propertyTaxRate: 1.3,
-      holdingPeriod: 8,
       buyerClosingCostsPct: 1.8,
       sellerClosingCostsPct: 6,
     },
