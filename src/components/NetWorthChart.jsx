@@ -184,7 +184,7 @@ export default function NetWorthChart({ userInput, showBands }) {
 
   const yMin = Math.min(...allValues);
   const yMax = Math.max(...allValues);
-  const yPad = (yMax - yMin) * 0.08;
+  const yPad = (yMax - yMin) * 0.1;
   const yDomain = [
     Math.floor((yMin - yPad) / 50000) * 50000,
     Math.ceil((yMax + yPad) / 50000) * 50000,
