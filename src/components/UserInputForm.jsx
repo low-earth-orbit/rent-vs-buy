@@ -166,7 +166,7 @@ export default function UserInputForm({
         <Stack gap="md">
           <Text size="sm" c="dimmed">
             This will remove all custom presets, restore any deleted built-in
-            presets, discard your edits, and turn off the advanced toggle.
+            presets, and discard your edits.
           </Text>
           <Group justify="flex-end" gap="xs">
             <Button variant="subtle" color="gray" onClick={closeReset}>

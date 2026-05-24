@@ -109,7 +109,7 @@ function Summary({ data, crossovers, holdingPeriod }) {
   const winner = renterFavored ? "Renting" : "Buying";
 
   let title, color;
-  if (winnerPct >= 80) {
+  if (winnerPct >= 70) {
     title = `${winner} clearly leads`;
     color = renterFavored ? "teal" : "indigo";
   } else if (winnerPct >= 60) {

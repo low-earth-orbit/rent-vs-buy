@@ -108,9 +108,9 @@ The `Summary` component picks language based on the final-year `renterWinPct`:
 
 | Winner's win % | Title                            | Color         |
 | -------------- | -------------------------------- | ------------- |
-| ≥ 80%          | "{Renting/Buying} clearly leads" | teal / indigo |
-| 65–80%         | "{Renting/Buying} likely leads"  | teal / indigo |
-| < 65%          | "Too close to call"              | gray          |
+| ≥ 70%          | "{Renting/Buying} clearly leads" | teal / indigo |
+| 60–70%         | "{Renting/Buying} likely leads"  | teal / indigo |
+| < 60%          | "Too close to call"              | gray          |
 
 The body always shows the actual win percentage and adds context: median crossover years if any, or a sensitivity warning when close.
 
