@@ -112,7 +112,7 @@ function Summary({ data, crossovers, holdingPeriod }) {
   if (winnerPct >= 80) {
     title = `${winner} clearly leads`;
     color = renterFavored ? "teal" : "indigo";
-  } else if (winnerPct >= 65) {
+  } else if (winnerPct >= 60) {
     title = `${winner} likely leads`;
     color = renterFavored ? "teal" : "indigo";
   } else {
@@ -123,7 +123,7 @@ function Summary({ data, crossovers, holdingPeriod }) {
   const sims = `${winner} comes out ahead in ${winnerPct}% of simulations at sale (year ${holdingPeriod}).`;
 
   let body;
-  if (winnerPct < 65) {
+  if (winnerPct < 60) {
     body = `${sims} Small changes in your assumptions could flip the outcome.`;
   } else if (priorCrossovers.length === 0) {
     body = sims;
@@ -173,6 +173,10 @@ export default function NetWorthChart({ userInput, showBands }) {
   }, [baseData, mcData, showBands]);
 
   const crossovers = findCrossovers(chartData, "renterMedian", "ownerMedian");
+  const crossoverYears = [
+    ...new Set(crossovers.map((c) => Math.round(c.year))),
+  ];
+  const saleYear = userInput.holdingPeriod;
 
   const allValues = chartData
     .flatMap((d) =>
@@ -190,6 +194,18 @@ export default function NetWorthChart({ userInput, showBands }) {
     Math.ceil((yMax + yPad) / 50000) * 50000,
   ];
 
+  function crossoverLines() {
+    if (crossoverYears.length === 0) return null;
+    return crossoverYears.map((year) => (
+      <ReferenceLine
+        key={`crossover-${year}`}
+        x={year}
+        stroke="#868e96"
+        strokeDasharray="4 4"
+      />
+    ));
+  }
+
   return (
     <Stack gap="xs">
       <Summary
@@ -200,7 +216,7 @@ export default function NetWorthChart({ userInput, showBands }) {
       <ResponsiveContainer width="100%" height={400}>
         <ComposedChart
           data={chartData}
-          margin={{ top: 25, right: 10, left: 10, bottom: 20 }}
+          margin={{ top: 25, right: 30, left: 10, bottom: 20 }}
         >
           <XAxis
             dataKey="year"
@@ -276,42 +292,19 @@ export default function NetWorthChart({ userInput, showBands }) {
             dot={false}
             activeDot={{ r: 4 }}
           />
-
-          {crossovers.map((c, i) => {
-            const x = Math.round(c.year);
-            const lineTop = yDomain[0] + (yDomain[1] - yDomain[0]) * 0.9;
-            const labelPrefix = crossovers.length === 1 ? "Break-even Yr " : "";
-            return (
-              <ReferenceLine
-                key={i}
-                segment={[
-                  { x, y: yDomain[0] },
-                  { x, y: lineTop },
-                ]}
-                stroke="#868e96"
-                strokeDasharray="4 4"
-                label={{
-                  value: `${labelPrefix}${x}`,
-                  position: "top",
-                  fontSize: 11,
-                  fill: "#868e96",
-                }}
-              />
-            );
-          })}
-
           <ReferenceLine
-            x={userInput.holdingPeriod}
+            x={saleYear}
             stroke="#fd7e14"
             strokeWidth={1.5}
             label={{
-              value: `Sale (Yr ${userInput.holdingPeriod})`,
+              value: `Sale (Yr ${saleYear})`,
               position: "top",
               fontSize: 11,
               fill: "#fd7e14",
               fontWeight: 600,
             }}
           />
+          {crossoverLines()}
         </ComposedChart>
       </ResponsiveContainer>
       <Group gap="lg" wrap="wrap">
@@ -321,17 +314,18 @@ export default function NetWorthChart({ userInput, showBands }) {
             <Text span fw={600} c="orange.7">
               Sale
             </Text>{" "}
-            — year you sell (your holding period). Win % is decided here.
+            — Year you sell (your holding period). Win % is decided here.
           </Text>
         </Group>
-        {crossovers.length > 0 && (
+        {crossoverYears.length > 0 && (
           <Group gap={6} wrap="nowrap">
             <Box w={18} h={0} style={{ borderTop: "2px dashed #868e96" }} />
             <Text size="xs" c="dimmed">
               <Text span fw={600}>
                 Break-even
               </Text>{" "}
-              — year the median rent vs. buy paths cross.
+              — Year{crossoverYears.length > 1 ? "s" : ""} the median rent vs.
+              buy paths cross.
             </Text>
           </Group>
         )}
