@@ -343,7 +343,7 @@ export default function NetWorthChart({ userInput, showBands }) {
             <Text span fw={600} c="teal.7">
               Rent + Invest
             </Text>{" "}
-            — median
+            — median net worth
           </Text>
         </Group>
         <Group gap={6} wrap="nowrap">
@@ -352,7 +352,7 @@ export default function NetWorthChart({ userInput, showBands }) {
             <Text span fw={600} c="indigo.7">
               Buy
             </Text>{" "}
-            — median
+            — median net worth
           </Text>
         </Group>
         {showBands && (
@@ -385,7 +385,7 @@ export default function NetWorthChart({ userInput, showBands }) {
             <Text span fw={600} c="orange.7">
               Sale
             </Text>{" "}
-            — year you sell.
+            — year you sell
           </Text>
         </Group>
         {crossoverYears.length > 0 && (
@@ -396,7 +396,7 @@ export default function NetWorthChart({ userInput, showBands }) {
                 Break-even
               </Text>{" "}
               — Year{crossoverYears.length > 1 ? "s" : ""} the median rent vs.
-              buy paths cross.
+              buy paths cross
             </Text>
           </Group>
         )}
