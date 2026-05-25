@@ -15,28 +15,26 @@ function percentile(sorted, p) {
   return sorted[idx];
 }
 
-// Annual volatility — represents year-to-year noise, not user-tunable.
-// User-facing sigmas in presets.js capture uncertainty about the long-run mean;
-// these constants capture realized volatility around that mean.
+const MORTGAGE_TERM_YEARS = 5;
+
+// Realized year-to-year volatility of each asset class — empirical properties
+// of the world, not user beliefs. User-facing sigmas in presets.js capture
+// uncertainty about the long-run mean; these capture noise around that mean.
 const ANNUAL_VOL = {
-  inflation: 1.0, // hidden common factor σ
+  inflation: 1.0, // hidden common factor σ (couples housing/rent/cost/rate)
   homePriceIdio: 4.0, // idiosyncratic real housing σ
-  investment: 14.0, // equity lognormal σ (annual)
-  rentIdio: 1.0,
-  ownerCostIdio: 1.0,
-  dividend: 0.2,
-  mortgageRenewal: 1.0, // shock at each 5-year renewal
+  investment: 12.0, // investment return lognormal σ (annual)
 };
 
 // Loadings of the hidden inflation factor on observable variables.
+// In a high-inflation year, home prices, rents, owner costs, and mortgage
+// rates all rise together — this captures that joint risk.
 const INFLATION_BETA = {
   homePrice: 0.8,
   rent: 0.8,
   ownerCost: 0.8,
   mortgageRate: 0.5,
 };
-
-const MORTGAGE_TERM_YEARS = 5;
 
 function drawScenario(userInput) {
   return {
@@ -54,12 +52,7 @@ function drawScenario(userInput) {
     mortgageRateMean:
       userInput.annualMortgageInterestRate +
       normalRandom() * userInput.mortgageRateSigma,
-    // Maintenance/insurance baseline is a known user input (today's % of home
-    // value). Its path is governed by ownerCostGrowthMean, not rent growth or
-    // home price appreciation.
     maintenanceMean: Math.max(0, userInput.maintPct),
-    // Initial property tax level is user-known; future dollar amounts are
-    // governed by ownerCostGrowthMean.
     propertyTaxMean: Math.max(0, userInput.propertyTaxRate),
     dividendYieldMean: Math.max(
       0,
@@ -90,19 +83,13 @@ function drawPath(scenario, horizon) {
       (Math.exp(logMean + normalRandom() * sigma) - 1) * 100;
 
     const rentIncrease =
-      scenario.rentIncreaseMean +
-      INFLATION_BETA.rent * inflShock +
-      normalRandom() * ANNUAL_VOL.rentIdio;
-
+      scenario.rentIncreaseMean + INFLATION_BETA.rent * inflShock;
     const ownerCostGrowth =
-      scenario.ownerCostGrowthMean +
-      INFLATION_BETA.ownerCost * inflShock +
-      normalRandom() * ANNUAL_VOL.ownerCostIdio;
-
+      scenario.ownerCostGrowthMean + INFLATION_BETA.ownerCost * inflShock;
     const dividendYield = Math.max(
       0,
       Math.min(
-        scenario.dividendYieldMean + normalRandom() * ANNUAL_VOL.dividend,
+        scenario.dividendYieldMean,
         Math.max(scenario.investmentReturnMean, 0),
       ),
     );
@@ -116,16 +103,17 @@ function drawPath(scenario, horizon) {
     });
   }
 
-  // Mortgage rate: redrawn at each 5-year renewal, with inflation pressure.
+  // Mortgage rate: at each 5-year renewal, snaps to scenario mean plus that
+  // year's inflation pressure. Couples renewal cost to the inflation regime.
   const mortgageRates = [];
   let currentRate =
-    scenario.mortgageRateMean + normalRandom() * ANNUAL_VOL.mortgageRenewal;
+    scenario.mortgageRateMean +
+    INFLATION_BETA.mortgageRate * inflationShocks[0];
   for (let y = 0; y < horizon; y++) {
     if (y > 0 && y % MORTGAGE_TERM_YEARS === 0) {
       currentRate =
         scenario.mortgageRateMean +
-        INFLATION_BETA.mortgageRate * inflationShocks[y] +
-        normalRandom() * ANNUAL_VOL.mortgageRenewal;
+        INFLATION_BETA.mortgageRate * inflationShocks[y];
     }
     mortgageRates.push(Math.max(0, currentRate));
   }
