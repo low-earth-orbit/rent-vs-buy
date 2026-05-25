@@ -9,6 +9,7 @@ import {
   Tooltip,
   ReferenceLine,
   ResponsiveContainer,
+  LabelList,
 } from "recharts";
 import { calculateNetWorthAtYearEnd } from "../utils/math";
 import { runMonteCarlo } from "../utils/monteCarlo";
@@ -202,8 +203,26 @@ export default function NetWorthChart({ userInput, showBands }) {
         x={year}
         stroke="#868e96"
         strokeDasharray="4 4"
+        label={{
+          value: `Break-even (Yr ${year})`,
+          position: "insideTop",
+          fontSize: 10,
+          fill: "#868e96",
+        }}
       />
     ));
+  }
+
+  function endLabel(name, fill) {
+    return ({ x, y, index, value }) => {
+      if (index !== chartData.length - 1) return null;
+      if (value == null || !isFinite(x) || !isFinite(y)) return null;
+      return (
+        <text x={x + 6} y={y} dy={4} fill={fill} fontSize={11} fontWeight={600}>
+          {name}
+        </text>
+      );
+    };
   }
 
   return (
@@ -216,7 +235,7 @@ export default function NetWorthChart({ userInput, showBands }) {
       <ResponsiveContainer width="100%" height={400}>
         <ComposedChart
           data={chartData}
-          margin={{ top: 25, right: 30, left: 10, bottom: 20 }}
+          margin={{ top: 25, right: 80, left: 10, bottom: 20 }}
         >
           <XAxis
             dataKey="year"
@@ -282,7 +301,12 @@ export default function NetWorthChart({ userInput, showBands }) {
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4 }}
-          />
+          >
+            <LabelList
+              dataKey="renterMedian"
+              content={endLabel("Rent", "#12b886")}
+            />
+          </Line>
           <Line
             type="linear"
             dataKey="ownerMedian"
@@ -291,7 +315,12 @@ export default function NetWorthChart({ userInput, showBands }) {
             strokeWidth={2}
             dot={false}
             activeDot={{ r: 4 }}
-          />
+          >
+            <LabelList
+              dataKey="ownerMedian"
+              content={endLabel("Buy", "#4c6ef5")}
+            />
+          </Line>
           <ReferenceLine
             x={saleYear}
             stroke="#fd7e14"
@@ -309,12 +338,54 @@ export default function NetWorthChart({ userInput, showBands }) {
       </ResponsiveContainer>
       <Group gap="lg" wrap="wrap">
         <Group gap={6} wrap="nowrap">
+          <Box w={18} h={2} style={{ backgroundColor: "#12b886" }} />
+          <Text size="xs" c="dimmed">
+            <Text span fw={600} c="teal.7">
+              Rent + Invest
+            </Text>{" "}
+            — median
+          </Text>
+        </Group>
+        <Group gap={6} wrap="nowrap">
+          <Box w={18} h={2} style={{ backgroundColor: "#4c6ef5" }} />
+          <Text size="xs" c="dimmed">
+            <Text span fw={600} c="indigo.7">
+              Buy
+            </Text>{" "}
+            — median
+          </Text>
+        </Group>
+        {showBands && (
+          <>
+            <Group gap={6} wrap="nowrap">
+              <Box
+                w={18}
+                h={10}
+                style={{ backgroundColor: "#12b886", opacity: 0.18 }}
+              />
+              <Text size="xs" c="dimmed">
+                Rent 25–75% range
+              </Text>
+            </Group>
+            <Group gap={6} wrap="nowrap">
+              <Box
+                w={18}
+                h={10}
+                style={{ backgroundColor: "#4c6ef5", opacity: 0.18 }}
+              />
+              <Text size="xs" c="dimmed">
+                Buy 25–75% range
+              </Text>
+            </Group>
+          </>
+        )}
+        <Group gap={6} wrap="nowrap">
           <Box w={18} h={2} style={{ backgroundColor: "#fd7e14" }} />
           <Text size="xs" c="dimmed">
             <Text span fw={600} c="orange.7">
               Sale
             </Text>{" "}
-            — Year you sell (your holding period). Win % is decided here.
+            — year you sell.
           </Text>
         </Group>
         {crossoverYears.length > 0 && (
