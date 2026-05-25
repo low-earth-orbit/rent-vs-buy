@@ -156,15 +156,15 @@ export default function NetWorthChart({ userInput, showBands }) {
         ownerMedian: d.ownerNetWorth,
       }));
     }
-    return mcData.map((mc) => ({
+    return mcData.map((mc, i) => ({
       year: mc.year,
       renterP25: mc.renterP25,
-      renterMedian: mc.renterMedian,
+      renterMedian: baseData[i].renterNetWorth,
       renterP75: mc.renterP75,
       renterBandBase: mc.renterP25,
       renterBandWidth: mc.renterP75 - mc.renterP25,
       ownerP25: mc.ownerP25,
-      ownerMedian: mc.ownerMedian,
+      ownerMedian: baseData[i].ownerNetWorth,
       ownerP75: mc.ownerP75,
       ownerBandBase: mc.ownerP25,
       ownerBandWidth: mc.ownerP75 - mc.ownerP25,
