@@ -1,8 +1,8 @@
 export const UNCERTAINTIES = {
   homePriceGrowthSigma: 2.0,
-  investmentReturnSigma: 3.0,
-  rentIncreaseSigma: 0.75,
-  ownerCostGrowthSigma: 0.75,
+  investmentReturnSigma: 2.0,
+  rentIncreaseSigma: 1,
+  ownerCostGrowthSigma: 1,
   mortgageRateSigma: 1.5,
   dividendYieldSigma: 0.3,
 };
@@ -10,8 +10,8 @@ export const UNCERTAINTIES = {
 export const DEFAULTS = {
   monthlyRent: 3500,
   initialHomePrice: 1000000,
-  rentIncreaseRate: 2.5,
-  ownerCostGrowthRate: 2.8,
+  rentIncreaseRate: 2,
+  ownerCostGrowthRate: 2.5,
   homePriceGrowthRate: 3,
   buyerClosingCostsPct: 2,
   sellerClosingCostsPct: 5.5,
@@ -64,9 +64,6 @@ export const PRESETS = [
     label: "Calgary SFH",
     values: {
       ...DEFAULTS,
-      rentIncreaseRate: 2.5,
-      ownerCostGrowthRate: 2.8,
-      homePriceGrowthRate: 3,
       monthlyRent: 2800,
       initialHomePrice: 714800,
       maintPct: 1.5,
@@ -80,9 +77,6 @@ export const PRESETS = [
     label: "Freddy little home",
     values: {
       ...DEFAULTS,
-      rentIncreaseRate: 2.5,
-      ownerCostGrowthRate: 2.5,
-      homePriceGrowthRate: 2.5,
       monthlyRent: 1800,
       initialHomePrice: 320000,
       maintPct: 0.8,
