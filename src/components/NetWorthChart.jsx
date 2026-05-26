@@ -36,7 +36,12 @@ function findCrossovers(data, renterKey, ownerKey) {
     }
     if (a < 0 !== b < 0) {
       const t = a / (a - b);
-      crossovers.push({ year: data[i - 1].year + t });
+      const foundYear = data[i - 1].year + t;
+
+      // Prevent adding multiple crossover points that may occur in the same year due to the Monte Carlo simulations
+      if (crossovers.some((c) => c.year === foundYear)) continue;
+
+      crossovers.push({ year: foundYear });
     }
   }
   return crossovers;
@@ -133,6 +138,7 @@ export default function NetWorthChart({ userInput }) {
 
   const workerRef = useRef(null);
   const requestIdRef = useRef(0);
+  // `mcData` is the result of the Monte Carlo simulations
   const [mcData, setMcData] = useState(null);
   const [debouncedInput] = useDebouncedValue(userInput, 150);
 
@@ -165,15 +171,15 @@ export default function NetWorthChart({ userInput }) {
         ownerMedian: d.ownerNetWorth,
       }));
     }
-    return mcData.map((mc, i) => ({
+    return mcData.map((mc) => ({
       year: mc.year,
       renterP25: mc.renterP25,
-      renterMedian: baseData[i].renterNetWorth,
+      renterMedian: mc.renterMedian,
       renterP75: mc.renterP75,
       renterBandBase: mc.renterP25,
       renterBandWidth: mc.renterP75 - mc.renterP25,
       ownerP25: mc.ownerP25,
-      ownerMedian: baseData[i].ownerNetWorth,
+      ownerMedian: mc.ownerMedian,
       ownerP75: mc.ownerP75,
       ownerBandBase: mc.ownerP25,
       ownerBandWidth: mc.ownerP75 - mc.ownerP25,
