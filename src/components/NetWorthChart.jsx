@@ -12,18 +12,9 @@ import {
   ResponsiveContainer,
   LabelList,
 } from "recharts";
-import { calculateNetWorthAtYearEnd } from "../utils/math";
 import { formatCAD, formatCADCompact } from "../utils/format";
-import { SIMULATION_HORIZON_YEARS } from "../utils/monteCarlo";
 
 const NUM_SIMULATIONS = 1000;
-
-function buildBaseData(userInput) {
-  const horizon = SIMULATION_HORIZON_YEARS;
-  return Array.from({ length: horizon }, (_, i) =>
-    calculateNetWorthAtYearEnd({ ...userInput, yearNumber: i + 1 }),
-  );
-}
 
 function ChartTooltip({ payload }) {
   if (!payload || payload.length === 0) return null;
@@ -107,8 +98,6 @@ function Summary({ data, holdingPeriod }) {
 }
 
 export default function NetWorthChart({ userInput }) {
-  const baseData = useMemo(() => buildBaseData(userInput), [userInput]);
-
   const workerRef = useRef(null);
   const requestIdRef = useRef(0);
   // `mcData` is the result of the Monte Carlo simulations
@@ -137,13 +126,7 @@ export default function NetWorthChart({ userInput }) {
   }, [debouncedInput]);
 
   const chartData = useMemo(() => {
-    if (!mcData) {
-      return baseData.map((d) => ({
-        year: d.year,
-        renterMedian: d.renterNetWorth,
-        ownerMedian: d.ownerNetWorth,
-      }));
-    }
+    if (!mcData) return null;
     return mcData.map((mc) => ({
       year: mc.year,
       renterP25: mc.renterP25,
@@ -158,7 +141,10 @@ export default function NetWorthChart({ userInput }) {
       ownerBandWidth: mc.ownerP75 - mc.ownerP25,
       renterWinPct: mc.renterWinPct,
     }));
-  }, [baseData, mcData]);
+  }, [mcData]);
+
+  // Early return if chartData isn't ready yet.
+  if (!chartData) return null;
 
   const saleYear = userInput.holdingPeriod;
 
