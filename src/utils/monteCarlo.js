@@ -16,6 +16,7 @@ function percentile(sorted, p) {
 }
 
 const MORTGAGE_TERM_YEARS = 5;
+export const SIMULATION_HORIZON_YEARS = 50;
 
 // Realized year-to-year volatility of each asset class — empirical properties
 // of the world, not user beliefs. User-facing sigmas in presets.js capture
@@ -232,10 +233,7 @@ function simulatePath(userInput, annual, mortgageRates, scenario) {
 }
 
 export function runMonteCarlo(userInput, numSimulations) {
-  const horizon = Math.max(
-    userInput.amortizationPeriod,
-    userInput.holdingPeriod ?? 0,
-  );
+  const horizon = SIMULATION_HORIZON_YEARS;
   const renterByYear = Array.from({ length: horizon }, () => []);
   const ownerByYear = Array.from({ length: horizon }, () => []);
   const renterWinsByYear = Array.from({ length: horizon }, () => 0);

@@ -10,5 +10,5 @@ export default function Result({ userInput, errors }) {
     );
   }
 
-  return <NetWorthChart userInput={userInput} showBands={true} />;
+  return <NetWorthChart userInput={userInput} />;
 }

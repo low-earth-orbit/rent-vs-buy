@@ -213,7 +213,7 @@ function calculateRentersSurplus({
 function calculateRentersPortfolioValue({
   monthlyRent,
   rentIncreaseRate,
-  ownerCostGrowthRate = 2.5,
+  ownerCostGrowthRate,
   mortgagePrincipal,
   annualMortgageInterestRate,
   amortizationPeriod,
@@ -292,7 +292,7 @@ export function calculateMortgagePrincipal(
 export function calculateNetWorthAtYearEnd({
   monthlyRent,
   rentIncreaseRate,
-  ownerCostGrowthRate = 2.5,
+  ownerCostGrowthRate,
   annualMortgageInterestRate,
   amortizationPeriod,
   yearNumber,

@@ -14,14 +14,12 @@ import {
 } from "recharts";
 import { calculateNetWorthAtYearEnd } from "../utils/math";
 import { formatCAD, formatCADCompact } from "../utils/format";
+import { SIMULATION_HORIZON_YEARS } from "../utils/monteCarlo";
 
 const NUM_SIMULATIONS = 3000;
 
 function buildBaseData(userInput) {
-  const horizon = Math.max(
-    userInput.amortizationPeriod,
-    userInput.holdingPeriod ?? 0,
-  );
+  const horizon = SIMULATION_HORIZON_YEARS;
   return Array.from({ length: horizon }, (_, i) =>
     calculateNetWorthAtYearEnd({ ...userInput, yearNumber: i + 1 }),
   );
@@ -44,7 +42,7 @@ function findCrossovers(data, renterKey, ownerKey) {
   return crossovers;
 }
 
-function ChartTooltip({ payload, showBands }) {
+function ChartTooltip({ payload }) {
   if (!payload || payload.length === 0) return null;
   const point = payload[0].payload;
   const renter = point.renterMedian;
@@ -59,7 +57,7 @@ function ChartTooltip({ payload, showBands }) {
       </Text>
       <Text size="sm" c="teal">
         Rent + Invest: {formatCAD(renter)}
-        {showBands && point.renterP25 != null && (
+        {point.renterP25 != null && (
           <Text size="xs" c="dimmed" span>
             {" "}
             ({formatCADCompact(point.renterP25)} –{" "}
@@ -69,7 +67,7 @@ function ChartTooltip({ payload, showBands }) {
       </Text>
       <Text size="sm" c="indigo">
         Buy: {formatCAD(owner)}
-        {showBands && point.ownerP25 != null && (
+        {point.ownerP25 != null && (
           <Text size="xs" c="dimmed" span>
             {" "}
             ({formatCADCompact(point.ownerP25)} –{" "}
@@ -89,19 +87,8 @@ function Summary({ data, crossovers, holdingPeriod }) {
     data.find((d) => d.year === holdingPeriod) ?? data[data.length - 1];
   const priorCrossovers = crossovers.filter((c) => c.year <= holdingPeriod);
 
-  // Median-based fallback when MC data is unavailable.
   if (decision.renterWinPct == null) {
-    const renterWins = decision.renterMedian >= decision.ownerMedian;
-    const color = renterWins ? "teal" : "indigo";
-    return (
-      <Alert
-        color={color}
-        title={renterWins ? "Renting leads" : "Buying leads"}
-        radius="md"
-      >
-        <Text size="sm">At sale (year {holdingPeriod}).</Text>
-      </Alert>
-    );
+    return null;
   }
 
   const winPct = Math.round(decision.renterWinPct * 100);
@@ -141,7 +128,7 @@ function Summary({ data, crossovers, holdingPeriod }) {
   );
 }
 
-export default function NetWorthChart({ userInput, showBands }) {
+export default function NetWorthChart({ userInput }) {
   const baseData = useMemo(() => buildBaseData(userInput), [userInput]);
 
   const workerRef = useRef(null);
@@ -161,10 +148,6 @@ export default function NetWorthChart({ userInput, showBands }) {
   }, []);
 
   useEffect(() => {
-    if (!showBands) {
-      setMcData(null);
-      return;
-    }
     if (!workerRef.current) return;
     requestIdRef.current += 1;
     workerRef.current.postMessage({
@@ -172,10 +155,10 @@ export default function NetWorthChart({ userInput, showBands }) {
       numSimulations: NUM_SIMULATIONS,
       requestId: requestIdRef.current,
     });
-  }, [debouncedInput, showBands]);
+  }, [debouncedInput]);
 
   const chartData = useMemo(() => {
-    if (!showBands || !mcData) {
+    if (!mcData) {
       return baseData.map((d) => ({
         year: d.year,
         renterMedian: d.renterNetWorth,
@@ -196,7 +179,7 @@ export default function NetWorthChart({ userInput, showBands }) {
       ownerBandWidth: mc.ownerP75 - mc.ownerP25,
       renterWinPct: mc.renterWinPct,
     }));
-  }, [baseData, mcData, showBands]);
+  }, [baseData, mcData]);
 
   const crossovers = findCrossovers(chartData, "renterMedian", "ownerMedian");
   const crossoverYears = [
@@ -205,11 +188,7 @@ export default function NetWorthChart({ userInput, showBands }) {
   const saleYear = userInput.holdingPeriod;
 
   const allValues = chartData
-    .flatMap((d) =>
-      showBands
-        ? [d.renterP25, d.renterP75, d.ownerP25, d.ownerP75]
-        : [d.renterMedian, d.ownerMedian],
-    )
+    .flatMap((d) => [d.renterP25, d.renterP75, d.ownerP25, d.ownerP75])
     .filter((v) => v != null && isFinite(v));
 
   const yMin = Math.min(...allValues);
@@ -260,7 +239,7 @@ export default function NetWorthChart({ userInput, showBands }) {
       <ResponsiveContainer width="100%" height={400}>
         <ComposedChart
           data={chartData}
-          margin={{ top: 25, right: 80, left: 10, bottom: 20 }}
+          margin={{ top: 25, right: 50, left: 0, bottom: 20 }}
         >
           <XAxis
             dataKey="year"
@@ -273,50 +252,46 @@ export default function NetWorthChart({ userInput, showBands }) {
             tick={{ fontSize: 12 }}
             width={70}
           />
-          <Tooltip content={<ChartTooltip showBands={showBands} />} />
+          <Tooltip content={<ChartTooltip />} />
 
-          {showBands && (
-            <>
-              <Area
-                type="linear"
-                dataKey="renterBandBase"
-                stackId="renter"
-                fill="transparent"
-                stroke="none"
-                legendType="none"
-                name=""
-              />
-              <Area
-                type="linear"
-                dataKey="renterBandWidth"
-                stackId="renter"
-                fill="#12b886"
-                fillOpacity={0.18}
-                stroke="none"
-                legendType="none"
-                name=""
-              />
-              <Area
-                type="linear"
-                dataKey="ownerBandBase"
-                stackId="owner"
-                fill="transparent"
-                stroke="none"
-                legendType="none"
-                name=""
-              />
-              <Area
-                type="linear"
-                dataKey="ownerBandWidth"
-                stackId="owner"
-                fill="#4c6ef5"
-                fillOpacity={0.18}
-                stroke="none"
-                legendType="none"
-                name=""
-              />
-            </>
-          )}
+          <Area
+            type="linear"
+            dataKey="renterBandBase"
+            stackId="renter"
+            fill="transparent"
+            stroke="none"
+            legendType="none"
+            name=""
+          />
+          <Area
+            type="linear"
+            dataKey="renterBandWidth"
+            stackId="renter"
+            fill="#12b886"
+            fillOpacity={0.18}
+            stroke="none"
+            legendType="none"
+            name=""
+          />
+          <Area
+            type="linear"
+            dataKey="ownerBandBase"
+            stackId="owner"
+            fill="transparent"
+            stroke="none"
+            legendType="none"
+            name=""
+          />
+          <Area
+            type="linear"
+            dataKey="ownerBandWidth"
+            stackId="owner"
+            fill="#4c6ef5"
+            fillOpacity={0.18}
+            stroke="none"
+            legendType="none"
+            name=""
+          />
 
           <Line
             type="linear"
@@ -368,7 +343,7 @@ export default function NetWorthChart({ userInput, showBands }) {
             <Text span fw={600} c="teal.7">
               Rent + Invest
             </Text>{" "}
-            — median net worth
+            — median
           </Text>
         </Group>
         <Group gap={6} wrap="nowrap">
@@ -377,33 +352,31 @@ export default function NetWorthChart({ userInput, showBands }) {
             <Text span fw={600} c="indigo.7">
               Buy
             </Text>{" "}
-            — median net worth
+            — median
           </Text>
         </Group>
-        {showBands && (
-          <>
-            <Group gap={6} wrap="nowrap">
-              <Box
-                w={18}
-                h={10}
-                style={{ backgroundColor: "#12b886", opacity: 0.18 }}
-              />
-              <Text size="xs" c="dimmed">
-                Rent 25–75% range
-              </Text>
-            </Group>
-            <Group gap={6} wrap="nowrap">
-              <Box
-                w={18}
-                h={10}
-                style={{ backgroundColor: "#4c6ef5", opacity: 0.18 }}
-              />
-              <Text size="xs" c="dimmed">
-                Buy 25–75% range
-              </Text>
-            </Group>
-          </>
-        )}
+
+        <Group gap={6} wrap="nowrap">
+          <Box
+            w={18}
+            h={10}
+            style={{ backgroundColor: "#12b886", opacity: 0.18 }}
+          />
+          <Text size="xs" c="dimmed">
+            Rent 25–75% range
+          </Text>
+        </Group>
+        <Group gap={6} wrap="nowrap">
+          <Box
+            w={18}
+            h={10}
+            style={{ backgroundColor: "#4c6ef5", opacity: 0.18 }}
+          />
+          <Text size="xs" c="dimmed">
+            Buy 25–75% range
+          </Text>
+        </Group>
+
         <Group gap={6} wrap="nowrap">
           <Box w={18} h={2} style={{ backgroundColor: "#fd7e14" }} />
           <Text size="xs" c="dimmed">
@@ -426,14 +399,17 @@ export default function NetWorthChart({ userInput, showBands }) {
           </Group>
         )}
       </Group>
-      {showBands && (
-        <Text size="xs" c="dimmed">
-          Shaded bands show 25th–75th percentile from{" "}
-          {NUM_SIMULATIONS.toLocaleString()} Monte Carlo simulations. The chart
-          extends past the sale year to show what would happen if you held
-          longer.
-        </Text>
-      )}
+      <Text size="xs" c="dimmed">
+        Hover over the chart for details at the end of each year.
+      </Text>
+
+      <Text size="xs" c="dimmed">
+        The chart shows net worth projections for both renting and buying
+        scenarios from {NUM_SIMULATIONS.toLocaleString()} Monte Carlo
+        simulations. It extends to a 50-year horizon to show what would happen
+        if you held longer.
+      </Text>
+
       <Text size="xs" c="dimmed">
         These projections are based on your assumptions and are illustrative
         only — results are subject to modelling error, uncertain inputs, and
