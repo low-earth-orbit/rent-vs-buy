@@ -24,12 +24,12 @@ A React-based financial calculator that compares the financial outcomes of renti
 - **UserInputFormItem.jsx / UserInputRangeItem.jsx**: Reusable form controls. Range slider displays `base ± 2σ` (≈95% confidence range) and emits new `(base, sigma)` on change.
 - **FieldLabel.jsx**: Label with optional helper text tooltip.
 - **Result.jsx**: Validates input, then renders `NetWorthChart` (always with MC bands).
-- **NetWorthChart.jsx**: Computes both the deterministic median path and Monte Carlo percentile bands. Renders a `Summary` Alert with probability-tiered language, then the chart.
+- **NetWorthChart.jsx**: Computes both the median path and percentile bands. Renders a `Summary` Alert with probability-tiered language, then the chart.
 - **Header.jsx / Footer.jsx**: Static UI.
 
 ### 2. Calculation Layer (`src/utils/`)
 
-- **math.jsx**: Deterministic year-by-year calculations. The exported `calculateNetWorthAtYearEnd()` returns `{ year, renterNetWorth, ownerNetWorth, difference }` and is used for the median line on the chart.
+- **math.jsx**: Math utilities.
 - **monteCarlo.js**: Stochastic simulation. `runMonteCarlo()` runs `NUM_SIMULATIONS` simulations and returns per-year percentiles (P25, median, P75) for both renter and owner, plus `renterWinPct` (fraction of simulations where renter > owner at that year).
 - **presets.js**: `DEFAULTS` (input values) and `UNCERTAINTIES` (sigmas) plus `PRESETS` (preset scenarios for Bay Street Condo, Vancouver Townhouse, Calgary SFH).
 - **validation.js**: `FIELD_CONSTRAINTS` (per-field min/max/step), `SLIDER_BOUNDS` (range slider track domains), and `validateUserInput()` (returns errors object).
@@ -44,7 +44,7 @@ Uses **Mantine** UI components (`@mantine/core`) and **Recharts** for charts. La
 1. **Renter invests the surplus**: Each year, the renter invests the difference between the owner's total cost (mortgage + property tax + maintenance) and the renter's rent. Surplus is added mid-year (earns half-year return).
 2. **Mortgage scope**: The calculator only models conventional mortgages with at least 20% down and amortization up to 25 years. CMHC-insured high-ratio loans and 30-year insured eligibility are intentionally out of scope.
 3. **Mortgage compounding**: Semi-annual compounding (Canadian convention).
-4. **Mortgage renewal**: 5-year terms. Rate redrawn at each renewal in the Monte Carlo path; deterministic path holds rate constant.
+4. **Mortgage renewal**: 5-year terms. Rate redrawn at each renewal in Monte Carlo.
 5. **Tax treatment**:
    - **Dividends**: Taxed annually at `dividendTaxRate`. After-tax dividends increase cost basis to prevent double-taxation.
    - **Capital gains**: Tax applied at sale (year N) on `portfolioValue − bookValue`. No tax credit on losses.
@@ -112,30 +112,12 @@ The `Summary` component picks language based on the final-year `renterWinPct`:
 | 60–70%         | "{Renting/Buying} likely leads"  | teal / indigo |
 | < 60%          | "Too close to call"              | gray          |
 
-The body always shows the actual win percentage and adds context: median crossover years if any, or a sensitivity warning when close.
-
-## Validated Modeling Properties
-
-The simulation has been audited for correctness:
-
-- ✓ Lognormal investment returns preserve arithmetic mean (no volatility-drag bias)
-- ✓ Cost basis tracks after-tax dividends + surplus (prevents double-taxation at sale)
-- ✓ Capital losses generate no tax credit (matches real tax law)
-- ✓ Mortgage re-amortization at renewal computes new payment from remaining balance
-- ✓ Mid-year surplus investment matches deterministic math (`× (1 + r/2)`)
-- ✓ Paired scenarios enable fair `renterWinPct` calculation
-- ✓ Dividend yield bounded above by `max(investmentReturnMean, 0)` so non-negative dividends are allowed even when realized return is negative
-
-Known limitations (intentional simplifications):
-
-- No equity-inflation correlation (empirically weak negative correlation exists)
-- No equity autocorrelation (mild mean-reversion at long horizons)
-- Portfolio can go negative if rent dramatically exceeds owner costs (no borrowing-rate floor)
+The body always shows the actual win percentage and adds a sensitivity warning when close.
 
 ## Development Notes
 
 - `userInput` is stored as numbers in `Main.jsx` state. Form inputs coerce strings via `+value`.
 - Validation runs on every render in `Main.jsx` via `validateUserInput()`. If errors exist, `Result.jsx` shows an "Incomplete inputs" alert instead of the chart.
-- Both deterministic (`calculateNetWorthAtYearEnd`) and Monte Carlo (`runMonteCarlo`) are memoized in `NetWorthChart.jsx` with `userInput` as dependency.
+- Monte Carlo (`runMonteCarlo`) data is memoized in `NetWorthChart.jsx` with `userInput` as dependency.
 - Deployed to GitHub Pages from `/build`. Homepage in `package.json` must remain the GitHub Pages URL.
 - Simulation horizon = `amortizationPeriod` (not hardcoded 30).

@@ -46,7 +46,7 @@ export default function UserInputRangeItem({
             </>
           ) : (
             <>
-              <IconPlusMinus stroke={2} size={12} /> Customize
+              <IconPlusMinus stroke={2} size={12} /> Range
             </>
           )}
         </span>
