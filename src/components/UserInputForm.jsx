@@ -123,7 +123,7 @@ export default function UserInputForm({
   return (
     <Stack gap="md">
       <Stack gap={4}>
-        <Group gap="xs">
+        <Group gap="xs" role="group" aria-label="Scenario presets">
           {[...visibleBuiltins, ...customPresets].map((preset) => (
             <Group key={preset.id} gap={0} wrap="nowrap">
               <Button

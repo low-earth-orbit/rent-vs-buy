@@ -49,6 +49,7 @@ export default function FieldLabel({ label, helperText }) {
               color: "inherit",
             }}
             aria-label={`More information about ${label}`}
+            aria-haspopup="dialog"
             aria-expanded={opened}
             onClick={(e) => {
               e.preventDefault();

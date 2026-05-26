@@ -19,23 +19,29 @@ A React-based financial calculator that compares the financial outcomes of renti
 
 ### 1. UI Layer (`src/components/`)
 
-- **Main.jsx**: Top-level state container. Holds `userInput` (initialized from `DEFAULTS`) and the `simulateUncertainty` toggle. Passes handlers to the form and result components.
-- **UserInputForm.jsx**: Form with sections for rent, property, mortgage, investment/tax, and transaction costs. Switches between single-value inputs and two-thumb range sliders based on the `simulateUncertainty` toggle.
-- **UserInputFormItem.jsx / UserInputRangeItem.jsx**: Reusable form controls. Range slider displays `base ± 2σ` (≈95% confidence range) and emits new `(base, sigma)` on change.
-- **FieldLabel.jsx**: Label with optional helper text tooltip.
+- **Main.jsx**: Top-level state container. Holds `userInput`, `expandedFields` (which rate fields show the uncertainty input), `customPresets`, `hiddenBuiltins`, and `activePresetId`. Passes handlers to the form and result components. All state is persisted to localStorage via `storage.js`.
+- **UserInputForm.jsx**: Form organized into Accordion sections (Rent, Property, Mortgage, Investment & Tax, Transaction Costs). Preset buttons at the top let users apply, save, or delete scenarios. Rate fields can expand inline to reveal a sigma (uncertainty) input.
+- **UserInputFormItem.jsx**: Thin wrapper around Mantine `NumberInput` with a `FieldLabel`.
+- **UserInputRangeItem.jsx**: Form control for rate fields that support uncertainty. Shows a base value `NumberInput` with a toggle to expand an inline `±2σ` input and a live range readout (`low% to high%`). The sigma input displays `2σ` (the full ±spread) and converts back to `σ` on change.
+- **FieldLabel.jsx**: Label with optional helper text popover.
 - **Result.jsx**: Validates input, then renders `NetWorthChart` (always with MC bands).
-- **NetWorthChart.jsx**: Computes both the median path and percentile bands. Renders a `Summary` Alert with probability-tiered language, then the chart.
+- **NetWorthChart.jsx**: Dispatches Monte Carlo work to a Web Worker, receives per-year percentiles, and renders the chart. Also renders a `Summary` Alert with probability-tiered language, a collapsible data table, and a CSV download button.
 - **Header.jsx / Footer.jsx**: Static UI.
 
 ### 2. Calculation Layer (`src/utils/`)
 
 - **math.jsx**: Math utilities.
 - **monteCarlo.js**: Stochastic simulation. `runMonteCarlo()` runs `NUM_SIMULATIONS` simulations and returns per-year percentiles (P25, median, P75) for both renter and owner, plus `renterWinPct` (fraction of simulations where renter > owner at that year).
-- **presets.js**: `DEFAULTS` (input values) and `INPUT_UNCERTAINTIES` (sigmas) plus `PRESETS` (preset scenarios).
+- **presets.js**: `DEFAULTS` (input values), `INPUT_UNCERTAINTIES` (default sigmas), `PRESETS` (built-in scenario presets), and `getActivePreset()` (matches current input to a preset by value).
 - **validation.js**: `FIELD_CONSTRAINTS` (per-field min/max/step), `SLIDER_BOUNDS` (range slider track domains), and `validateUserInput()` (returns errors object).
 - **format.js**: `formatCAD()` and `formatCADCompact()` for currency display.
+- **storage.js**: localStorage helpers for persisting `userInput`, `expandedFields`, `customPresets`, `hiddenBuiltins`, and `activePresetId`. Also handles migration from the legacy `rvb_advanced` key via `consumeLegacyAdvanced()`.
 
-### 3. Styling
+### 3. Web Worker
+
+`src/workers/monteCarloWorker.js` runs `runMonteCarlo()` off the main thread. `NetWorthChart` creates the worker on mount, sends a new message (with a `requestId`) whenever debounced `userInput` changes, and only applies results whose `requestId` matches the latest request — dropping stale responses automatically.
+
+### 4. Styling
 
 Uses **Mantine** UI components (`@mantine/core`) and **Recharts** for charts. Layout is a Mantine `Grid` — inputs on left, results on right.
 
@@ -114,5 +120,5 @@ The body always shows the actual win percentage and adds a sensitivity warning w
 
 - `userInput` is stored as numbers in `Main.jsx` state. Form inputs coerce strings via `+value`.
 - Validation runs on every render in `Main.jsx` via `validateUserInput()`. If errors exist, `Result.jsx` shows an "Incomplete inputs" alert instead of the chart.
-- Monte Carlo (`runMonteCarlo`) data is memoized in `NetWorthChart.jsx` with `userInput` as dependency.
+- Monte Carlo runs in a Web Worker (debounced 150 ms). `NetWorthChart` tracks a `requestId` counter to discard responses from superseded requests.
 - Deployed to GitHub Pages from `/build`. Homepage in `package.json` must remain the GitHub Pages URL.
