@@ -16,35 +16,13 @@ import { calculateNetWorthAtYearEnd } from "../utils/math";
 import { formatCAD, formatCADCompact } from "../utils/format";
 import { SIMULATION_HORIZON_YEARS } from "../utils/monteCarlo";
 
-const NUM_SIMULATIONS = 3000;
+const NUM_SIMULATIONS = 1000;
 
 function buildBaseData(userInput) {
   const horizon = SIMULATION_HORIZON_YEARS;
   return Array.from({ length: horizon }, (_, i) =>
     calculateNetWorthAtYearEnd({ ...userInput, yearNumber: i + 1 }),
   );
-}
-
-function findCrossovers(data, renterKey, ownerKey) {
-  const crossovers = [];
-  for (let i = 1; i < data.length; i++) {
-    const a = data[i - 1][renterKey] - data[i - 1][ownerKey];
-    const b = data[i][renterKey] - data[i][ownerKey];
-    if (a === 0) {
-      crossovers.push({ year: data[i - 1].year });
-      continue;
-    }
-    if (a < 0 !== b < 0) {
-      const t = a / (a - b);
-      const foundYear = data[i - 1].year + t;
-
-      // Prevent adding multiple crossover points that may occur in the same year due to the Monte Carlo simulations
-      if (crossovers.some((c) => c.year === foundYear)) continue;
-
-      crossovers.push({ year: foundYear });
-    }
-  }
-  return crossovers;
 }
 
 function ChartTooltip({ payload }) {
@@ -87,10 +65,9 @@ function ChartTooltip({ payload }) {
   );
 }
 
-function Summary({ data, crossovers, holdingPeriod }) {
+function Summary({ data, holdingPeriod }) {
   const decision =
     data.find((d) => d.year === holdingPeriod) ?? data[data.length - 1];
-  const priorCrossovers = crossovers.filter((c) => c.year <= holdingPeriod);
 
   if (decision.renterWinPct == null) {
     return null;
@@ -118,12 +95,8 @@ function Summary({ data, crossovers, holdingPeriod }) {
   let body;
   if (winnerPct < 60) {
     body = `${sims} Small changes in your assumptions could flip the outcome.`;
-  } else if (priorCrossovers.length === 0) {
-    body = sims;
-  } else if (priorCrossovers.length === 1) {
-    body = `${sims} Median paths cross around year ${priorCrossovers[0].year.toFixed(0)}.`;
   } else {
-    body = `${sims} Median paths cross ${priorCrossovers.length} times before sale — outcome depends on your time horizon.`;
+    body = sims;
   }
 
   return (
@@ -187,10 +160,6 @@ export default function NetWorthChart({ userInput }) {
     }));
   }, [baseData, mcData]);
 
-  const crossovers = findCrossovers(chartData, "renterMedian", "ownerMedian");
-  const crossoverYears = [
-    ...new Set(crossovers.map((c) => Math.round(c.year))),
-  ];
   const saleYear = userInput.holdingPeriod;
 
   const allValues = chartData
@@ -204,24 +173,6 @@ export default function NetWorthChart({ userInput }) {
     Math.floor((yMin - yPad) / 50000) * 50000,
     Math.ceil((yMax + yPad) / 50000) * 50000,
   ];
-
-  function crossoverLines() {
-    if (crossoverYears.length === 0) return null;
-    return crossoverYears.map((year) => (
-      <ReferenceLine
-        key={`crossover-${year}`}
-        x={year}
-        stroke="#868e96"
-        strokeDasharray="4 4"
-        label={{
-          value: `Break-even (Yr ${year})`,
-          position: "insideTop",
-          fontSize: 10,
-          fill: "#868e96",
-        }}
-      />
-    ));
-  }
 
   function endLabel(name, fill) {
     return ({ x, y, index, value }) => {
@@ -237,11 +188,7 @@ export default function NetWorthChart({ userInput }) {
 
   return (
     <Stack gap="xs">
-      <Summary
-        data={chartData}
-        crossovers={crossovers}
-        holdingPeriod={userInput.holdingPeriod}
-      />
+      <Summary data={chartData} holdingPeriod={userInput.holdingPeriod} />
       <ResponsiveContainer width="100%" height={400}>
         <ComposedChart
           data={chartData}
@@ -339,7 +286,6 @@ export default function NetWorthChart({ userInput }) {
               fontWeight: 600,
             }}
           />
-          {crossoverLines()}
         </ComposedChart>
       </ResponsiveContainer>
       <Group gap="lg" wrap="wrap">
@@ -392,18 +338,6 @@ export default function NetWorthChart({ userInput }) {
             — year you sell
           </Text>
         </Group>
-        {crossoverYears.length > 0 && (
-          <Group gap={6} wrap="nowrap">
-            <Box w={18} h={0} style={{ borderTop: "2px dashed #868e96" }} />
-            <Text size="xs" c="dimmed">
-              <Text span fw={600}>
-                Break-even
-              </Text>{" "}
-              — Year{crossoverYears.length > 1 ? "s" : ""} the median rent vs.
-              buy paths cross
-            </Text>
-          </Group>
-        )}
       </Group>
       <Text size="xs" c="dimmed">
         Hover over the chart for details at the end of each year.
