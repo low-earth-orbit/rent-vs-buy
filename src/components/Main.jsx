@@ -5,7 +5,7 @@ import UserInputForm from "./UserInputForm";
 import {
   DEFAULTS,
   PRESETS,
-  UNCERTAINTIES,
+  INPUT_UNCERTAINTIES,
   getActivePreset,
 } from "../utils/presets";
 import { validateUserInput } from "../utils/validation";
@@ -115,10 +115,10 @@ const Main = () => {
       return next;
     });
     // Collapsing acts as "Reset": restore sigma to its global default.
-    if (wasExpanded && sigmaField && UNCERTAINTIES[sigmaField] != null) {
+    if (wasExpanded && sigmaField && INPUT_UNCERTAINTIES[sigmaField] != null) {
       setUserInput((prev) => {
-        if (prev[sigmaField] === UNCERTAINTIES[sigmaField]) return prev;
-        const next = { ...prev, [sigmaField]: UNCERTAINTIES[sigmaField] };
+        if (prev[sigmaField] === INPUT_UNCERTAINTIES[sigmaField]) return prev;
+        const next = { ...prev, [sigmaField]: INPUT_UNCERTAINTIES[sigmaField] };
         saveInput(next);
         return next;
       });
@@ -167,9 +167,9 @@ const Main = () => {
 
   return (
     <>
-      <Container size="lg" py="md">
+      <Container size="xl" py="md">
         <Grid gutter="xl">
-          <Grid.Col span={{ base: 12, lg: 7 }}>
+          <Grid.Col span={{ base: 12, lg: 6 }}>
             <UserInputForm
               userInput={userInput}
               handleChange={handleChange}
@@ -185,7 +185,7 @@ const Main = () => {
               onDeletePreset={handleDeletePreset}
             />
           </Grid.Col>
-          <Grid.Col span={{ base: 12, lg: 5 }}>
+          <Grid.Col span={{ base: 12, lg: 6 }}>
             <Result userInput={userInput} errors={errors} />
           </Grid.Col>
         </Grid>

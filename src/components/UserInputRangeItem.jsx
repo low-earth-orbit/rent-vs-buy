@@ -38,15 +38,21 @@ export default function UserInputRangeItem({
         onClick={onToggleExpand}
         disabled={disabled}
         underline="never"
+        aria-label={
+          expanded
+            ? `Reset uncertainty range for ${label}`
+            : `Add uncertainty range for ${label}`
+        }
+        aria-expanded={expanded}
       >
         <span style={{ display: "inline-flex", alignItems: "center" }}>
           {expanded ? (
             <>
-              <IconArrowBackUp stroke={2} size={12} /> Reset
+              <IconArrowBackUp stroke={2} size={12} aria-hidden="true" /> Reset
             </>
           ) : (
             <>
-              <IconPlusMinus stroke={2} size={12} /> Range
+              <IconPlusMinus stroke={2} size={12} aria-hidden="true" /> Range
             </>
           )}
         </span>
@@ -75,6 +81,7 @@ export default function UserInputRangeItem({
         <>
           <NumberInput
             id={sigmaField}
+            aria-label={`${label} uncertainty — 95% confidence spread`}
             variant="filled"
             value={2 * sigmaNum}
             onChange={(v) => {
@@ -93,7 +100,7 @@ export default function UserInputRangeItem({
             clampBehavior="none"
             allowNegative={false}
           />
-          <Text size="xs" c="dimmed">
+          <Text size="xs" c="dimmed" aria-live="polite">
             {rangeKnown ? `range ${fmt(low)}% to ${fmt(high)}%` : "range —"}
           </Text>
         </>

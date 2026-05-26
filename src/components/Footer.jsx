@@ -4,7 +4,7 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <Container size="lg" pt="xl" pb="xl">
+    <Container component="footer" size="xl" pt="xl" pb="xl">
       <Stack gap="sm">
         <Text size="sm" c="dimmed">
           This calculator uses a cash-flow method to compare renting and buying

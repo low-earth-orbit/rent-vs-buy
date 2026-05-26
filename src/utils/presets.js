@@ -1,4 +1,4 @@
-export const UNCERTAINTIES = {
+export const INPUT_UNCERTAINTIES = {
   homePriceGrowthSigma: 2.0,
   investmentReturnSigma: 2.0,
   rentIncreaseSigma: 1,
@@ -26,7 +26,7 @@ export const DEFAULTS = {
   dividendYield: 1.8,
   dividendTaxRate: 30,
   capitalGainTaxRate: 15,
-  ...UNCERTAINTIES,
+  ...INPUT_UNCERTAINTIES,
 };
 
 export const PRESETS = [
