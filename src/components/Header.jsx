@@ -56,7 +56,7 @@ const Header = () => {
     setColorScheme(computed === "dark" ? "light" : "dark");
 
   return (
-    <Container size="lg" pt="xl" pb="xs">
+    <Container component="header" size="xl" pt="xl" pb="xs">
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Stack gap={4}>
           <Title order={1}>Is it better to rent or buy?</Title>

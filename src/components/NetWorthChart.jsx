@@ -1,5 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Box, Group, Paper, Stack, Text } from "@mantine/core";
+import {
+  Alert,
+  Box,
+  Button,
+  Collapse,
+  Group,
+  Paper,
+  ScrollArea,
+  Stack,
+  Table,
+  Text,
+  VisuallyHidden,
+} from "@mantine/core";
+import {
+  IconChevronDown,
+  IconChevronUp,
+  IconDownload,
+} from "@tabler/icons-react";
 import { useDebouncedValue } from "@mantine/hooks";
 import {
   ComposedChart,
@@ -16,6 +33,33 @@ import { formatCAD, formatCADCompact } from "../utils/format";
 
 const NUM_SIMULATIONS = 1000;
 
+const INPUT_LABELS = {
+  monthlyRent: "Monthly Rent ($)",
+  initialHomePrice: "Home Price ($)",
+  downPaymentPercentage: "Down Payment (%)",
+  annualMortgageInterestRate: "Mortgage Rate (%/yr)",
+  amortizationPeriod: "Amortization (years)",
+  holdingPeriod: "Holding Period (years)",
+  rentIncreaseRate: "Rent Increase Rate (%/yr)",
+  homePriceGrowthRate: "Home Price Growth (%/yr)",
+  ownerCostGrowthRate: "Owner Cost Growth (%/yr)",
+  investmentReturnRate: "Investment Return (%/yr)",
+  dividendYield: "Dividend Yield (%)",
+  dividendTaxRate: "Dividend Tax Rate (%)",
+  capitalGainTaxRate: "Capital Gain Tax Rate (%)",
+  propertyTaxRate: "Property Tax Rate (%)",
+  maintPct: "Maintenance (%/yr)",
+  condoFeesPerMonth: "Condo Fees ($/month)",
+  buyerClosingCostsPct: "Buyer Closing Costs (%)",
+  sellerClosingCostsPct: "Seller Closing Costs (%)",
+  homePriceGrowthSigma: "Home Price Growth Sigma",
+  investmentReturnSigma: "Investment Return Sigma",
+  rentIncreaseSigma: "Rent Increase Sigma",
+  ownerCostGrowthSigma: "Owner Cost Growth Sigma",
+  mortgageRateSigma: "Mortgage Rate Sigma",
+  dividendYieldSigma: "Dividend Yield Sigma",
+};
+
 function ChartTooltip({ payload }) {
   if (!payload || payload.length === 0) return null;
   const point = payload[0].payload;
@@ -30,7 +74,7 @@ function ChartTooltip({ payload }) {
         Year {point.year}
       </Text>
       <Text size="sm" c="teal">
-        Rent + Invest: {formatCAD(renter)}
+        Rent: {formatCAD(renter)}
         {point.renterP25 != null && (
           <Text size="xs" c="dimmed" span>
             {" "}
@@ -100,9 +144,9 @@ function Summary({ data, holdingPeriod }) {
 export default function NetWorthChart({ userInput }) {
   const workerRef = useRef(null);
   const requestIdRef = useRef(0);
-  // `mcData` is the result of the Monte Carlo simulations
   const [mcData, setMcData] = useState(null);
   const [debouncedInput] = useDebouncedValue(userInput, 150);
+  const [tableOpen, setTableOpen] = useState(false);
 
   useEffect(() => {
     workerRef.current = new Worker(
@@ -172,122 +216,182 @@ export default function NetWorthChart({ userInput }) {
     };
   }
 
+  function downloadCSV() {
+    const esc = (v) => {
+      if (v == null) return "";
+      const s = String(v);
+      return s.includes(",") || s.includes('"')
+        ? `"${s.replace(/"/g, '""')}"`
+        : s;
+    };
+    const rows = [
+      ["Input", "Value"],
+      ...Object.entries(INPUT_LABELS)
+        .filter(([key]) => userInput[key] !== undefined)
+        .map(([key, label]) => [label, userInput[key]]),
+      [],
+      [
+        "Year",
+        "Rent Median",
+        "Rent P25",
+        "Rent P75",
+        "Buy Median",
+        "Buy P25",
+        "Buy P75",
+        "Renter Win %",
+      ],
+      ...chartData.map((d) => [
+        d.year,
+        Math.round(d.renterMedian ?? 0),
+        Math.round(d.renterP25 ?? 0),
+        Math.round(d.renterP75 ?? 0),
+        Math.round(d.ownerMedian ?? 0),
+        Math.round(d.ownerP25 ?? 0),
+        Math.round(d.ownerP75 ?? 0),
+        d.renterWinPct != null ? `${Math.round(d.renterWinPct * 100)}%` : "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map(esc).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "rent-vs-buy.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <Stack gap="xs">
       <Summary data={chartData} holdingPeriod={userInput.holdingPeriod} />
-      <ResponsiveContainer width="100%" height={400}>
-        <ComposedChart
-          data={chartData}
-          margin={{ top: 25, right: 50, left: 0, bottom: 20 }}
-        >
-          <XAxis
-            dataKey="year"
-            label={{ value: "Year", position: "insideBottom", offset: -10 }}
-            tick={{ fontSize: 12 }}
-          />
-          <YAxis
-            domain={yDomain}
-            tickFormatter={formatCADCompact}
-            tick={{ fontSize: 12 }}
-            width={70}
-          />
-          <Tooltip content={<ChartTooltip />} />
-
-          <Area
-            type="linear"
-            dataKey="renterBandBase"
-            stackId="renter"
-            fill="transparent"
-            stroke="none"
-            legendType="none"
-            name=""
-          />
-          <Area
-            type="linear"
-            dataKey="renterBandWidth"
-            stackId="renter"
-            fill="#12b886"
-            fillOpacity={0.18}
-            stroke="none"
-            legendType="none"
-            name=""
-          />
-          <Area
-            type="linear"
-            dataKey="ownerBandBase"
-            stackId="owner"
-            fill="transparent"
-            stroke="none"
-            legendType="none"
-            name=""
-          />
-          <Area
-            type="linear"
-            dataKey="ownerBandWidth"
-            stackId="owner"
-            fill="#4c6ef5"
-            fillOpacity={0.18}
-            stroke="none"
-            legendType="none"
-            name=""
-          />
-
-          <Line
-            type="linear"
-            dataKey="renterMedian"
-            name="Rent + Invest"
-            stroke="#12b886"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4 }}
+      <div
+        role="img"
+        aria-label={`Net worth projection chart comparing renting versus buying over 50 years using ${NUM_SIMULATIONS.toLocaleString()} Monte Carlo simulations. The data table below provides the same information in accessible text form.`}
+      >
+        <ResponsiveContainer width="100%" height={400}>
+          <ComposedChart
+            data={chartData}
+            margin={{ top: 25, right: 50, left: 0, bottom: 20 }}
           >
-            <LabelList
+            <XAxis
+              dataKey="year"
+              label={{ value: "Year", position: "insideBottom", offset: -10 }}
+              tick={{ fontSize: 12 }}
+            />
+            <YAxis
+              domain={yDomain}
+              tickFormatter={formatCADCompact}
+              tick={{ fontSize: 12 }}
+              width={70}
+            />
+            <Tooltip content={<ChartTooltip />} />
+
+            <Area
+              type="linear"
+              dataKey="renterBandBase"
+              stackId="renter"
+              fill="transparent"
+              stroke="none"
+              legendType="none"
+              name=""
+            />
+            <Area
+              type="linear"
+              dataKey="renterBandWidth"
+              stackId="renter"
+              fill="#12b886"
+              fillOpacity={0.18}
+              stroke="none"
+              legendType="none"
+              name=""
+            />
+            <Area
+              type="linear"
+              dataKey="ownerBandBase"
+              stackId="owner"
+              fill="transparent"
+              stroke="none"
+              legendType="none"
+              name=""
+            />
+            <Area
+              type="linear"
+              dataKey="ownerBandWidth"
+              stackId="owner"
+              fill="#4c6ef5"
+              fillOpacity={0.18}
+              stroke="none"
+              legendType="none"
+              name=""
+            />
+
+            <Line
+              type="linear"
               dataKey="renterMedian"
-              content={endLabel("Rent", "#12b886")}
-            />
-          </Line>
-          <Line
-            type="linear"
-            dataKey="ownerMedian"
-            name="Buy"
-            stroke="#4c6ef5"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4 }}
-          >
-            <LabelList
+              name="Rent"
+              stroke="#12b886"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+            >
+              <LabelList
+                dataKey="renterMedian"
+                content={endLabel("Rent", "#12b886")}
+              />
+            </Line>
+            <Line
+              type="linear"
               dataKey="ownerMedian"
-              content={endLabel("Buy", "#4c6ef5")}
+              name="Buy"
+              stroke="#4c6ef5"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+            >
+              <LabelList
+                dataKey="ownerMedian"
+                content={endLabel("Buy", "#4c6ef5")}
+              />
+            </Line>
+            <ReferenceLine
+              x={saleYear}
+              stroke="#fd7e14"
+              strokeWidth={1.5}
+              label={{
+                value: `Sale (Yr ${saleYear})`,
+                position: "top",
+                fontSize: 11,
+                fill: "#fd7e14",
+                fontWeight: 600,
+              }}
             />
-          </Line>
-          <ReferenceLine
-            x={saleYear}
-            stroke="#fd7e14"
-            strokeWidth={1.5}
-            label={{
-              value: `Sale (Yr ${saleYear})`,
-              position: "top",
-              fontSize: 11,
-              fill: "#fd7e14",
-              fontWeight: 600,
-            }}
-          />
-        </ComposedChart>
-      </ResponsiveContainer>
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
       <Group gap="lg" wrap="wrap">
         <Group gap={6} wrap="nowrap">
-          <Box w={18} h={2} style={{ backgroundColor: "#12b886" }} />
+          <Box
+            w={18}
+            h={2}
+            style={{ backgroundColor: "#12b886" }}
+            aria-hidden="true"
+          />
           <Text size="xs" c="dimmed">
-            <Text span fw={600} c="teal.7">
-              Rent + Invest
+            <Text span fw={600} c="teal">
+              Rent
             </Text>{" "}
             — median
           </Text>
         </Group>
         <Group gap={6} wrap="nowrap">
-          <Box w={18} h={2} style={{ backgroundColor: "#4c6ef5" }} />
+          <Box
+            w={18}
+            h={2}
+            style={{ backgroundColor: "#4c6ef5" }}
+            aria-hidden="true"
+          />
           <Text size="xs" c="dimmed">
-            <Text span fw={600} c="indigo.7">
+            <Text span fw={600} c="indigo">
               Buy
             </Text>{" "}
             — median
@@ -299,6 +403,7 @@ export default function NetWorthChart({ userInput }) {
             w={18}
             h={10}
             style={{ backgroundColor: "#12b886", opacity: 0.18 }}
+            aria-hidden="true"
           />
           <Text size="xs" c="dimmed">
             Rent 25–75% range
@@ -309,6 +414,7 @@ export default function NetWorthChart({ userInput }) {
             w={18}
             h={10}
             style={{ backgroundColor: "#4c6ef5", opacity: 0.18 }}
+            aria-hidden="true"
           />
           <Text size="xs" c="dimmed">
             Buy 25–75% range
@@ -316,7 +422,12 @@ export default function NetWorthChart({ userInput }) {
         </Group>
 
         <Group gap={6} wrap="nowrap">
-          <Box w={18} h={2} style={{ backgroundColor: "#fd7e14" }} />
+          <Box
+            w={18}
+            h={2}
+            style={{ backgroundColor: "#fd7e14" }}
+            aria-hidden="true"
+          />
           <Text size="xs" c="dimmed">
             <Text span fw={600} c="orange.7">
               Sale
@@ -325,22 +436,143 @@ export default function NetWorthChart({ userInput }) {
           </Text>
         </Group>
       </Group>
-      <Text size="xs" c="dimmed">
-        Hover over the chart for details at the end of each year.
-      </Text>
 
       <Text size="xs" c="dimmed">
         The chart shows net worth projections for both renting and buying
         scenarios from {NUM_SIMULATIONS.toLocaleString()} Monte Carlo
         simulations. It extends to a 50-year horizon to show what would happen
-        if you held longer.
+        if you held longer. These projections are based on your assumptions and
+        are illustrative only — results are subject to modelling error,
+        uncertain inputs, and real-world complexity.
       </Text>
 
-      <Text size="xs" c="dimmed">
-        These projections are based on your assumptions and are illustrative
-        only — results are subject to modelling error, uncertain inputs, and
-        real-world complexity.
-      </Text>
+      <Group justify="space-between" align="center" mt="xs">
+        <Button
+          variant="subtle"
+          size="xs"
+          color="gray"
+          aria-expanded={tableOpen}
+          aria-controls="net-worth-data-table"
+          leftSection={
+            tableOpen ? (
+              <IconChevronUp size={14} aria-hidden="true" />
+            ) : (
+              <IconChevronDown size={14} aria-hidden="true" />
+            )
+          }
+          onClick={() => setTableOpen((o) => !o)}
+        >
+          {tableOpen ? "Hide" : "Show"} data table
+        </Button>
+        <Button
+          variant="subtle"
+          size="xs"
+          color="gray"
+          leftSection={<IconDownload size={14} aria-hidden="true" />}
+          onClick={downloadCSV}
+        >
+          Download CSV
+        </Button>
+      </Group>
+
+      <Collapse in={tableOpen}>
+        <div id="net-worth-data-table">
+          <ScrollArea>
+            <Table
+              striped
+              withTableBorder
+              withColumnBorders
+              fz="xs"
+              style={{ minWidth: 620 }}
+            >
+              <caption
+                style={{
+                  captionSide: "top",
+                  textAlign: "left",
+                  fontSize: "0.75rem",
+                  color: "var(--mantine-color-dimmed)",
+                  paddingBottom: 4,
+                }}
+              >
+                Year-by-year net worth comparison: Renting vs Buying (
+                {NUM_SIMULATIONS.toLocaleString()} Monte Carlo simulations)
+              </caption>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th scope="col">Year</Table.Th>
+                  <Table.Th scope="col" c="teal">
+                    Rent Median
+                  </Table.Th>
+                  <Table.Th scope="col" c="teal">
+                    <abbr title="25th percentile">Rent P25</abbr>
+                  </Table.Th>
+                  <Table.Th scope="col" c="teal">
+                    <abbr title="75th percentile">Rent P75</abbr>
+                  </Table.Th>
+                  <Table.Th scope="col" c="indigo">
+                    Buy Median
+                  </Table.Th>
+                  <Table.Th scope="col" c="indigo">
+                    <abbr title="25th percentile">Buy P25</abbr>
+                  </Table.Th>
+                  <Table.Th scope="col" c="indigo">
+                    <abbr title="75th percentile">Buy P75</abbr>
+                  </Table.Th>
+                  <Table.Th scope="col">
+                    Renter Win %
+                    <VisuallyHidden> (% of simulations)</VisuallyHidden>
+                  </Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {chartData.map((d) => (
+                  <Table.Tr
+                    key={d.year}
+                    style={
+                      d.year === userInput.holdingPeriod
+                        ? { fontWeight: 700 }
+                        : undefined
+                    }
+                  >
+                    <Table.Td>
+                      {d.year}
+                      {d.year === userInput.holdingPeriod && (
+                        <>
+                          {" "}
+                          <span aria-hidden="true">★</span>
+                          <VisuallyHidden> (sale year)</VisuallyHidden>
+                        </>
+                      )}
+                    </Table.Td>
+                    <Table.Td>{formatCADCompact(d.renterMedian)}</Table.Td>
+                    <Table.Td c="dimmed">
+                      {formatCADCompact(d.renterP25)}
+                    </Table.Td>
+                    <Table.Td c="dimmed">
+                      {formatCADCompact(d.renterP75)}
+                    </Table.Td>
+                    <Table.Td>{formatCADCompact(d.ownerMedian)}</Table.Td>
+                    <Table.Td c="dimmed">
+                      {formatCADCompact(d.ownerP25)}
+                    </Table.Td>
+                    <Table.Td c="dimmed">
+                      {formatCADCompact(d.ownerP75)}
+                    </Table.Td>
+                    <Table.Td>
+                      {d.renterWinPct != null
+                        ? `${Math.round(d.renterWinPct * 100)}%`
+                        : "—"}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </ScrollArea>
+          <Text size="xs" c="dimmed" mt={4}>
+            <span aria-hidden="true">★</span> Sale year (holding period)
+          </Text>
+        </div>
+      </Collapse>
     </Stack>
   );
 }

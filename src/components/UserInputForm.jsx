@@ -30,6 +30,8 @@ const PlusIcon = () => (
     strokeWidth="2.5"
     strokeLinecap="round"
     strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
   >
     <path d="M12 5v14M5 12h14" />
   </svg>
@@ -46,6 +48,8 @@ const XIcon = () => (
     strokeWidth="2.5"
     strokeLinecap="round"
     strokeLinejoin="round"
+    aria-hidden="true"
+    focusable="false"
   >
     <path d="M18 6L6 18M6 6l12 12" />
   </svg>
@@ -119,13 +123,14 @@ export default function UserInputForm({
   return (
     <Stack gap="md">
       <Stack gap={4}>
-        <Group gap="xs">
+        <Group gap="xs" role="group" aria-label="Scenario presets">
           {[...visibleBuiltins, ...customPresets].map((preset) => (
             <Group key={preset.id} gap={0} wrap="nowrap">
               <Button
                 variant={variantFor(preset)}
                 size="xs"
                 radius="lg"
+                aria-pressed={activePreset?.id === preset.id}
                 onClick={() => handlePreset(preset)}
               >
                 {preset.label}
@@ -304,13 +309,14 @@ export default function UserInputForm({
                       wrap="nowrap"
                       gap="xs"
                     >
-                      <Input.Label>
+                      <Input.Label htmlFor="propertyTaxRate">
                         <FieldLabel label={taxLabel} helperText={taxHelper} />
                       </Input.Label>
                       <SegmentedControl
                         size="xs"
                         value={propertyTaxUnit}
                         onChange={setPropertyTaxUnit}
+                        aria-label="Property Tax input unit"
                         data={[
                           { label: "$", value: "$" },
                           { label: "%", value: "%" },
@@ -374,7 +380,7 @@ export default function UserInputForm({
                       wrap="nowrap"
                       gap="xs"
                     >
-                      <Input.Label>
+                      <Input.Label htmlFor="maintPct">
                         <FieldLabel
                           label={maintLabel}
                           helperText={maintHelper}
@@ -384,6 +390,7 @@ export default function UserInputForm({
                         size="xs"
                         value={maintenanceUnit}
                         onChange={setMaintenanceUnit}
+                        aria-label="Maintenance and Insurance input unit"
                         data={[
                           { label: "$", value: "$" },
                           { label: "%", value: "%" },
