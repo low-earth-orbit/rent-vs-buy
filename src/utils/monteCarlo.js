@@ -22,7 +22,7 @@ const MORTGAGE_TERM_YEARS = 5;
 // uncertainty about the long-run mean; these capture noise around that mean.
 const ANNUAL_VOL = {
   inflation: 1.0, // hidden common factor σ (couples housing/rent/cost/rate)
-  homePriceIdio: 4.0, // idiosyncratic real housing σ
+  homePriceIdio: 6.0, // idiosyncratic real housing σ
   investment: 12.0, // investment return lognormal σ (annual)
 };
 

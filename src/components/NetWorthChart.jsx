@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Box, Group, Paper, Stack, Text } from "@mantine/core";
+import { useDebouncedValue } from "@mantine/hooks";
 import {
   ComposedChart,
   Area,
@@ -12,10 +13,9 @@ import {
   LabelList,
 } from "recharts";
 import { calculateNetWorthAtYearEnd } from "../utils/math";
-import { runMonteCarlo } from "../utils/monteCarlo";
 import { formatCAD, formatCADCompact } from "../utils/format";
 
-const NUM_SIMULATIONS = 1000;
+const NUM_SIMULATIONS = 3000;
 
 function buildBaseData(userInput) {
   const horizon = Math.max(
@@ -144,10 +144,35 @@ function Summary({ data, crossovers, holdingPeriod }) {
 export default function NetWorthChart({ userInput, showBands }) {
   const baseData = useMemo(() => buildBaseData(userInput), [userInput]);
 
-  const mcData = useMemo(
-    () => (showBands ? runMonteCarlo(userInput, NUM_SIMULATIONS) : null),
-    [userInput, showBands],
-  );
+  const workerRef = useRef(null);
+  const requestIdRef = useRef(0);
+  const [mcData, setMcData] = useState(null);
+  const [debouncedInput] = useDebouncedValue(userInput, 150);
+
+  useEffect(() => {
+    workerRef.current = new Worker(
+      new URL("../workers/monteCarloWorker.js", import.meta.url),
+    );
+    workerRef.current.onmessage = (event) => {
+      const { requestId, result } = event.data;
+      if (requestId === requestIdRef.current) setMcData(result);
+    };
+    return () => workerRef.current?.terminate();
+  }, []);
+
+  useEffect(() => {
+    if (!showBands) {
+      setMcData(null);
+      return;
+    }
+    if (!workerRef.current) return;
+    requestIdRef.current += 1;
+    workerRef.current.postMessage({
+      userInput: debouncedInput,
+      numSimulations: NUM_SIMULATIONS,
+      requestId: requestIdRef.current,
+    });
+  }, [debouncedInput, showBands]);
 
   const chartData = useMemo(() => {
     if (!showBands || !mcData) {
