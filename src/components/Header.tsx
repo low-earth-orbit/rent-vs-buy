@@ -52,8 +52,7 @@ const Header = () => {
     getInitialValueInEffect: true,
   });
 
-  const toggle = () =>
-    setColorScheme(computed === "dark" ? "light" : "dark");
+  const toggle = () => setColorScheme(computed === "dark" ? "light" : "dark");
 
   return (
     <Container component="header" size="xl" pt="xl" pb="xs">

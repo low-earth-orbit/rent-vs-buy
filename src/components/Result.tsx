@@ -1,7 +1,13 @@
 import { Alert } from "@mantine/core";
 import NetWorthChart from "./NetWorthChart";
+import type { FieldErrors, UserInput } from "../types";
 
-export default function Result({ userInput, errors }) {
+interface ResultProps {
+  userInput: UserInput;
+  errors: FieldErrors;
+}
+
+export default function Result({ userInput, errors }: ResultProps) {
   if (Object.keys(errors).length > 0) {
     return (
       <Alert color="gray" title="Incomplete inputs">

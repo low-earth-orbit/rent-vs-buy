@@ -3,14 +3,15 @@ import {
   calculateMonthlyMortgagePayment,
   calculateMortgagePrincipal,
 } from "./math";
+import type { MonteCarloYear, UserInput } from "../types";
 
-function normalRandom() {
+function normalRandom(): number {
   const u1 = Math.random();
   const u2 = Math.random();
   return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 }
 
-function percentile(sorted, p) {
+function percentile(sorted: number[], p: number): number {
   const idx = Math.min(Math.floor(sorted.length * p), sorted.length - 1);
   return sorted[idx];
 }
@@ -37,7 +38,37 @@ const INFLATION_BETA = {
   mortgageRate: 0.5,
 };
 
-function drawScenario(userInput) {
+interface Scenario {
+  homePriceGrowthMean: number;
+  investmentReturnMean: number;
+  rentIncreaseMean: number;
+  ownerCostGrowthMean: number;
+  mortgageRateMean: number;
+  maintenanceMean: number;
+  propertyTaxMean: number;
+  dividendYieldMean: number;
+}
+
+interface AnnualRates {
+  homePriceGrowth: number;
+  investmentReturn: number;
+  rentIncrease: number;
+  ownerCostGrowth: number;
+  dividendYield: number;
+}
+
+interface ScenarioPath {
+  annual: AnnualRates[];
+  mortgageRates: number[];
+}
+
+interface PathYear {
+  year: number;
+  renterNetWorth: number;
+  ownerNetWorth: number;
+}
+
+function drawScenario(userInput: UserInput): Scenario {
   return {
     homePriceGrowthMean:
       userInput.homePriceGrowthRate +
@@ -63,9 +94,9 @@ function drawScenario(userInput) {
 }
 
 // Year-by-year rate realizations and the mortgage rate path for one scenario.
-function drawPath(scenario, horizon) {
-  const annual = [];
-  const inflationShocks = [];
+function drawPath(scenario: Scenario, horizon: number): ScenarioPath {
+  const annual: AnnualRates[] = [];
+  const inflationShocks: number[] = [];
 
   for (let y = 0; y < horizon; y++) {
     const inflShock = normalRandom() * ANNUAL_VOL.inflation;
@@ -106,7 +137,7 @@ function drawPath(scenario, horizon) {
 
   // Mortgage rate: at each 5-year renewal, snaps to scenario mean plus that
   // year's inflation pressure. Couples renewal cost to the inflation regime.
-  const mortgageRates = [];
+  const mortgageRates: number[] = [];
   let currentRate =
     scenario.mortgageRateMean +
     INFLATION_BETA.mortgageRate * inflationShocks[0];
@@ -123,7 +154,12 @@ function drawPath(scenario, horizon) {
 }
 
 // Walk one year-by-year wealth path for owner and renter.
-function simulatePath(userInput, annual, mortgageRates, scenario) {
+function simulatePath(
+  userInput: UserInput,
+  annual: AnnualRates[],
+  mortgageRates: number[],
+  scenario: Scenario,
+): PathYear[] {
   const horizon = annual.length;
   const capGainTaxFrac = userInput.capitalGainTaxRate / 100;
   const dividendTaxFrac = userInput.dividendTaxRate / 100;
@@ -158,7 +194,7 @@ function simulatePath(userInput, annual, mortgageRates, scenario) {
     remainingYears,
   );
 
-  const results = [];
+  const results: PathYear[] = [];
 
   for (let y = 1; y <= horizon; y++) {
     const yr = annual[y - 1];
@@ -232,11 +268,14 @@ function simulatePath(userInput, annual, mortgageRates, scenario) {
   return results;
 }
 
-export function runMonteCarlo(userInput, numSimulations) {
+export function runMonteCarlo(
+  userInput: UserInput,
+  numSimulations: number,
+): MonteCarloYear[] {
   const horizon = SIMULATION_HORIZON_YEARS;
-  const renterByYear = Array.from({ length: horizon }, () => []);
-  const ownerByYear = Array.from({ length: horizon }, () => []);
-  const renterWinsByYear = Array.from({ length: horizon }, () => 0);
+  const renterByYear: number[][] = Array.from({ length: horizon }, () => []);
+  const ownerByYear: number[][] = Array.from({ length: horizon }, () => []);
+  const renterWinsByYear: number[] = Array.from({ length: horizon }, () => 0);
 
   for (let sim = 0; sim < numSimulations; sim++) {
     const scenario = drawScenario(userInput);

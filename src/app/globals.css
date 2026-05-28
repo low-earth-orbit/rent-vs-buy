@@ -1,0 +1,16 @@
+@layer tailwind-base, mantine, tailwind-utilities;
+
+@import "tailwindcss/preflight.css" layer(tailwind-base);
+@import "@mantine/core/styles.css" layer(mantine);
+@import "tailwindcss/utilities.css" layer(tailwind-utilities);
+@import "tailwindcss/theme.css";
+
+body {
+  font-family: var(--font-lato), sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: monospace;
+}

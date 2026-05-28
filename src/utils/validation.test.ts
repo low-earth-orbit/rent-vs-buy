@@ -1,3 +1,4 @@
+import { describe, test, expect } from "vitest";
 import { DEFAULTS } from "./presets";
 import { validateUserInput } from "./validation";
 

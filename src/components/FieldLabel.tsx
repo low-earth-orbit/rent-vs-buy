@@ -1,5 +1,10 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Group, Popover, Text } from "@mantine/core";
+
+interface FieldLabelProps {
+  label: ReactNode;
+  helperText?: string;
+}
 
 const InfoIcon = () => (
   <svg
@@ -16,7 +21,7 @@ const InfoIcon = () => (
   </svg>
 );
 
-export default function FieldLabel({ label, helperText }) {
+export default function FieldLabel({ label, helperText }: FieldLabelProps) {
   const [opened, setOpened] = useState(false);
 
   if (!helperText) return label;

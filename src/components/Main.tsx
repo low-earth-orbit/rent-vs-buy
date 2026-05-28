@@ -24,8 +24,15 @@ import {
   saveActivePresetId,
   clearAll,
 } from "../utils/storage";
+import type {
+  FieldValue,
+  Preset,
+  SigmaKey,
+  UserInput,
+  UserInputKey,
+} from "../types";
 
-const PERTURBED_FIELDS = [
+const PERTURBED_FIELDS: UserInputKey[] = [
   "rentIncreaseRate",
   "homePriceGrowthRate",
   "ownerCostGrowthRate",
@@ -34,33 +41,38 @@ const PERTURBED_FIELDS = [
   "dividendYield",
 ];
 
-const normalizeInput = (values) => ({ ...DEFAULTS, ...(values ?? {}) });
+const normalizeInput = (values?: Partial<UserInput> | null): UserInput => ({
+  ...DEFAULTS,
+  ...(values ?? {}),
+});
 
 const Main = () => {
-  const [userInput, setUserInput] = useState(() => {
+  const [userInput, setUserInput] = useState<UserInput>(() => {
     const loaded = loadInput();
     return loaded ? normalizeInput(loaded) : DEFAULTS;
   });
-  const [expandedFields, setExpandedFieldsState] = useState(() => {
-    const loaded = loadExpandedFields();
-    if (loaded) return loaded;
-    const legacy = consumeLegacyAdvanced();
-    if (legacy) {
-      saveExpandedFields(PERTURBED_FIELDS);
-      return PERTURBED_FIELDS;
-    }
-    return [];
-  });
-  const [customPresets, setCustomPresets] = useState(() =>
+  const [expandedFields, setExpandedFieldsState] = useState<UserInputKey[]>(
+    () => {
+      const loaded = loadExpandedFields();
+      if (loaded) return loaded;
+      const legacy = consumeLegacyAdvanced();
+      if (legacy) {
+        saveExpandedFields(PERTURBED_FIELDS);
+        return PERTURBED_FIELDS;
+      }
+      return [];
+    },
+  );
+  const [customPresets, setCustomPresets] = useState<Preset[]>(() =>
     (loadCustomPresets() ?? []).map((preset) => ({
       ...preset,
       values: normalizeInput(preset.values),
     })),
   );
-  const [hiddenBuiltins, setHiddenBuiltins] = useState(
+  const [hiddenBuiltins, setHiddenBuiltins] = useState<string[]>(
     () => loadHiddenBuiltins() ?? [],
   );
-  const [activePresetId, setActivePresetIdState] = useState(
+  const [activePresetId, setActivePresetIdState] = useState<string | null>(
     () => loadActivePresetId() ?? "defaults",
   );
   const errors = validateUserInput(userInput);
@@ -70,42 +82,41 @@ const Main = () => {
 
   // Highlight by explicit selection when valid; otherwise fall back to value match.
   let activePreset = allPresets.find((p) => p.id === activePresetId) ?? null;
-  if (
-    activePreset &&
-    !Object.keys(activePreset.values).every(
-      (k) => activePreset.values[k] === userInput[k],
-    )
-  ) {
-    activePreset = null;
+  if (activePreset) {
+    const ap = activePreset;
+    const matches = (Object.keys(ap.values) as UserInputKey[]).every(
+      (k) => ap.values[k] === userInput[k],
+    );
+    if (!matches) activePreset = null;
   }
   if (!activePreset) {
     activePreset = getActivePreset(userInput, allPresets);
   }
 
-  function setActivePresetId(id) {
+  function setActivePresetId(id: string | null) {
     setActivePresetIdState(id);
     saveActivePresetId(id);
   }
 
-  function handleChange(inputIdentifier, newValue) {
+  function handleChange(inputIdentifier: UserInputKey, newValue: FieldValue) {
     setUserInput((prev) => {
       const next = {
         ...prev,
         [inputIdentifier]: newValue ? +newValue : newValue,
-      };
+      } as UserInput;
       saveInput(next);
       return next;
     });
     if (activePresetId !== null) setActivePresetId(null);
   }
 
-  function handlePreset(preset) {
+  function handlePreset(preset: Preset) {
     setUserInput(normalizeInput(preset.values));
     clearInput();
     setActivePresetId(preset.id);
   }
 
-  function toggleFieldExpanded(baseField, sigmaField) {
+  function toggleFieldExpanded(baseField: UserInputKey, sigmaField?: SigmaKey) {
     const wasExpanded = expandedFields.includes(baseField);
     setExpandedFieldsState((prev) => {
       const next = wasExpanded
@@ -118,17 +129,20 @@ const Main = () => {
     if (wasExpanded && sigmaField && INPUT_UNCERTAINTIES[sigmaField] != null) {
       setUserInput((prev) => {
         if (prev[sigmaField] === INPUT_UNCERTAINTIES[sigmaField]) return prev;
-        const next = { ...prev, [sigmaField]: INPUT_UNCERTAINTIES[sigmaField] };
+        const next: UserInput = {
+          ...prev,
+          [sigmaField]: INPUT_UNCERTAINTIES[sigmaField],
+        };
         saveInput(next);
         return next;
       });
     }
   }
 
-  function handleSavePreset(name) {
+  function handleSavePreset(name: string) {
     const label = name.trim();
     if (!label) return;
-    const entry = {
+    const entry: Preset = {
       id:
         typeof crypto !== "undefined" && crypto.randomUUID
           ? crypto.randomUUID()
@@ -143,7 +157,7 @@ const Main = () => {
     setActivePresetId(entry.id);
   }
 
-  function handleDeletePreset(preset) {
+  function handleDeletePreset(preset: Preset) {
     if (preset.custom) {
       const next = customPresets.filter((p) => p.id !== preset.id);
       setCustomPresets(next);
@@ -166,31 +180,29 @@ const Main = () => {
   }
 
   return (
-    <>
-      <Container size="xl" py="md">
-        <Grid gutter="xl">
-          <Grid.Col span={{ base: 12, lg: 6 }}>
-            <UserInputForm
-              userInput={userInput}
-              handleChange={handleChange}
-              handlePreset={handlePreset}
-              handleReset={handleReset}
-              expandedFields={expandedFields}
-              toggleFieldExpanded={toggleFieldExpanded}
-              errors={errors}
-              activePreset={activePreset}
-              visibleBuiltins={visibleBuiltins}
-              customPresets={customPresets}
-              onSavePreset={handleSavePreset}
-              onDeletePreset={handleDeletePreset}
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, lg: 6 }}>
-            <Result userInput={userInput} errors={errors} />
-          </Grid.Col>
-        </Grid>
-      </Container>
-    </>
+    <Container size="xl" py="md">
+      <Grid gap="xl">
+        <Grid.Col span={{ base: 12, lg: 6 }}>
+          <UserInputForm
+            userInput={userInput}
+            handleChange={handleChange}
+            handlePreset={handlePreset}
+            handleReset={handleReset}
+            expandedFields={expandedFields}
+            toggleFieldExpanded={toggleFieldExpanded}
+            errors={errors}
+            activePreset={activePreset}
+            visibleBuiltins={visibleBuiltins}
+            customPresets={customPresets}
+            onSavePreset={handleSavePreset}
+            onDeletePreset={handleDeletePreset}
+          />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, lg: 6 }}>
+          <Result userInput={userInput} errors={errors} />
+        </Grid.Col>
+      </Grid>
+    </Container>
   );
 };
 

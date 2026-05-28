@@ -12,10 +12,10 @@ const cadCompact = new Intl.NumberFormat("en-CA", {
   maximumFractionDigits: 1,
 });
 
-export function formatCAD(value) {
+export function formatCAD(value: number): string {
   return cadFull.format(value);
 }
 
-export function formatCADCompact(value) {
+export function formatCADCompact(value: number): string {
   return cadCompact.format(value);
 }

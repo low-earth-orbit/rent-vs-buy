@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -29,9 +29,31 @@ import {
   ResponsiveContainer,
   LabelList,
 } from "recharts";
+import type { ReactElement } from "react";
 import { formatCAD, formatCADCompact } from "../utils/format";
+import type {
+  MonteCarloResponse,
+  MonteCarloYear,
+  UserInput,
+  UserInputKey,
+} from "../types";
 
 const NUM_SIMULATIONS = 1000;
+
+interface ChartPoint {
+  year: number;
+  renterP25: number;
+  renterMedian: number;
+  renterP75: number;
+  renterBandBase: number;
+  renterBandWidth: number;
+  ownerP25: number;
+  ownerMedian: number;
+  ownerP75: number;
+  ownerBandBase: number;
+  ownerBandWidth: number;
+  renterWinPct: number;
+}
 
 const INPUT_LABELS = {
   monthlyRent: "Monthly Rent ($)",
@@ -60,7 +82,7 @@ const INPUT_LABELS = {
   dividendYieldSigma: "Dividend Yield Sigma",
 };
 
-function ChartTooltip({ payload }) {
+function ChartTooltip({ payload }: { payload?: { payload: ChartPoint }[] }) {
   if (!payload || payload.length === 0) return null;
   const point = payload[0].payload;
   const renter = point.renterMedian;
@@ -100,7 +122,13 @@ function ChartTooltip({ payload }) {
   );
 }
 
-function Summary({ data, holdingPeriod }) {
+function Summary({
+  data,
+  holdingPeriod,
+}: {
+  data: ChartPoint[];
+  holdingPeriod: number;
+}) {
   const decision =
     data.find((d) => d.year === holdingPeriod) ?? data[data.length - 1];
 
@@ -113,7 +141,8 @@ function Summary({ data, holdingPeriod }) {
   const winnerPct = renterFavored ? winPct : 100 - winPct;
   const winner = renterFavored ? "Renting" : "Buying";
 
-  let title, color;
+  let title: string;
+  let color: string;
   if (winnerPct >= 70) {
     title = `${winner} clearly leads`;
     color = renterFavored ? "teal" : "indigo";
@@ -141,18 +170,18 @@ function Summary({ data, holdingPeriod }) {
   );
 }
 
-export default function NetWorthChart({ userInput }) {
-  const workerRef = useRef(null);
+export default function NetWorthChart({ userInput }: { userInput: UserInput }) {
+  const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
-  const [mcData, setMcData] = useState(null);
+  const [mcData, setMcData] = useState<MonteCarloYear[] | null>(null);
   const [debouncedInput] = useDebouncedValue(userInput, 150);
   const [tableOpen, setTableOpen] = useState(false);
 
   useEffect(() => {
     workerRef.current = new Worker(
-      new URL("../workers/monteCarloWorker.js", import.meta.url),
+      new URL("../workers/monteCarloWorker.ts", import.meta.url),
     );
-    workerRef.current.onmessage = (event) => {
+    workerRef.current.onmessage = (event: MessageEvent<MonteCarloResponse>) => {
       const { requestId, result } = event.data;
       if (requestId === requestIdRef.current) setMcData(result);
     };
@@ -169,32 +198,34 @@ export default function NetWorthChart({ userInput }) {
     });
   }, [debouncedInput]);
 
-  const chartData = useMemo(() => {
-    if (!mcData) return null;
-    return mcData.map((mc) => ({
-      year: mc.year,
-      renterP25: mc.renterP25,
-      renterMedian: mc.renterMedian,
-      renterP75: mc.renterP75,
-      renterBandBase: mc.renterP25,
-      renterBandWidth: mc.renterP75 - mc.renterP25,
-      ownerP25: mc.ownerP25,
-      ownerMedian: mc.ownerMedian,
-      ownerP75: mc.ownerP75,
-      ownerBandBase: mc.ownerP25,
-      ownerBandWidth: mc.ownerP75 - mc.ownerP25,
-      renterWinPct: mc.renterWinPct,
-    }));
-  }, [mcData]);
+  // React Compiler auto-memoizes this derivation; no useMemo needed.
+  const chartData: ChartPoint[] | null = mcData
+    ? mcData.map((mc) => ({
+        year: mc.year,
+        renterP25: mc.renterP25,
+        renterMedian: mc.renterMedian,
+        renterP75: mc.renterP75,
+        renterBandBase: mc.renterP25,
+        renterBandWidth: mc.renterP75 - mc.renterP25,
+        ownerP25: mc.ownerP25,
+        ownerMedian: mc.ownerMedian,
+        ownerP75: mc.ownerP75,
+        ownerBandBase: mc.ownerP25,
+        ownerBandWidth: mc.ownerP75 - mc.ownerP25,
+        renterWinPct: mc.renterWinPct,
+      }))
+    : null;
 
   // Early return if chartData isn't ready yet.
   if (!chartData) return null;
 
+  // Non-null alias so nested closures (endLabel, downloadCSV) keep the narrowing.
+  const points: ChartPoint[] = chartData;
   const saleYear = userInput.holdingPeriod;
 
   const allValues = chartData
     .flatMap((d) => [d.renterP25, d.renterP75, d.ownerP25, d.ownerP75])
-    .filter((v) => v != null && isFinite(v));
+    .filter((v): v is number => v != null && isFinite(v));
 
   const yMin = Math.min(...allValues);
   const yMax = Math.max(...allValues);
@@ -204,9 +235,19 @@ export default function NetWorthChart({ userInput }) {
     Math.ceil((yMax + yPad) / 50000) * 50000,
   ];
 
-  function endLabel(name, fill) {
-    return ({ x, y, index, value }) => {
-      if (index !== chartData.length - 1) return null;
+  function endLabel(name: string, fill: string) {
+    // Recharts LabelList `content` callback, not a React component.
+    // eslint-disable-next-line react/display-name
+    return (props: {
+      x?: number | string;
+      y?: number | string;
+      index?: number;
+      value?: unknown;
+    }): ReactElement | null => {
+      const { index, value } = props;
+      const x = Number(props.x);
+      const y = Number(props.y);
+      if (index !== points.length - 1) return null;
       if (value == null || !isFinite(x) || !isFinite(y)) return null;
       return (
         <text x={x + 6} y={y} dy={4} fill={fill} fontSize={11} fontWeight={600}>
@@ -217,7 +258,7 @@ export default function NetWorthChart({ userInput }) {
   }
 
   function downloadCSV() {
-    const esc = (v) => {
+    const esc = (v: unknown) => {
       if (v == null) return "";
       const s = String(v);
       return s.includes(",") || s.includes('"')
@@ -227,8 +268,8 @@ export default function NetWorthChart({ userInput }) {
     const rows = [
       ["Input", "Value"],
       ...Object.entries(INPUT_LABELS)
-        .filter(([key]) => userInput[key] !== undefined)
-        .map(([key, label]) => [label, userInput[key]]),
+        .filter(([key]) => userInput[key as UserInputKey] !== undefined)
+        .map(([key, label]) => [label, userInput[key as UserInputKey]]),
       [],
       [
         "Year",
@@ -240,7 +281,7 @@ export default function NetWorthChart({ userInput }) {
         "Buy P75",
         "Renter Win %",
       ],
-      ...chartData.map((d) => [
+      ...points.map((d) => [
         d.year,
         Math.round(d.renterMedian ?? 0),
         Math.round(d.renterP25 ?? 0),
@@ -475,7 +516,7 @@ export default function NetWorthChart({ userInput }) {
         </Button>
       </Group>
 
-      <Collapse in={tableOpen}>
+      <Collapse expanded={tableOpen}>
         <div id="net-worth-data-table">
           <ScrollArea>
             <Table

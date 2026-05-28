@@ -12,6 +12,22 @@ This calculator compares the financial outcomes of renting versus owning a home.
 
 Results include Monte Carlo confidence bands (1,000 simulations) showing the range of possible outcomes, and a probability-based summary indicating how confident you can be in the result.
 
+## Development
+
+Built with Next.js (App Router), React 19, TypeScript, Mantine, Tailwind CSS, Recharts, and the React Compiler. Statically exported and deployed to GitHub Pages. Tested with Vitest + React Testing Library (unit/component) and Playwright (e2e).
+
+```bash
+npm install
+npm run dev        # dev server at http://localhost:3000/rent-vs-buy
+npm run build      # static export to ./out
+npm run lint       # ESLint
+npm run typecheck  # tsc --noEmit
+npm test           # Vitest unit + component tests
+npm run test:e2e   # Playwright end-to-end tests
+```
+
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, format check, tests, build, and e2e on every PR and on `main`. Enable these as required status checks in branch protection to block merges until they pass.
+
 ## Assumptions
 
 1.  Capital gains from selling the house are not taxed. This is a reasonable assumption for a principal residence in Canada.

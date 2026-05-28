@@ -1,4 +1,11 @@
-export const FIELD_CONSTRAINTS = {
+import type {
+  FieldConstraint,
+  FieldErrors,
+  UserInput,
+  UserInputKey,
+} from "../types";
+
+export const FIELD_CONSTRAINTS: Record<UserInputKey, FieldConstraint> = {
   monthlyRent: { min: 1, max: undefined, step: 100 },
   rentIncreaseRate: {
     min: -5,
@@ -45,7 +52,7 @@ export const FIELD_CONSTRAINTS = {
   dividendYieldSigma: { min: 0, max: 5, step: 0.1 },
 };
 
-function isEmpty(value) {
+function isEmpty(value: unknown): boolean {
   return (
     value === "" ||
     value === null ||
@@ -54,11 +61,14 @@ function isEmpty(value) {
   );
 }
 
-export function validateUserInput(input) {
-  const errors = {};
+export function validateUserInput(input: UserInput): FieldErrors {
+  const errors: FieldErrors = {};
   const mortgageDisabled = input.downPaymentPercentage === 100;
 
-  for (const [field, { min, max }] of Object.entries(FIELD_CONSTRAINTS)) {
+  for (const [field, { min, max }] of Object.entries(FIELD_CONSTRAINTS) as [
+    UserInputKey,
+    FieldConstraint,
+  ][]) {
     if (
       mortgageDisabled &&
       (field === "annualMortgageInterestRate" || field === "amortization")
