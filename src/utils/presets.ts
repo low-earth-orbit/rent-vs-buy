@@ -1,3 +1,5 @@
+import type { Preset, UserInput, UserInputKey } from "../types";
+
 export const INPUT_UNCERTAINTIES = {
   homePriceGrowthSigma: 2.0,
   investmentReturnSigma: 2.0,
@@ -20,7 +22,7 @@ export const DEFAULTS = {
   condoFeesPerMonth: 0,
   downPaymentPercentage: 20,
   annualMortgageInterestRate: 4.5,
-  amortizationPeriod: 25,
+  amortization: 25,
   holdingPeriod: 12,
   investmentReturnRate: 6,
   dividendYield: 1.8,
@@ -29,7 +31,7 @@ export const DEFAULTS = {
   ...INPUT_UNCERTAINTIES,
 };
 
-export const PRESETS = [
+export const PRESETS: Preset[] = [
   { id: "defaults", label: "Base Case", values: DEFAULTS },
   {
     id: "bay-street",
@@ -88,10 +90,15 @@ export const PRESETS = [
   },
 ];
 
-export function getActivePreset(userInput, allPresets) {
+export function getActivePreset(
+  userInput: UserInput,
+  allPresets: Preset[],
+): Preset | null {
   return (
     allPresets.find((p) =>
-      Object.keys(p.values).every((k) => p.values[k] === userInput[k]),
+      (Object.keys(p.values) as UserInputKey[]).every(
+        (k) => p.values[k] === userInput[k],
+      ),
     ) ?? null
   );
 }

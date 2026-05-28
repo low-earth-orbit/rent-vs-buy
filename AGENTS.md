@@ -5,45 +5,79 @@ This file provides guidance to AI code agents when working with code in this rep
 ## Quick Start
 
 ```bash
-npm start          # Start development server on http://localhost:3000
-npm run build      # Build for production
-npm test           # Run tests
-npm run deploy     # Deploy to GitHub Pages
+npm run dev          # Start dev server on http://localhost:3000/rent-vs-buy
+npm run build        # Static export to ./out (output: "export")
+npm run lint         # ESLint (flat config: next/core-web-vitals + typescript + prettier)
+npm run typecheck    # tsc --noEmit
+npm run format       # Prettier (format:check to verify only)
+npm test             # Vitest unit + React Testing Library component tests
+npm run test:e2e     # Playwright end-to-end tests (auto-starts the dev server)
 ```
+
+The codebase is **TypeScript** (`.ts`/`.tsx`); shared domain types live in `src/types.ts`.
+
+## CI / CD
+
+- **`.github/workflows/ci.yml`** runs on every PR and on push to `main`: lint, typecheck,
+  format check, unit tests, build, and Playwright e2e. Make these required status checks in the
+  repo's branch protection so PRs cannot merge until they pass.
+- **`.github/workflows/deploy.yml`** runs the same lint/typecheck/format/test gates before
+  building and publishing `./out` to GitHub Pages, so `main` only ships if checks pass.
 
 ## Project Overview
 
-A React-based financial calculator that compares the financial outcomes of renting versus buying a home in Canada. Users input assumptions about their personal situation, and the app generates a year-by-year net worth comparison over 50 years. Results include Monte Carlo confidence bands and a probability-based summary of which option is more likely to win.
+A **Next.js (App Router)** financial calculator that compares the financial outcomes of renting versus buying a home in Canada. Users input assumptions about their personal situation, and the app generates a year-by-year net worth comparison over 50 years. Results include Monte Carlo confidence bands and a probability-based summary of which option is more likely to win.
+
+The app is statically exported (`output: "export"`) and served from GitHub Pages under the `/rent-vs-buy` base path. React Compiler is enabled (`reactCompiler: true` in `next.config.ts`).
 
 ## Architecture
 
+### 0. App Entry (`src/app/`)
+
+- **layout.tsx** (server component): root `<html>`, Mantine `ColorSchemeScript`, favicon, Lato font (via `next/font/google`), page `metadata`/`viewport`. Wraps children in `Providers`.
+- **providers.tsx** (`"use client"`): `MantineProvider` with the teal/Lato theme and a `localStorageColorSchemeManager` (key `rent-vs-buy-color-scheme`).
+- **page.tsx** (`"use client"`): renders `Header` + `Footer`, and lazy-loads `Main` with `next/dynamic({ ssr: false })` so localStorage-backed state never causes a hydration mismatch.
+- **globals.css**: Tailwind v4 + Mantine, ordered via CSS `@layer` (`tailwind-base, mantine, tailwind-utilities`) so Tailwind's preflight never overrides Mantine.
+
 ### 1. UI Layer (`src/components/`)
 
-- **Main.jsx**: Top-level state container. Holds `userInput`, `expandedFields` (which rate fields show the uncertainty input), `customPresets`, `hiddenBuiltins`, and `activePresetId`. Passes handlers to the form and result components. All state is persisted to localStorage via `storage.js`.
-- **UserInputForm.jsx**: Form organized into Accordion sections (Rent, Property, Mortgage, Investment & Tax, Transaction Costs). Preset buttons at the top let users apply, save, or delete scenarios. Rate fields can expand inline to reveal a sigma (uncertainty) input.
-- **UserInputFormItem.jsx**: Thin wrapper around Mantine `NumberInput` with a `FieldLabel`.
-- **UserInputRangeItem.jsx**: Form control for rate fields that support uncertainty. Shows a base value `NumberInput` with a toggle to expand an inline `±2σ` input and a live range readout (`low% to high%`). The sigma input displays `2σ` (the full ±spread) and converts back to `σ` on change.
-- **FieldLabel.jsx**: Label with optional helper text popover.
-- **Result.jsx**: Validates input, then renders `NetWorthChart` (always with MC bands).
-- **NetWorthChart.jsx**: Dispatches Monte Carlo work to a Web Worker, receives per-year percentiles, and renders the chart. Also renders a `Summary` Alert with probability-tiered language, a collapsible data table, and a CSV download button.
-- **Header.jsx / Footer.jsx**: Static UI.
+- **Main.tsx**: Top-level state container. Holds `userInput`, `expandedFields` (which rate fields show the uncertainty input), `customPresets`, `hiddenBuiltins`, and `activePresetId`. Passes handlers to the form and result components. All state is persisted to localStorage via `storage.ts`.
+- **UserInputForm.tsx**: Form organized into Accordion sections (Rent, Property, Mortgage, Investment & Tax, Transaction Costs). Preset buttons at the top let users apply, save, or delete scenarios. Rate fields can expand inline to reveal a sigma (uncertainty) input.
+- **UserInputFormItem.tsx**: Thin wrapper around Mantine `NumberInput` with a `FieldLabel`.
+- **CurrencyPercentItem.tsx**: Recurring-cost input that toggles between a dollar amount (per year) and a percentage of today's home price. Shared by Property Tax and Maintenance (extracted to remove duplicated $/% conversion logic).
+- **UserInputRangeItem.tsx**: Form control for rate fields that support uncertainty. Shows a base value `NumberInput` with a toggle to expand an inline `±2σ` input and a live range readout (`low% to high%`). The sigma input displays `2σ` (the full ±spread) and converts back to `σ` on change.
+- **FieldLabel.tsx**: Label with optional helper text popover.
+- **Result.tsx**: Validates input, then renders `NetWorthChart` (always with MC bands).
+- **NetWorthChart.tsx**: Dispatches Monte Carlo work to a Web Worker, receives per-year percentiles, and renders the chart. Also renders a `Summary` Alert with probability-tiered language, a collapsible data table, and a CSV download button.
+- **Header.tsx / Footer.tsx**: Static UI.
 
 ### 2. Calculation Layer (`src/utils/`)
 
-- **math.jsx**: Math utilities.
-- **monteCarlo.js**: Stochastic simulation. `runMonteCarlo()` runs `NUM_SIMULATIONS` simulations and returns per-year percentiles (P25, median, P75) for both renter and owner, plus `renterWinPct` (fraction of simulations where renter > owner at that year).
-- **presets.js**: `DEFAULTS` (input values), `INPUT_UNCERTAINTIES` (default sigmas), `PRESETS` (built-in scenario presets), and `getActivePreset()` (matches current input to a preset by value).
-- **validation.js**: `FIELD_CONSTRAINTS` (per-field min/max/step), `SLIDER_BOUNDS` (range slider track domains), and `validateUserInput()` (returns errors object).
-- **format.js**: `formatCAD()` and `formatCADCompact()` for currency display.
-- **storage.js**: localStorage helpers for persisting `userInput`, `expandedFields`, `customPresets`, `hiddenBuiltins`, and `activePresetId`. Also handles migration from the legacy `rvb_advanced` key via `consumeLegacyAdvanced()`.
+- **math.ts**: Math utilities.
+- **monteCarlo.ts**: Stochastic simulation. `runMonteCarlo()` runs `NUM_SIMULATIONS` simulations and returns per-year percentiles (P25, median, P75) for both renter and owner, plus `renterWinPct` (fraction of simulations where renter > owner at that year).
+- **presets.ts**: `DEFAULTS` (input values), `INPUT_UNCERTAINTIES` (default sigmas), `PRESETS` (built-in scenario presets), and `getActivePreset()` (matches current input to a preset by value).
+- **validation.ts**: `FIELD_CONSTRAINTS` (per-field min/max/step) and `validateUserInput()` (returns errors object).
+- **format.ts**: `formatCAD()` and `formatCADCompact()` for currency display.
+- **storage.ts**: localStorage helpers for persisting `userInput`, `expandedFields`, `customPresets`, `hiddenBuiltins`, and `activePresetId`. Also handles migration from the legacy `rvb_advanced` key via `consumeLegacyAdvanced()`.
+
+Shared domain types (`UserInput`, `UserInputKey`, `SigmaKey`, `Preset`, `MonteCarloYear`, etc.) live in **`src/types.ts`**.
 
 ### 3. Web Worker
 
-`src/workers/monteCarloWorker.js` runs `runMonteCarlo()` off the main thread. `NetWorthChart` creates the worker on mount, sends a new message (with a `requestId`) whenever debounced `userInput` changes, and only applies results whose `requestId` matches the latest request — dropping stale responses automatically.
+`src/workers/monteCarloWorker.ts` runs `runMonteCarlo()` off the main thread. `NetWorthChart` creates the worker on mount, sends a new message (with a `requestId`) whenever debounced `userInput` changes, and only applies results whose `requestId` matches the latest request — dropping stale responses automatically.
 
 ### 4. Styling
 
-Uses **Mantine** UI components (`@mantine/core`) and **Recharts** for charts. Layout is a Mantine `Grid` — inputs on left, results on right.
+Uses **Mantine** UI components (`@mantine/core`) and **Recharts** for charts. Layout is a Mantine `Grid` — inputs on left, results on right. **Tailwind v4** is also available for utility-class styling; its preflight is layered below Mantine (see `src/app/globals.css`) so the two coexist without conflicts.
+
+### 5. Testing
+
+- **Vitest + React Testing Library** (`vitest.config.ts`, `vitest.setup.ts`): unit tests live next to source as `*.test.ts` (e.g. `src/utils/math.test.ts`) and component tests as `*.test.tsx` (e.g. `src/components/Footer.test.tsx`). Component tests render through `src/test-utils.tsx`, which wraps RTL's `render` in `MantineProvider`. The setup file mocks `matchMedia`/`ResizeObserver` (absent in jsdom).
+- **Playwright** (`playwright.config.ts`): end-to-end specs in `e2e/`. The config auto-starts `npm run dev` and drives the app under the `/rent-vs-buy` base path.
+
+### Memoization & React Compiler
+
+React Compiler is on, so it auto-memoizes. Do **not** add `useMemo`/`useCallback`/`React.memo` for performance — write plain derivations and let the compiler handle it. (`useRef`/`useState`/`useEffect` and Mantine's `useDebouncedValue` are not memoization and stay.)
 
 ## Key Modeling Assumptions
 

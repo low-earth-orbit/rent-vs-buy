@@ -4,20 +4,25 @@ import {
   ActionIcon,
   Button,
   Group,
-  Input,
   Modal,
-  NumberInput,
-  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
   TextInput,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import FieldLabel from "./FieldLabel";
 import UserInputFormItem from "./UserInputFormItem";
 import UserInputRangeItem from "./UserInputRangeItem";
+import CurrencyPercentItem from "./CurrencyPercentItem";
 import { FIELD_CONSTRAINTS } from "../utils/validation";
+import type {
+  FieldErrors,
+  FieldValue,
+  Preset,
+  SigmaKey,
+  UserInput,
+  UserInputKey,
+} from "../types";
 
 const PlusIcon = () => (
   <svg
@@ -55,6 +60,27 @@ const XIcon = () => (
   </svg>
 );
 
+interface UserInputFormProps {
+  userInput: UserInput;
+  handleChange: (field: UserInputKey, value: FieldValue) => void;
+  handlePreset: (preset: Preset) => void;
+  handleReset: () => void;
+  expandedFields: UserInputKey[];
+  toggleFieldExpanded: (baseField: UserInputKey, sigmaField?: SigmaKey) => void;
+  errors: FieldErrors;
+  activePreset: Preset | null;
+  visibleBuiltins: Preset[];
+  customPresets: Preset[];
+  onSavePreset: (name: string) => void;
+  onDeletePreset: (preset: Preset) => void;
+}
+
+interface PerturbedOptions {
+  label: string;
+  helperText?: string;
+  disabled?: boolean;
+}
+
 export default function UserInputForm({
   userInput,
   handleChange,
@@ -68,20 +94,18 @@ export default function UserInputForm({
   customPresets,
   onSavePreset,
   onDeletePreset,
-}) {
+}: UserInputFormProps) {
   const [saveOpen, { open: openSave, close: closeSave }] = useDisclosure(false);
   const [resetOpen, { open: openReset, close: closeReset }] =
     useDisclosure(false);
   const [presetName, setPresetName] = useState("");
-  const [propertyTaxUnit, setPropertyTaxUnit] = useState("$");
-  const [maintenanceUnit, setMaintenanceUnit] = useState("%");
 
   const confirmReset = () => {
     handleReset();
     closeReset();
   };
 
-  const variantFor = (preset) =>
+  const variantFor = (preset: Preset) =>
     activePreset?.id === preset.id ? "filled" : "light";
 
   const submitSave = () => {
@@ -92,15 +116,16 @@ export default function UserInputForm({
     closeSave();
   };
 
-  const bind = (id) => (value) => handleChange(id, value);
-  const c = (id) => FIELD_CONSTRAINTS[id];
+  const bind = (id: UserInputKey) => (value: FieldValue) =>
+    handleChange(id, value);
+  const c = (id: UserInputKey) => FIELD_CONSTRAINTS[id];
 
   // Perturbed variables: base value always, plus an inline ±2σ input + range
   // readout when the field's "± add uncertainty" affordance is expanded.
   const perturbed = (
-    baseField,
-    sigmaField,
-    { label, helperText, disabled },
+    baseField: UserInputKey,
+    sigmaField: SigmaKey,
+    { label, helperText, disabled }: PerturbedOptions,
   ) => (
     <UserInputRangeItem
       baseField={baseField}
@@ -265,156 +290,30 @@ export default function UserInputForm({
                   "Expected annual growth in the home's market value. Long-run world historical average is 0–2% above inflation, roughly 2–4% nominal.",
               })}
 
-              {(() => {
-                const homePrice = userInput.initialHomePrice;
-                const taxHelper =
-                  "Current annual property tax. Switch between dollar amount and rate (% of today's home value). Typical range: 0.5–1.5% depending on municipality.";
-                const taxLabel = "Property Tax";
+              <CurrencyPercentItem
+                id="propertyTaxRate"
+                label="Property Tax"
+                helperText="Current annual property tax. Switch between dollar amount and rate (% of today's home value). Typical range: 0.5–1.5% depending on municipality."
+                unitAriaLabel="Property Tax input unit"
+                rate={userInput.propertyTaxRate}
+                homePrice={userInput.initialHomePrice}
+                onChange={bind("propertyTaxRate")}
+                error={errors.propertyTaxRate}
+                defaultUnit="$"
+              />
 
-                const rate = userInput.propertyTaxRate;
-                const rateIsEmpty = rate === "" || rate == null;
-                const displayValue =
-                  propertyTaxUnit === "$"
-                    ? rateIsEmpty
-                      ? ""
-                      : homePrice > 0
-                        ? Math.round((+rate / 100) * homePrice)
-                        : 0
-                    : rate;
+              <CurrencyPercentItem
+                id="maintPct"
+                label="Maintenance & Insurance"
+                helperText="Annual repairs and insurance. Toggle % of today's home price or $/yr. Excludes condo fees. Typically 0.5–1% for condos and 1–2% for detached homes."
+                unitAriaLabel="Maintenance and Insurance input unit"
+                rate={userInput.maintPct}
+                homePrice={userInput.initialHomePrice}
+                onChange={bind("maintPct")}
+                error={errors.maintPct}
+                defaultUnit="%"
+              />
 
-                const handleTaxChange = (next) => {
-                  if (next === "" || next == null) {
-                    handleChange("propertyTaxRate", next);
-                    return;
-                  }
-                  if (propertyTaxUnit === "%") {
-                    handleChange("propertyTaxRate", next);
-                    return;
-                  }
-                  if (!homePrice || homePrice <= 0) return;
-                  // 4 dp avoids floating-point noise like 0.8500000000000001
-                  // while preserving $1/yr precision at a $1M home.
-                  const pct = (+next / homePrice) * 100;
-                  handleChange(
-                    "propertyTaxRate",
-                    Math.round(pct * 10000) / 10000,
-                  );
-                };
-
-                return (
-                  <Stack gap={4}>
-                    <Group
-                      justify="space-between"
-                      align="center"
-                      wrap="nowrap"
-                      gap="xs"
-                    >
-                      <Input.Label htmlFor="propertyTaxRate">
-                        <FieldLabel label={taxLabel} helperText={taxHelper} />
-                      </Input.Label>
-                      <SegmentedControl
-                        size="xs"
-                        value={propertyTaxUnit}
-                        onChange={setPropertyTaxUnit}
-                        aria-label="Property Tax input unit"
-                        data={[
-                          { label: "$", value: "$" },
-                          { label: "%", value: "%" },
-                        ]}
-                      />
-                    </Group>
-                    <NumberInput
-                      id="propertyTaxRate"
-                      value={displayValue}
-                      onChange={handleTaxChange}
-                      error={errors.propertyTaxRate}
-                      prefix={propertyTaxUnit === "$" ? "$" : undefined}
-                      suffix={propertyTaxUnit === "$" ? " /yr" : "%"}
-                      thousandSeparator={
-                        propertyTaxUnit === "$" ? "," : undefined
-                      }
-                      min={0}
-                      step={propertyTaxUnit === "$" ? 100 : 0.1}
-                      allowNegative={false}
-                      clampBehavior="none"
-                    />
-                  </Stack>
-                );
-              })()}
-              {(() => {
-                const homePrice = userInput.initialHomePrice;
-                const maintHelper =
-                  "Annual repairs and insurance. Toggle % of today's home price or $/yr. Excludes condo fees. Typically 0.5–1% for condos and 1–2% for detached homes.";
-                const maintLabel = "Maintenance & Insurance";
-
-                const rate = userInput.maintPct;
-                const rateIsEmpty = rate === "" || rate == null;
-                const displayValue =
-                  maintenanceUnit === "$"
-                    ? rateIsEmpty
-                      ? ""
-                      : homePrice > 0
-                        ? Math.round((+rate / 100) * homePrice)
-                        : 0
-                    : rate;
-
-                const handleMaintChange = (next) => {
-                  if (next === "" || next == null) {
-                    handleChange("maintPct", next);
-                    return;
-                  }
-                  if (maintenanceUnit === "%") {
-                    handleChange("maintPct", next);
-                    return;
-                  }
-                  if (!homePrice || homePrice <= 0) return;
-                  const pct = (+next / homePrice) * 100;
-                  handleChange("maintPct", Math.round(pct * 10000) / 10000);
-                };
-
-                return (
-                  <Stack gap={4}>
-                    <Group
-                      justify="space-between"
-                      align="center"
-                      wrap="nowrap"
-                      gap="xs"
-                    >
-                      <Input.Label htmlFor="maintPct">
-                        <FieldLabel
-                          label={maintLabel}
-                          helperText={maintHelper}
-                        />
-                      </Input.Label>
-                      <SegmentedControl
-                        size="xs"
-                        value={maintenanceUnit}
-                        onChange={setMaintenanceUnit}
-                        aria-label="Maintenance and Insurance input unit"
-                        data={[
-                          { label: "$", value: "$" },
-                          { label: "%", value: "%" },
-                        ]}
-                      />
-                    </Group>
-                    <NumberInput
-                      id="maintPct"
-                      value={displayValue}
-                      onChange={handleMaintChange}
-                      error={errors.maintPct}
-                      prefix={maintenanceUnit === "$" ? "$" : undefined}
-                      suffix={maintenanceUnit === "$" ? " /yr" : "%"}
-                      thousandSeparator={
-                        maintenanceUnit === "$" ? "," : undefined
-                      }
-                      min={0}
-                      step={maintenanceUnit === "$" ? 100 : 0.1}
-                      allowNegative={false}
-                      clampBehavior="none"
-                    />
-                  </Stack>
-                );
-              })()}
               <UserInputFormItem
                 id="condoFeesPerMonth"
                 label="Condo Fees"
@@ -463,15 +362,15 @@ export default function UserInputForm({
                 {...c("downPaymentPercentage")}
               />
               <UserInputFormItem
-                id="amortizationPeriod"
-                label="Amortization Period"
+                id="amortization"
+                label="Amortization"
                 helperText="Total length of the mortgage. This calculator caps amortization at 25 years."
-                value={userInput.amortizationPeriod}
-                onChange={bind("amortizationPeriod")}
-                error={errors.amortizationPeriod}
+                value={userInput.amortization}
+                onChange={bind("amortization")}
+                error={errors.amortization}
                 suffix=" Years"
                 disabled={userInput.downPaymentPercentage === 100}
-                {...c("amortizationPeriod")}
+                {...c("amortization")}
               />
               {perturbed("annualMortgageInterestRate", "mortgageRateSigma", {
                 label: "Mortgage Rate",
