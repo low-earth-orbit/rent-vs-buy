@@ -26,7 +26,7 @@ export const FIELD_CONSTRAINTS = {
   condoFeesPerMonth: { min: 0, max: undefined, step: 50 },
   downPaymentPercentage: { min: 20, max: 100, step: 5 },
   annualMortgageInterestRate: { min: -10, max: 20, step: 0.25 },
-  amortizationPeriod: { min: 5, max: 25, step: 5 },
+  amortization: { min: 5, max: 25, step: 5 },
   holdingPeriod: { min: 1, max: 50, step: 1 },
   investmentReturnRate: {
     min: -10,
@@ -61,7 +61,7 @@ export function validateUserInput(input) {
   for (const [field, { min, max }] of Object.entries(FIELD_CONSTRAINTS)) {
     if (
       mortgageDisabled &&
-      (field === "annualMortgageInterestRate" || field === "amortizationPeriod")
+      (field === "annualMortgageInterestRate" || field === "amortization")
     ) {
       continue;
     }

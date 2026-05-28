@@ -463,15 +463,15 @@ export default function UserInputForm({
                 {...c("downPaymentPercentage")}
               />
               <UserInputFormItem
-                id="amortizationPeriod"
-                label="Amortization Period"
+                id="amortization"
+                label="Amortization"
                 helperText="Total length of the mortgage. This calculator caps amortization at 25 years."
-                value={userInput.amortizationPeriod}
-                onChange={bind("amortizationPeriod")}
-                error={errors.amortizationPeriod}
+                value={userInput.amortization}
+                onChange={bind("amortization")}
+                error={errors.amortization}
                 suffix=" Years"
                 disabled={userInput.downPaymentPercentage === 100}
-                {...c("amortizationPeriod")}
+                {...c("amortization")}
               />
               {perturbed("annualMortgageInterestRate", "mortgageRateSigma", {
                 label: "Mortgage Rate",

@@ -150,7 +150,7 @@ function simulatePath(userInput, annual, mortgageRates, scenario) {
   let annualMaintenance =
     (userInput.initialHomePrice * scenario.maintenanceMean) / 100;
   let monthlyCondoFees = userInput.condoFeesPerMonth ?? 0;
-  let remainingYears = userInput.amortizationPeriod;
+  let remainingYears = userInput.amortization;
   let currentMortgageRate = mortgageRates[0];
   let monthlyPayment = calculateMonthlyMortgagePayment(
     mortgageBalance,

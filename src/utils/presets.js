@@ -20,7 +20,7 @@ export const DEFAULTS = {
   condoFeesPerMonth: 0,
   downPaymentPercentage: 20,
   annualMortgageInterestRate: 4.5,
-  amortizationPeriod: 25,
+  amortization: 25,
   holdingPeriod: 12,
   investmentReturnRate: 6,
   dividendYield: 1.8,

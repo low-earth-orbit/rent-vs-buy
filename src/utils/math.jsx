@@ -11,23 +11,23 @@ export function calculateMonthlyMortgageInterestRate(
 export function calculateMonthlyMortgagePayment(
   mortgagePrincipal,
   annualMortgageInterestRate,
-  amortizationPeriod,
+  amortization,
 ) {
-  if (amortizationPeriod <= 0) {
+  if (amortization <= 0) {
     throw new Error("Amortization period must be greater than zero.");
   }
 
   if (mortgagePrincipal <= 0) return 0;
 
   if (annualMortgageInterestRate === 0) {
-    return mortgagePrincipal / (amortizationPeriod * 12);
+    return mortgagePrincipal / (amortization * 12);
   }
 
   const monthlyRate = calculateMonthlyMortgageInterestRate(
     annualMortgageInterestRate,
   );
 
-  const totalPayments = amortizationPeriod * 12;
+  const totalPayments = amortization * 12;
 
   if (monthlyRate === 0) {
     return mortgagePrincipal / totalPayments;

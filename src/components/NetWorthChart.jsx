@@ -38,7 +38,7 @@ const INPUT_LABELS = {
   initialHomePrice: "Home Price ($)",
   downPaymentPercentage: "Down Payment (%)",
   annualMortgageInterestRate: "Mortgage Rate (%/yr)",
-  amortizationPeriod: "Amortization (years)",
+  amortization: "Amortization (years)",
   holdingPeriod: "Holding Period (years)",
   rentIncreaseRate: "Rent Increase Rate (%/yr)",
   homePriceGrowthRate: "Home Price Growth (%/yr)",

@@ -18,9 +18,9 @@ describe("mortgage validation", () => {
   test("caps amortization at 25 years", () => {
     const errors = validateUserInput({
       ...DEFAULTS,
-      amortizationPeriod: 30,
+      amortization: 30,
     });
 
-    expect(errors.amortizationPeriod).toBe("Must be between 5 and 25");
+    expect(errors.amortization).toBe("Must be between 5 and 25");
   });
 });
