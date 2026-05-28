@@ -383,18 +383,18 @@ export default function UserInputForm({
         </Accordion.Item>
 
         <Accordion.Item value="investment">
-          <Accordion.Control>Investment &amp; Tax</Accordion.Control>
+          <Accordion.Control>Investment</Accordion.Control>
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               {perturbed("investmentReturnRate", "investmentReturnSigma", {
                 label: "Total Portfolio Return",
                 helperText:
-                  "Expected pre-tax annual return, including dividends and capital gains. The default is based on long-term capital market assumptions for a diversified growth portfolio (XGRO).",
+                  "Expected pre-tax annualized return, including dividends and capital gains. The default is based on long-term capital market assumptions for a diversified growth portfolio (XGRO).",
               })}
               {perturbed("dividendYield", "dividendYieldSigma", {
                 label: "Dividend Yield",
                 helperText:
-                  "Portion of the total return paid as dividends each year, taxed annually. Remainder is capital appreciation deferred until sale. Capped at the portfolio return.",
+                  "Portion of the total return paid as dividends each year, taxed annually. Remainder is capital gain deferred until sale. Capped at the portfolio return.",
               })}
               <UserInputFormItem
                 id="capitalGainTaxRate"
@@ -409,7 +409,7 @@ export default function UserInputForm({
               <UserInputFormItem
                 id="dividendTaxRate"
                 label="Dividend Tax Rate"
-                helperText="Effective tax rate on annual dividends. Eligible Canadian dividends taxed at a lower rate; foreign dividends at marginal income tax rate."
+                helperText="Effective tax rate on annual dividends. Canadian dividends are taxed at a lower rate; foreign dividends at marginal income tax rate."
                 value={userInput.dividendTaxRate}
                 onChange={bind("dividendTaxRate")}
                 error={errors.dividendTaxRate}
