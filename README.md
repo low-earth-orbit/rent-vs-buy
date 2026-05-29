@@ -18,6 +18,7 @@ Built with Next.js (App Router), React 19 (with React Compiler), TypeScript, Man
 npm install
 npm run dev        # dev server at http://localhost:3000/rent-vs-buy
 npm run build      # static export to ./out
+npm run format     # Prettier
 npm run lint       # ESLint
 npm run typecheck  # tsc --noEmit
 npm test           # Vitest unit + component tests

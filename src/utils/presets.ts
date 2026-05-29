@@ -24,10 +24,10 @@ export const DEFAULTS = {
   annualMortgageInterestRate: 4.5,
   amortization: 25,
   holdingPeriod: 12,
-  investmentReturnRate: 6,
-  dividendYield: 1.8,
-  dividendTaxRate: 35,
-  capitalGainTaxRate: 20,
+  investmentReturnRate: 6.3,
+  dividendYield: 2.4,
+  dividendTaxRate: 25,
+  capitalGainTaxRate: 15,
   ...INPUT_UNCERTAINTIES,
 };
 

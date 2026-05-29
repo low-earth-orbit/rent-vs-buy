@@ -12,10 +12,20 @@ const cadCompact = new Intl.NumberFormat("en-CA", {
   maximumFractionDigits: 1,
 });
 
+const percentageFormatter = new Intl.NumberFormat("en-CA", {
+  style: "percent",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export function formatCAD(value: number): string {
   return cadFull.format(value);
 }
 
 export function formatCADCompact(value: number): string {
   return cadCompact.format(value);
+}
+
+export function formatPercentage(value: number): string {
+  return percentageFormatter.format(value);
 }
