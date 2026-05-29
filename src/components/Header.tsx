@@ -13,7 +13,8 @@ import { IconSun, IconMoon } from "@tabler/icons-react";
 const Header = () => {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
 
-  const toggle = () => setColorScheme(colorScheme === "dark" ? "light" : "dark");
+  const toggle = () =>
+    setColorScheme(colorScheme === "dark" ? "light" : "dark");
 
   return (
     <Container component="header" size="xl" pt="xl" pb="xs">
