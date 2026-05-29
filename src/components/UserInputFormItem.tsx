@@ -1,4 +1,4 @@
-import { NumberInput } from "@mantine/core";
+import { NumberInput, Text, Stack } from "@mantine/core";
 import type { ReactNode } from "react";
 import FieldLabel from "./FieldLabel";
 import type { FieldValue } from "../types";
@@ -6,7 +6,8 @@ import type { FieldValue } from "../types";
 interface UserInputFormItemProps {
   id: string;
   label: ReactNode;
-  helperText?: string;
+  labelHelperText?: string;
+  additionalText?: string;
   min?: number;
   max?: number;
   step?: number;
@@ -23,7 +24,8 @@ interface UserInputFormItemProps {
 export default function UserInputFormItem({
   id,
   label,
-  helperText,
+  labelHelperText,
+  additionalText,
   min,
   max,
   step,
@@ -36,21 +38,26 @@ export default function UserInputFormItem({
   ...rest
 }: UserInputFormItemProps) {
   return (
-    <NumberInput
-      id={id}
-      label={<FieldLabel label={label} helperText={helperText} />}
-      value={value}
-      onChange={onChange}
-      min={min}
-      max={max}
-      step={step}
-      disabled={disabled}
-      allowNegative={allowNegative ?? false}
-      thousandSeparator={thousandSeparator ? "," : undefined}
-      error={error}
-      clampBehavior="none"
-      styles={{ label: { display: "block" } }}
-      {...rest}
-    />
+    <Stack gap={4}>
+      <NumberInput
+        id={id}
+        label={<FieldLabel label={label} helperText={labelHelperText} />}
+        value={value}
+        onChange={onChange}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled}
+        allowNegative={allowNegative ?? false}
+        thousandSeparator={thousandSeparator ? "," : undefined}
+        error={error}
+        clampBehavior="none"
+        styles={{ label: { display: "block" } }}
+        {...rest}
+      />
+      <Text size="xs" c="dimmed" aria-live="polite">
+        {additionalText}
+      </Text>
+    </Stack>
   );
 }
