@@ -120,16 +120,22 @@ export default function UserInputForm({
     (userInput.monthlyRent * 12) / userInput.initialHomePrice,
   );
 
-  const monthlyMortgage = formatCAD(
-    calculateMonthlyMortgagePayment(
-      calculateMortgagePrincipal(
-        userInput.initialHomePrice,
-        userInput.downPaymentPercentage,
-      ),
-      userInput.annualMortgageInterestRate,
-      userInput.amortization,
-    ),
-  );
+  // While a field is mid-edit it can transiently be "" or 0. Show a placeholder
+  // rather than a misleading "$0/mo" (empty amortization) or "NaN" (empty price).
+  // calculateMonthlyMortgagePayment itself soft-fails, so this is display-only.
+  const monthlyMortgage =
+    userInput.amortization > 0 && userInput.initialHomePrice > 0
+      ? formatCAD(
+          calculateMonthlyMortgagePayment(
+            calculateMortgagePrincipal(
+              userInput.initialHomePrice,
+              userInput.downPaymentPercentage,
+            ),
+            userInput.annualMortgageInterestRate,
+            userInput.amortization,
+          ),
+        )
+      : "—";
 
   return (
     <Stack gap="md">
