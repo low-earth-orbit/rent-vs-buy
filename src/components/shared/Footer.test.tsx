@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderWithMantine, screen } from "../test-utils";
+import { renderWithMantine, screen } from "@/test-utils";
 import Footer from "./Footer";
 
 describe("Footer", () => {
@@ -13,7 +13,7 @@ describe("Footer", () => {
     const github = screen.getByRole("link", { name: "GitHub" });
     expect(github).toHaveAttribute(
       "href",
-      "https://github.com/low-earth-orbit/rent-vs-buy",
+      "https://github.com/low-earth-orbit/personal-finance",
     );
   });
 });

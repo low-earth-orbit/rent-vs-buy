@@ -13,10 +13,10 @@ import {
 } from "@mantine/core";
 import { IconPlus, IconX, IconBulb } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
-import UserInputFormItem from "./UserInputFormItem";
-import UserInputRangeItem from "./UserInputRangeItem";
-import CurrencyPercentItem from "./CurrencyPercentItem";
-import { FIELD_CONSTRAINTS } from "../utils/validation";
+import UserInputFormItem from "@/components/shared/UserInputFormItem";
+import UserInputRangeItem from "@/components/shared/UserInputRangeItem";
+import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
+import { FIELD_CONSTRAINTS } from "@/utils/validation";
 import type {
   FieldErrors,
   FieldValue,
@@ -24,7 +24,7 @@ import type {
   SigmaKey,
   UserInput,
   UserInputKey,
-} from "../types";
+} from "@/types";
 import { formatCAD, formatPercentage } from "@/utils/format";
 import {
   calculateMonthlyMortgagePayment,

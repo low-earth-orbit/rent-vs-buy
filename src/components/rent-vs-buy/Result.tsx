@@ -1,6 +1,6 @@
 import { Alert } from "@mantine/core";
 import NetWorthChart from "./NetWorthChart";
-import type { FieldErrors, UserInput } from "../types";
+import type { FieldErrors, UserInput } from "@/types";
 
 interface ResultProps {
   userInput: UserInput;

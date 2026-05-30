@@ -7,7 +7,7 @@ import {
   Stack,
 } from "@mantine/core";
 import FieldLabel from "./FieldLabel";
-import type { FieldValue } from "../types";
+import type { FieldValue } from "@/types";
 
 interface CurrencyPercentItemProps {
   id: string;

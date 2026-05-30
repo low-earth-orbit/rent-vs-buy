@@ -26,22 +26,30 @@ The codebase is **TypeScript** (`.ts`/`.tsx`); shared domain types live in `src/
 
 ## Project Overview
 
-A **Next.js (App Router)** financial calculator that compares the financial outcomes of renting versus buying a home in Canada. Users input assumptions about their personal situation, and the app generates a year-by-year net worth comparison over 50 years. Results include Monte Carlo confidence bands and a probability-based summary of which option is more likely to win.
+A **Next.js (App Router)** site hosting a collection of personal finance calculators for Canada. The site is statically exported (`output: "export"`) and served from GitHub Pages under the `/personal-finance` base path. React Compiler is enabled (`reactCompiler: true` in `next.config.ts`).
 
-The app is statically exported (`output: "export"`) and served from GitHub Pages under the `/rent-vs-buy` base path. React Compiler is enabled (`reactCompiler: true` in `next.config.ts`).
+A hub landing page at `/` links to each tool, and every tool lives at its own route:
+
+- **Rent vs Buy** (`/rent-vs-buy`): compares the financial outcomes of renting versus buying a home. Users input assumptions, and the app generates a year-by-year net worth comparison over 50 years with Monte Carlo confidence bands and a probability-based summary of which option is more likely to win.
+- **Retirement Planner** (`/retirement`): planned, not yet built.
+
+When adding a new tool: add its route under `src/app/<tool>/`, put tool-specific components in `src/components/<tool>/`, and reuse shared chrome/primitives from `src/components/shared/` and shared logic from `src/utils/`. Cross-folder imports use the `@/` alias (`@/* → ./src/*`).
 
 ## Architecture
 
 ### 0. App Entry (`src/app/`)
 
-- **layout.tsx** (server component): root `<html>`, Mantine `ColorSchemeScript`, favicon, Lato font (via `next/font/google`), page `metadata`/`viewport`. Wraps children in `Providers`.
-- **providers.tsx** (`"use client"`): `MantineProvider` with the teal/Lato theme and a `localStorageColorSchemeManager` (key `rent-vs-buy-color-scheme`).
-- **page.tsx** (`"use client"`): renders `Header` + `Footer`, and lazy-loads `Main` with `next/dynamic({ ssr: false })` so localStorage-backed state never causes a hydration mismatch.
+- **layout.tsx** (server component): root `<html>`, Mantine `ColorSchemeScript`, favicon, Lato font (via `next/font/google`), site-level `metadata` (title template) / `viewport`. Wraps children in `Providers`.
+- **providers.tsx** (`"use client"`): `MantineProvider` with the teal/Lato theme and a `localStorageColorSchemeManager` (key `personal-finance-color-scheme`).
+- **page.tsx** (server component): the hub landing page — a `SimpleGrid` of `ToolCard`s linking to each tool.
+- **rent-vs-buy/page.tsx** (server component): renders `Header` + `RentVsBuyApp` + `Methodology` + `Footer`. `RentVsBuyApp` is a `"use client"` wrapper that lazy-loads `Main` with `next/dynamic({ ssr: false })` (required: `ssr:false` must live inside a client component) so localStorage-backed state never causes a hydration mismatch.
 - **globals.css**: Tailwind v4 + Mantine, ordered via CSS `@layer` (`tailwind-base, mantine, tailwind-utilities`) so Tailwind's preflight never overrides Mantine.
 
 ### 1. UI Layer (`src/components/`)
 
-- **Main.tsx**: Top-level state container. Holds `userInput`, `expandedFields` (which rate fields show the uncertainty input), `customPresets`, `hiddenBuiltins`, and `activePresetId`. Passes handlers to the form and result components. All state is persisted to localStorage via `storage.ts`.
+Components are split into **`shared/`** (reusable chrome and form primitives — `Header`, `Footer`, `DisclaimerModal`, `FieldLabel`, `UserInputFormItem`, `UserInputRangeItem`, `CurrencyPercentItem`) and per-tool folders (**`rent-vs-buy/`**). `Header` takes `title`/`subtitle`/`showHomeLink` props; `Footer` is the generic site footer (disclaimer + copyright + GitHub).
+
+- **rent-vs-buy/Main.tsx**: Top-level state container for the rent-vs-buy tool. Holds `userInput`, `expandedFields` (which rate fields show the uncertainty input), `customPresets`, `hiddenBuiltins`, and `activePresetId`. Passes handlers to the form and result components. All state is persisted to localStorage via `storage.ts`.
 - **UserInputForm.tsx**: Form organized into Accordion sections (Rent, Property, Mortgage, Investment & Tax, Transaction Costs). Preset buttons at the top let users apply, save, or delete scenarios. Rate fields can expand inline to reveal a sigma (uncertainty) input.
 - **UserInputFormItem.tsx**: Thin wrapper around Mantine `NumberInput` with a `FieldLabel`.
 - **CurrencyPercentItem.tsx**: Recurring-cost input that toggles between a dollar amount (per year) and a percentage of today's home price. Shared by Property Tax and Maintenance (extracted to remove duplicated $/% conversion logic).
@@ -49,7 +57,7 @@ The app is statically exported (`output: "export"`) and served from GitHub Pages
 - **FieldLabel.tsx**: Label with optional helper text popover.
 - **Result.tsx**: Validates input, then renders `NetWorthChart` (always with MC bands).
 - **NetWorthChart.tsx**: Dispatches Monte Carlo work to a Web Worker, receives per-year percentiles, and renders the chart. Also renders a `Summary` Alert with probability-tiered language, a collapsible data table, and a CSV download button.
-- **Header.tsx / Footer.tsx**: Static UI.
+- **rent-vs-buy/Methodology.tsx**: Static note explaining the cash-flow comparison method (rent-vs-buy-specific; rendered below the tool). The generic site `Footer` lives in `shared/`.
 
 ### 2. Calculation Layer (`src/utils/`)
 
@@ -72,8 +80,8 @@ Uses **Mantine** UI components (`@mantine/core`) and **Recharts** for charts. La
 
 ### 5. Testing
 
-- **Vitest + React Testing Library** (`vitest.config.ts`, `vitest.setup.ts`): unit tests live next to source as `*.test.ts` (e.g. `src/utils/math.test.ts`) and component tests as `*.test.tsx` (e.g. `src/components/Footer.test.tsx`). Component tests render through `src/test-utils.tsx`, which wraps RTL's `render` in `MantineProvider`. The setup file mocks `matchMedia`/`ResizeObserver` (absent in jsdom).
-- **Playwright** (`playwright.config.ts`): end-to-end specs in `e2e/`. The config auto-starts `npm run dev` and drives the app under the `/rent-vs-buy` base path.
+- **Vitest + React Testing Library** (`vitest.config.ts`, `vitest.setup.ts`): unit tests live next to source as `*.test.ts` (e.g. `src/utils/math.test.ts`) and component tests as `*.test.tsx` (e.g. `src/components/shared/Footer.test.tsx`). Component tests render through `src/test-utils.tsx`, which wraps RTL's `render` in `MantineProvider`. The setup file mocks `matchMedia`/`ResizeObserver` (absent in jsdom).
+- **Playwright** (`playwright.config.ts`): end-to-end specs in `e2e/`. The config auto-starts `npm run dev` (which runs at the root, no base path) and drives the hub at `/` and each tool at its route (e.g. `/rent-vs-buy`).
 
 ### Memoization & React Compiler
 
@@ -152,7 +160,7 @@ The body always shows the actual win percentage and adds a sensitivity warning w
 
 ## Development Notes
 
-- `userInput` is stored as numbers in `Main.jsx` state. Form inputs coerce strings via `+value`.
-- Validation runs on every render in `Main.jsx` via `validateUserInput()`. If errors exist, `Result.jsx` shows an "Incomplete inputs" alert instead of the chart.
+- `userInput` is stored as numbers in `rent-vs-buy/Main.tsx` state. Form inputs coerce strings via `+value`.
+- Validation runs on every render in `rent-vs-buy/Main.tsx` via `validateUserInput()`. If errors exist, `rent-vs-buy/Result.tsx` shows an "Incomplete inputs" alert instead of the chart.
 - Monte Carlo runs in a Web Worker (debounced 150 ms). `NetWorthChart` tracks a `requestId` counter to discard responses from superseded requests.
-- Deployed to GitHub Pages from `/build`. Homepage in `package.json` must remain the GitHub Pages URL.
+- Deployed to GitHub Pages from `./out` (the static export). The `homepage` URL in `README.md`/deploy must stay the GitHub Pages URL.

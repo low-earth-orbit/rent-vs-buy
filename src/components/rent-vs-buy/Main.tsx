@@ -2,14 +2,14 @@ import { useState } from "react";
 import { Container, Grid } from "@mantine/core";
 import Result from "./Result";
 import UserInputForm from "./UserInputForm";
-import DisclaimerModal from "./DisclaimerModal";
+import DisclaimerModal from "@/components/shared/DisclaimerModal";
 import {
   DEFAULTS,
   PRESETS,
   INPUT_UNCERTAINTIES,
   getActivePreset,
-} from "../utils/presets";
-import { validateUserInput } from "../utils/validation";
+} from "@/utils/presets";
+import { validateUserInput } from "@/utils/validation";
 import {
   loadInput,
   saveInput,
@@ -26,14 +26,14 @@ import {
   loadDisclaimerAccepted,
   saveDisclaimerAccepted,
   clearAll,
-} from "../utils/storage";
+} from "@/utils/storage";
 import type {
   FieldValue,
   Preset,
   SigmaKey,
   UserInput,
   UserInputKey,
-} from "../types";
+} from "@/types";
 
 const PERTURBED_FIELDS: UserInputKey[] = [
   "rentIncreaseRate",

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { renderWithMantine } from "../test-utils";
+import { renderWithMantine } from "@/test-utils";
 import UserInputForm from "./UserInputForm";
-import { DEFAULTS, PRESETS } from "../utils/presets";
-import type { UserInput } from "../types";
+import { DEFAULTS, PRESETS } from "@/utils/presets";
+import type { UserInput } from "@/types";
 
 function renderForm(overrides: Partial<UserInput> = {}) {
   const userInput = { ...DEFAULTS, ...overrides } as UserInput;

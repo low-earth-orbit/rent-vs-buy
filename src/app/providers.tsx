@@ -14,7 +14,7 @@ const theme = createTheme({
 });
 
 const colorSchemeManager = localStorageColorSchemeManager({
-  key: "rent-vs-buy-color-scheme",
+  key: "personal-finance-color-scheme",
 });
 
 export default function Providers({ children }: { children: ReactNode }) {

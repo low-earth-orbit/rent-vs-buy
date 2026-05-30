@@ -32,13 +32,13 @@ import {
   LabelList,
 } from "recharts";
 import type { ReactElement } from "react";
-import { formatCAD, formatCADCompact } from "../utils/format";
+import { formatCAD, formatCADCompact } from "@/utils/format";
 import type {
   MonteCarloResponse,
   MonteCarloYear,
   UserInput,
   UserInputKey,
-} from "../types";
+} from "@/types";
 
 const NUM_SIMULATIONS = 1000;
 
@@ -186,7 +186,7 @@ export default function NetWorthChart({ userInput }: { userInput: UserInput }) {
 
   useEffect(() => {
     workerRef.current = new Worker(
-      new URL("../workers/monteCarloWorker.ts", import.meta.url),
+      new URL("../../workers/monteCarloWorker.ts", import.meta.url),
     );
     workerRef.current.onmessage = (event: MessageEvent<MonteCarloResponse>) => {
       const { requestId, result } = event.data;

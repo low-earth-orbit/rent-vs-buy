@@ -13,9 +13,12 @@ const lato = Lato({
 });
 
 export const metadata: Metadata = {
-  title: "Rent vs Buy",
+  title: {
+    default: "Personal Finance Tools",
+    template: "%s · Personal Finance Tools",
+  },
   description:
-    "A simple and sensible calculator for comparing renting vs owning a home.",
+    "Free, simple personal finance calculators for Canadians — compare renting vs buying, plan for retirement, and more.",
 };
 
 export const viewport: Viewport = {
@@ -32,7 +35,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <ColorSchemeScript
           defaultColorScheme="auto"
-          localStorageKey="rent-vs-buy-color-scheme"
+          localStorageKey="personal-finance-color-scheme"
         />
         <link rel="icon" type="image/svg+xml" href={FAVICON} />
       </head>
