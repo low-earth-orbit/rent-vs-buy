@@ -26,8 +26,8 @@ export const DEFAULTS = {
   holdingPeriod: 12,
   investmentReturnRate: 6.3,
   dividendYield: 2.4,
-  dividendTaxRate: 25,
-  capitalGainTaxRate: 15,
+  dividendTaxRate: 22.5,
+  capitalGainTaxRate: 15.6,
   ...INPUT_UNCERTAINTIES,
 };
 
