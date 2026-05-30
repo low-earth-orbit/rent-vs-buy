@@ -5,7 +5,7 @@ This file provides guidance to AI code agents when working with code in this rep
 ## Quick Start
 
 ```bash
-npm run dev          # Start dev server on http://localhost:3000/rent-vs-buy
+npm run dev          # Start dev server on http://localhost:3000
 npm run build        # Static export to ./out (output: "export")
 npm run lint         # ESLint (flat config: next/core-web-vitals + typescript + prettier)
 npm run typecheck    # tsc --noEmit

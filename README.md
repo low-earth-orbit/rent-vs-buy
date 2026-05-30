@@ -4,7 +4,9 @@ A simple and sensible calculator for comparing renting vs owning a home.
 
 Latest deployed version: [Click Me](https://low-earth-orbit.github.io/rent-vs-buy/)
 
-Disclaimer: THIS TOOL IS PROVIDED AS-IS. IT'S NOT FINANCIAL ADVICE.
+## Disclaimer
+
+An educational tool, **not financial advice**. Results are estimates from your assumptions, not predictions. Canada-specific and provided as-is — consult a professional before acting.
 
 ## How It Works
 
@@ -16,7 +18,7 @@ Built with Next.js (App Router), React 19 (with React Compiler), TypeScript, Man
 
 ```bash
 npm install
-npm run dev        # dev server at http://localhost:3000/rent-vs-buy
+npm run dev        # dev server at http://localhost:3000
 npm run build      # static export to ./out
 npm run format     # Prettier
 npm run lint       # ESLint

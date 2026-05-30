@@ -6,6 +6,7 @@ const KEY_EXPANDED_FIELDS = "rvb_expanded_fields";
 const KEY_CUSTOM = "rvb_customPresets";
 const KEY_HIDDEN = "rvb_hiddenBuiltins";
 const KEY_ACTIVE = "rvb_activePresetId";
+const KEY_DISCLAIMER = "rvb_disclaimerAccepted";
 
 const ALL_KEYS = [
   KEY_INPUT,
@@ -14,6 +15,7 @@ const ALL_KEYS = [
   KEY_CUSTOM,
   KEY_HIDDEN,
   KEY_ACTIVE,
+  KEY_DISCLAIMER,
 ];
 
 function safeGet(key: string): unknown {
@@ -99,6 +101,14 @@ export function loadActivePresetId(): string | null {
 export function saveActivePresetId(id: string | null): void {
   if (id == null) safeRemove(KEY_ACTIVE);
   else safeSet(KEY_ACTIVE, id);
+}
+
+export function loadDisclaimerAccepted(): boolean {
+  return safeGet(KEY_DISCLAIMER) === true;
+}
+
+export function saveDisclaimerAccepted(): void {
+  safeSet(KEY_DISCLAIMER, true);
 }
 
 export function clearAll(): void {
