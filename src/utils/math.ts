@@ -13,9 +13,9 @@ export function calculateMonthlyMortgagePayment(
   annualMortgageInterestRate: number,
   amortization: number,
 ): number {
-  if (amortization <= 0) {
-    throw new Error("Amortization period must be greater than zero.");
-  }
+  // Soft-fail on invalid inputs (e.g. a field cleared mid-edit) rather than
+  // throwing, which would crash any synchronous caller such as the form readout.
+  if (amortization <= 0) return 0;
 
   if (mortgagePrincipal <= 0) return 0;
 

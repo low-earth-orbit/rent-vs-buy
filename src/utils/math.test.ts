@@ -13,4 +13,9 @@ describe("conventional mortgage calculations", () => {
   test("handles zero-interest mortgage payments", () => {
     expect(calculateMonthlyMortgagePayment(300000, 0, 25)).toBe(1000);
   });
+
+  test("soft-fails to 0 on a non-positive amortization", () => {
+    expect(calculateMonthlyMortgagePayment(300000, 5, 0)).toBe(0);
+    expect(calculateMonthlyMortgagePayment(300000, 5, -1)).toBe(0);
+  });
 });
