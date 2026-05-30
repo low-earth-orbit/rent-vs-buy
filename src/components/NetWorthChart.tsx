@@ -17,7 +17,7 @@ import {
   IconChevronUp,
   IconDownload,
   IconTrophy,
-  IconSlash,
+  IconScale,
 } from "@tabler/icons-react";
 import { useDebouncedValue } from "@mantine/hooks";
 import {
@@ -167,7 +167,7 @@ function Summary({
 
   return (
     <Alert
-      icon={winnerPct < 60 ? <IconSlash size={16} /> : <IconTrophy size={16} />}
+      icon={winnerPct < 60 ? <IconScale size={16} /> : <IconTrophy size={16} />}
       color={color}
       title={title}
       radius="md"

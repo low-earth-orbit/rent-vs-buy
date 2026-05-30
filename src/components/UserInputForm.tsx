@@ -11,7 +11,7 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
-import { IconBulb, IconPlus, IconX } from "@tabler/icons-react";
+import { IconPlus, IconX, IconBulb } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import UserInputFormItem from "./UserInputFormItem";
 import UserInputRangeItem from "./UserInputRangeItem";
@@ -381,14 +381,14 @@ export default function UserInputForm({
               color="gray"
               mb="sm"
             >
-              Returns are split into two parts: annual yield (taxed each year)
-              and deferred capital gains (taxed at sale). Use the yield tax rate
-              to set a blended rate that reflects your mix of interest,
+              Total Return is split into two parts: Annual Yield (taxed each
+              year) and deferred capital gains (taxed at sale). Use Annual Yield
+              Tax to set a blended rate that reflects your mix of interest,
               dividends and realized capital gains.
             </Alert>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               {perturbed("investmentReturnRate", "investmentReturnSigma", {
-                label: "Total Investment Return",
+                label: "Total Return",
                 helperText:
                   "Expected pre-tax annualized return, including dividends and capital gains. The default is based on long-term capital market assumptions for a diversified growth portfolio (XGRO).",
               })}
