@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test("loads the calculator and renders the net worth chart", async ({
   page,
 }) => {
-  await page.goto("/rent-vs-buy/");
+  await page.goto("/");
 
   await expect(
     page.getByRole("heading", { name: "Is it better to rent or buy?" }),
