@@ -7,7 +7,7 @@ describe("Footer", () => {
     renderWithMantine(<Footer />);
 
     expect(
-      screen.getByText(/this tool is provided as-is/i),
+      screen.getByText(/educational tool, not financial advice/i),
     ).toBeInTheDocument();
 
     const github = screen.getByRole("link", { name: "GitHub" });

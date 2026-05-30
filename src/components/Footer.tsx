@@ -35,7 +35,8 @@ const Footer = () => {
           calculators.
         </Text>
         <Text size="sm" c="dimmed">
-          {`Disclaimer: This tool is provided as-is. It's not financial advice.`.toUpperCase()}
+          Disclaimer: An educational tool, not financial advice. Results are
+          estimates provided as-is.
         </Text>
         <Text size="sm" c="dimmed">
           Copyright © 2023–{currentYear} Leo Hong ·{" "}

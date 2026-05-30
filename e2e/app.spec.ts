@@ -5,6 +5,9 @@ test("loads the calculator and renders the net worth chart", async ({
 }) => {
   await page.goto("/");
 
+  // A disclaimer modal opens on first visit; dismiss it before continuing.
+  await page.getByRole("button", { name: "I understand" }).click();
+
   await expect(
     page.getByRole("heading", { name: "Is it better to rent or buy?" }),
   ).toBeVisible();
