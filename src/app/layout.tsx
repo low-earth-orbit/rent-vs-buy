@@ -14,8 +14,8 @@ const lato = Lato({
 
 export const metadata: Metadata = {
   title: {
-    default: "Personal Finance Tools",
-    template: "%s · Personal Finance Tools",
+    default: "Personal Finance",
+    template: "%s",
   },
   description:
     "Free, simple personal finance calculators for Canadians — compare renting vs buying, plan for retirement, and more.",
@@ -27,7 +27,7 @@ export const viewport: Viewport = {
 };
 
 const FAVICON =
-  'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 100 100"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="90">🏠</text></svg>';
+  'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 100 100"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="90">🤑</text></svg>';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

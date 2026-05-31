@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Text } from "@mantine/core";
+import { Alert, Card, Text } from "@mantine/core";
 import {
   Area,
   AreaChart,
@@ -15,6 +15,7 @@ import {
 } from "recharts";
 import { formatCAD, formatCADCompact } from "@/utils/format";
 import type { RetirementResult } from "@/utils/retirement/types";
+import { IconInfoCircle } from "@tabler/icons-react";
 
 interface ProjectionChartProps {
   result: RetirementResult;
@@ -36,9 +37,21 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
 
   return (
     <Card withBorder radius="md" padding="md">
-      <Text fw={600} mb="xs">
+      <Text fw={600} mb="lg">
         Projected portfolio (today&apos;s dollars)
       </Text>
+      <Alert
+        icon={<IconInfoCircle size={16} />}
+        variant="default"
+        title="Understanding Your Projection"
+      >
+        The chart shows your projected median net worth based on your
+        assumptions. While a more aggressive portfolio allocation may increase
+        your overall net worth in retirement, it also comes with greater return
+        variance. This increased volatility lowers your safe initial withdrawal
+        rate. Therefore, a higher equity allocation should not automatically be
+        interpreted as the better choice for your retirement.
+      </Alert>
       <div
         role="img"
         aria-label="Retirement portfolio projection chart"
@@ -47,9 +60,8 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={data}
-            margin={{ top: 16, right: 16, bottom: 32, left: 8 }}
+            margin={{ top: 32, right: 16, bottom: 32, left: 8 }}
           >
-            <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
             <ReferenceArea
               x1={retireAge}
               x2={lastAge}
@@ -66,7 +78,7 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
             <XAxis
               dataKey="age"
               tickMargin={8}
-              label={{ value: "Age", position: "insideBottom", offset: -16 }}
+              label={{ value: "Age", position: "bottom" }}
             />
             <YAxis
               width={70}
@@ -100,7 +112,7 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
                 ifOverflow="visible"
                 label={{
                   value: `Retire at ${retireAge} · ${formatCADCompact(peak)}`,
-                  position: "top",
+                  position: "left",
                   fill: "var(--mantine-color-teal-7)",
                   fontSize: 12,
                   fontWeight: 600,

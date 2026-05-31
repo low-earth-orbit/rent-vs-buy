@@ -34,24 +34,6 @@ export const WITHDRAWAL_RATE_PRESETS = [
 
 export const RETURN_PRESETS = [
   {
-    id: "glide-path-100-0-to-80-20",
-    label: "100/0 to 80/20",
-    accumReturn: 6.9,
-    retireReturn: 6.3,
-  },
-  {
-    id: "glide-path-100-0-to-60-40",
-    label: "100/0 to 60/40",
-    accumReturn: 6.9,
-    retireReturn: 5.7,
-  },
-  {
-    id: "glide-path-80-20",
-    label: "80/20",
-    accumReturn: 6.3,
-    retireReturn: 6.3,
-  },
-  {
     id: "glide-path-80-20-to-60-40",
     label: "80/20 to 60/40",
     accumReturn: 6.3,
@@ -68,6 +50,24 @@ export const RETURN_PRESETS = [
     label: "60/40",
     accumReturn: 5.7,
     retireReturn: 5.7,
+  },
+  {
+    id: "glide-path-100-0-to-80-20",
+    label: "100/0 to 80/20",
+    accumReturn: 6.9,
+    retireReturn: 6.3,
+  },
+  {
+    id: "glide-path-100-0-to-60-40",
+    label: "100/0 to 60/40",
+    accumReturn: 6.9,
+    retireReturn: 5.7,
+  },
+  {
+    id: "glide-path-80-20",
+    label: "80/20",
+    accumReturn: 6.3,
+    retireReturn: 6.3,
   },
 ] as const;
 

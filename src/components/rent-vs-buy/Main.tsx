@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Container, Grid } from "@mantine/core";
 import Result from "./Result";
 import UserInputForm from "./UserInputForm";
-import DisclaimerModal from "@/components/shared/DisclaimerModal";
 import {
   DEFAULTS,
   PRESETS,
@@ -23,8 +22,6 @@ import {
   saveHiddenBuiltins,
   loadActivePresetId,
   saveActivePresetId,
-  loadDisclaimerAccepted,
-  saveDisclaimerAccepted,
   clearAll,
 } from "@/utils/storage";
 import type {
@@ -78,15 +75,8 @@ const Main = () => {
   const [activePresetId, setActivePresetIdState] = useState<string | null>(
     () => loadActivePresetId() ?? "defaults",
   );
-  const [disclaimerOpen, setDisclaimerOpen] = useState(
-    () => !loadDisclaimerAccepted(),
-  );
-  const errors = validateUserInput(userInput);
 
-  function acceptDisclaimer() {
-    saveDisclaimerAccepted();
-    setDisclaimerOpen(false);
-  }
+  const errors = validateUserInput(userInput);
 
   const visibleBuiltins = PRESETS.filter((p) => !hiddenBuiltins.includes(p.id));
   const allPresets = [...visibleBuiltins, ...customPresets];
@@ -192,7 +182,6 @@ const Main = () => {
 
   return (
     <Container size="xl" py="md">
-      <DisclaimerModal opened={disclaimerOpen} onAccept={acceptDisclaimer} />
       <Grid gap="xl">
         <Grid.Col span={{ base: 12, lg: 6 }}>
           <UserInputForm

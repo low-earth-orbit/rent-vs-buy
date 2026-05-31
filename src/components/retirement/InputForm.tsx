@@ -191,8 +191,10 @@ export default function InputForm({
                 </Text>
                 <Text size="xs" c="dimmed">
                   The most you&apos;ll draw in year one, as a % of savings at
-                  retirement. Lower is safer over a long retirement. Pick a
-                  preset or set your own.
+                  retirement. Under fixed-dollar withdrawals, lower is safer
+                  with a longer retirement, less guaranteed pension income, or
+                  greater equity allocation in retirement. Pick a preset or set
+                  your own.
                 </Text>
                 <Group
                   gap="xs"
@@ -254,15 +256,16 @@ export default function InputForm({
               <Stack gap={6}>
                 <Group justify="space-between" align="center" gap="xs">
                   <Text size="sm" fw={600}>
-                    Glide path / expected return
+                    Expected return
                   </Text>
                   <Text size="xs" c="dimmed">
                     {returnStatus}
                   </Text>
                 </Group>
                 <Text size="xs" c="dimmed">
-                  Stock / bond mix — e.g. 80/20 is 80% stocks. Two values are a
-                  glide path that grows more conservative in retirement.
+                  Based on stock / bond mix — e.g. 80/20 is 80% stocks — before
+                  and after retirement. For simplicity, two distinct allocations
+                  are used, no gradual transition in-between.
                 </Text>
                 <SimpleGrid
                   cols={{ base: 1, xs: 3 }}

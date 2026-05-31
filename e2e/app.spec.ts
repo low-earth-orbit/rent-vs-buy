@@ -4,7 +4,7 @@ test("hub landing page lists the available tools", async ({ page }) => {
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { name: "Personal Finance Tools" }),
+    page.getByRole("heading", { name: "Personal Finance" }),
   ).toBeVisible();
 
   // The rent-vs-buy tool is linked from the hub.

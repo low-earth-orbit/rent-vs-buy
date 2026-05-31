@@ -7,8 +7,8 @@ const Footer = () => {
     <Container component="footer" size="xl" pt="xl" pb="xl">
       <Stack gap="sm">
         <Text size="sm" c="dimmed">
-          Disclaimer: An educational tool, not financial advice. Results are
-          estimates provided as-is.
+          Disclaimer: This information provided on this page is as-is & not
+          financial advice.
         </Text>
         <Text size="sm" c="dimmed">
           Copyright © 2023–{currentYear} Leo Hong ·{" "}

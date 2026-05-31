@@ -13,12 +13,19 @@ import {
 } from "@mantine/core";
 import Header from "@/components/shared/Header";
 import Footer from "@/components/shared/Footer";
+import DisclaimerModal from "@/components/shared/DisclaimerModal";
+import {
+  loadDisclaimerAccepted,
+  saveDisclaimerAccepted,
+} from "@/utils/storage";
+import { useState } from "react";
 
 type Tool = {
   emoji: string;
   title: string;
   description: string;
   href?: string;
+  status?: string;
 };
 
 const TOOLS: Tool[] = [
@@ -35,6 +42,7 @@ const TOOLS: Tool[] = [
     description:
       "A quick reality check on the earliest age you could retire, based on your savings and target income.",
     href: "/retirement",
+    status: "Beta",
   },
 ];
 
@@ -47,6 +55,11 @@ function ToolCardBody({ tool }: { tool: Tool }) {
         {!available && (
           <Badge variant="light" color="gray">
             Coming soon
+          </Badge>
+        )}
+        {tool.status && (
+          <Badge variant="light" color="gray">
+            {tool.status}
           </Badge>
         )}
       </Group>
@@ -89,14 +102,24 @@ function ToolCard({ tool }: { tool: Tool }) {
 }
 
 export default function HomePage() {
+  const [disclaimerOpen, setDisclaimerOpen] = useState(
+    () => !loadDisclaimerAccepted(),
+  );
+
+  function acceptDisclaimer() {
+    saveDisclaimerAccepted();
+    setDisclaimerOpen(false);
+  }
+
   return (
     <>
-      <Header
-        title="Personal Finance Tools"
-        subtitle="Free, simple calculators to help Canadians make sense of big money decisions."
-      />
+      <Header title="Personal Finance" />
       <main>
         <Container size="xl" py="xl">
+          <DisclaimerModal
+            opened={disclaimerOpen}
+            onAccept={acceptDisclaimer}
+          />
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
             {TOOLS.map((tool) => (
               <ToolCard key={tool.title} tool={tool} />
