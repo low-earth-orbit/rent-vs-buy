@@ -32,6 +32,7 @@ export const FIELD_CONSTRAINTS: Record<RetirementInputKey, Constraint> = {
   contributionPct: { min: 0, max: 100, step: 1, label: "Annual savings" },
   targetIncomePct: { min: 0, max: 150, step: 1, label: "Target income" },
   guaranteedIncomePct: { min: 0, max: 100, step: 1, label: "Pension amount" },
+  pensionStartAge: { min: 50, max: 75, step: 1, label: "Pension start age" },
   accumReturn: { min: 0, max: 15, step: 0.1, label: "Return while working" },
   retireReturn: { min: 0, max: 15, step: 0.1, label: "Return in retirement" },
   inflationRate: { min: 0, max: 5, step: 0.1, label: "Inflation" },

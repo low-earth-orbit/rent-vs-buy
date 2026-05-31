@@ -1,27 +1,34 @@
 export const WITHDRAWAL_RATE_PRESETS = [
   {
     id: "20-year",
-    label: "4%",
+    label: "5.2%",
     horizonYears: 20,
-    rate: 4,
+    rate: 5.2,
+  },
+  {
+    id: "25-year",
+    label: "4.3%",
+    horizonYears: 25,
+    rate: 4.3,
   },
   {
     id: "30-year",
-    label: "3.75%",
+    label: "3.8%",
     horizonYears: 30,
-    rate: 3.75,
+    rate: 3.8,
+  },
+
+  {
+    id: "35-year",
+    label: "3.4%",
+    horizonYears: 35,
+    rate: 3.4,
   },
   {
     id: "40-year",
-    label: "3.5%",
+    label: "3.2%",
     horizonYears: 40,
-    rate: 3.5,
-  },
-  {
-    id: "50-year",
-    label: "3.25%",
-    horizonYears: 50,
-    rate: 3.25,
+    rate: 3.2,
   },
 ] as const;
 
@@ -79,6 +86,8 @@ export const DEFAULTS = {
   targetIncomePct: 60,
   /** Guaranteed retirement income (CPP + OAS + DB pensions), as a % of income. Gross/taxable. */
   guaranteedIncomePct: 10,
+  /** Age the guaranteed income starts. Before this, the portfolio funds the full target. */
+  pensionStartAge: 65,
   /** Expected nominal return while still working (accumulation), % per year. */
   accumReturn: 6.3,
   /** Expected nominal return in retirement (typically more conservative), %. */

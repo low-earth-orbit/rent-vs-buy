@@ -173,6 +173,12 @@ export default function InputForm({
                   percentStep={5}
                 />
                 <UserInputFormItem
+                  {...num("pensionStartAge")}
+                  label="Pension start age"
+                  labelHelperText="When your CPP/OAS/pension income begins — usually 65. If you retire before this, your portfolio funds the full target until then (a 'bridge')."
+                  suffix=" yrs"
+                />
+                <UserInputFormItem
                   {...num("planningAge")}
                   label="Plan until age"
                   labelHelperText="The age your savings should last to (life expectancy). 95 is a common planning horizon."

@@ -16,6 +16,9 @@ interface ResultProps {
   result: RetirementResult | null;
 }
 
+const TEAL = "var(--mantine-color-teal-6)";
+const INDIGO = "var(--mantine-color-indigo-5)";
+
 function LegendItem({
   color,
   label,
@@ -23,7 +26,7 @@ function LegendItem({
 }: {
   color: string;
   label: string;
-  value: string;
+  value?: string;
 }) {
   return (
     <Stack gap={0}>
@@ -37,18 +40,86 @@ function LegendItem({
           {label}
         </Text>
       </Group>
-      <Text fw={600} size="sm">
-        {value} /yr
-      </Text>
+      {value && (
+        <Text fw={600} size="sm">
+          {value} /yr
+        </Text>
+      )}
     </Stack>
   );
 }
 
-function IncomeSummary({ result }: { result: RetirementResult }) {
+function IncomeBar({
+  guaranteed,
+  portfolio,
+  total,
+}: {
+  guaranteed: number;
+  portfolio: number;
+  total: number;
+}) {
+  const denom = Math.max(total, 1);
+  const guaranteedPct = (Math.min(guaranteed, denom) / denom) * 100;
+  const portfolioPct = (portfolio / denom) * 100;
+  return (
+    <Box
+      style={{
+        display: "flex",
+        height: 26,
+        borderRadius: 6,
+        overflow: "hidden",
+        backgroundColor: "var(--mantine-color-gray-2)",
+      }}
+    >
+      <Box style={{ width: `${guaranteedPct}%`, backgroundColor: TEAL }} />
+      <Box style={{ width: `${portfolioPct}%`, backgroundColor: INDIGO }} />
+    </Box>
+  );
+}
+
+function PhaseRow({
+  label,
+  note,
+  guaranteed,
+  portfolio,
+  total,
+}: {
+  label: string;
+  note: string;
+  guaranteed: number;
+  portfolio: number;
+  total: number;
+}) {
+  return (
+    <Stack gap={4}>
+      <Group justify="space-between" wrap="nowrap" gap="xs">
+        <Text size="sm" fw={500}>
+          {label}
+        </Text>
+        <Text size="xs" c="dimmed" ta="right">
+          {note}
+        </Text>
+      </Group>
+      <IncomeBar guaranteed={guaranteed} portfolio={portfolio} total={total} />
+    </Stack>
+  );
+}
+
+function IncomeSummary({
+  input,
+  result,
+}: {
+  input: RetirementInput;
+  result: RetirementResult;
+}) {
   const { targetGrossIncome, guaranteedIncome, portfolioWithdrawal } = result;
-  const total = Math.max(targetGrossIncome, 1);
-  const guaranteedPct = (Math.min(guaranteedIncome, total) / total) * 100;
-  const portfolioPct = (portfolioWithdrawal / total) * 100;
+  const retireAge = result.earliestRetirementAge;
+  const pensionAge = input.pensionStartAge;
+  const hasBridge = retireAge != null && retireAge < pensionAge;
+  const bridgeRange =
+    retireAge === pensionAge - 1
+      ? `age ${retireAge}`
+      : `age ${retireAge}–${pensionAge - 1}`;
 
   return (
     <Card withBorder radius="md" padding="md">
@@ -58,40 +129,51 @@ function IncomeSummary({ result }: { result: RetirementResult }) {
           {formatCAD(targetGrossIncome)} /yr target
         </Text>
       </Group>
-      <Box
-        style={{
-          display: "flex",
-          height: 28,
-          borderRadius: 6,
-          overflow: "hidden",
-          backgroundColor: "var(--mantine-color-gray-2)",
-        }}
-      >
-        <Box
-          style={{
-            width: `${guaranteedPct}%`,
-            backgroundColor: "var(--mantine-color-teal-6)",
-          }}
-        />
-        <Box
-          style={{
-            width: `${portfolioPct}%`,
-            backgroundColor: "var(--mantine-color-indigo-5)",
-          }}
-        />
-      </Box>
-      <Group mt="sm" gap="xl">
-        <LegendItem
-          color="var(--mantine-color-teal-6)"
-          label="Guaranteed (CPP/OAS/pension)"
-          value={formatCAD(guaranteedIncome)}
-        />
-        <LegendItem
-          color="var(--mantine-color-indigo-5)"
-          label="From your portfolio"
-          value={formatCAD(portfolioWithdrawal)}
-        />
-      </Group>
+
+      {hasBridge ? (
+        <Stack gap="md">
+          <PhaseRow
+            label={`Before pension · ${bridgeRange}`}
+            note={`${formatCAD(targetGrossIncome)} all from portfolio`}
+            guaranteed={0}
+            portfolio={targetGrossIncome}
+            total={targetGrossIncome}
+          />
+          <PhaseRow
+            label={`From age ${pensionAge}`}
+            note={`${formatCAD(guaranteedIncome)} pension + ${formatCAD(
+              portfolioWithdrawal,
+            )} portfolio`}
+            guaranteed={guaranteedIncome}
+            portfolio={portfolioWithdrawal}
+            total={targetGrossIncome}
+          />
+          <Group gap="xl">
+            <LegendItem color={TEAL} label="Guaranteed (CPP/OAS/pension)" />
+            <LegendItem color={INDIGO} label="From your portfolio" />
+          </Group>
+        </Stack>
+      ) : (
+        <>
+          <IncomeBar
+            guaranteed={guaranteedIncome}
+            portfolio={portfolioWithdrawal}
+            total={targetGrossIncome}
+          />
+          <Group mt="sm" gap="xl">
+            <LegendItem
+              color={TEAL}
+              label="Guaranteed (CPP/OAS/pension)"
+              value={formatCAD(guaranteedIncome)}
+            />
+            <LegendItem
+              color={INDIGO}
+              label="From your portfolio"
+              value={formatCAD(portfolioWithdrawal)}
+            />
+          </Group>
+        </>
+      )}
     </Card>
   );
 }
@@ -113,7 +195,7 @@ export default function Result({ input, result }: ResultProps) {
   return (
     <Stack gap="lg">
       <Headline input={input} result={result} />
-      <IncomeSummary result={result} />
+      <IncomeSummary input={input} result={result} />
       <ProjectionChart result={result} />
     </Stack>
   );

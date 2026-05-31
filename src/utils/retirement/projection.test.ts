@@ -126,15 +126,48 @@ describe("computeRetirement", () => {
     const previousAge = age - 1;
     const previousPath = projectPath(input, previousAge);
     const previousBalance = balanceAt(input, previousAge);
+    // Mirror the engine: the first-year draw is the full target before the
+    // pension starts, otherwise the income gap.
+    const previousFirstYearWithdrawal =
+      previousAge >= input.pensionStartAge
+        ? result.portfolioWithdrawal
+        : result.targetGrossIncome;
     const previousWithdrawalRate =
       previousBalance && previousBalance > 0
-        ? result.portfolioWithdrawal / previousBalance
+        ? previousFirstYearWithdrawal / previousBalance
         : Infinity;
 
     expect(
       previousPath.depletionAge !== null ||
         previousWithdrawalRate > input.swr / 100,
     ).toBe(true);
+  });
+
+  it("uses the full target for the first-year rate when retiring before the pension", () => {
+    const input = base({
+      currentAge: 50,
+      currentSavings: 5_000_000,
+      pensionStartAge: 65,
+    });
+    const result = computeRetirement(input);
+
+    expect(result.earliestRetirementAge).toBe(50); // retires before the pension
+    // First-year draw is the full target (not the income gap) during the bridge.
+    expect(result.impliedWithdrawalRate!).toBeCloseTo(
+      result.targetGrossIncome / 5_000_000,
+      6,
+    );
+  });
+
+  it("makes retirement no earlier when the pension starts later (longer bridge)", () => {
+    const earlyPension = computeRetirement(base({ pensionStartAge: 60 }));
+    const latePension = computeRetirement(base({ pensionStartAge: 72 }));
+
+    expect(earlyPension.earliestRetirementAge).not.toBeNull();
+    expect(latePension.earliestRetirementAge).not.toBeNull();
+    expect(latePension.earliestRetirementAge!).toBeGreaterThanOrEqual(
+      earlyPension.earliestRetirementAge!,
+    );
   });
 
   it("does not make retirement later when the withdrawal guardrail is relaxed", () => {

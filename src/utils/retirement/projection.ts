@@ -40,9 +40,19 @@ export function incomeBreakdown(input: RetirementInput): IncomeBreakdown {
   };
 }
 
-/** The annual gross (taxable) amount the portfolio must supply. */
-export function grossPortfolioWithdrawal(input: RetirementInput): number {
-  return incomeBreakdown(input).portfolioWithdrawal;
+/**
+ * The portfolio's required gross withdrawal at a given age. Before the pension
+ * starts the portfolio funds the full target (the "bridge"); once guaranteed
+ * income kicks in, only the remaining gap.
+ */
+function withdrawalAtAge(
+  input: RetirementInput,
+  breakdown: IncomeBreakdown,
+  age: number,
+): number {
+  return age >= input.pensionStartAge
+    ? breakdown.portfolioWithdrawal
+    : breakdown.targetGrossIncome;
 }
 
 interface PathResult {
@@ -62,7 +72,7 @@ export function projectPath(
   retirementAge: number,
 ): PathResult {
   const contribution = (input.currentIncome * input.contributionPct) / 100;
-  const withdrawal = grossPortfolioWithdrawal(input);
+  const breakdown = incomeBreakdown(input);
 
   let balance = input.currentSavings;
   const points: ProjectionPoint[] = [{ age: input.currentAge, balance }];
@@ -70,7 +80,10 @@ export function projectPath(
 
   for (let age = input.currentAge; age < input.planningAge; age++) {
     const r = phaseRealMean(input, retirementAge, age);
-    const flow = age < retirementAge ? contribution : -withdrawal;
+    const flow =
+      age < retirementAge
+        ? contribution
+        : -withdrawalAtAge(input, breakdown, age);
     balance = balance * (1 + r) + flow * (1 + r / 2);
 
     const nextAge = age + 1;
@@ -83,7 +96,9 @@ export function projectPath(
 
 /**
  * Deterministic earliest retirement age whose plan survives to `planningAge`
- * on mean returns and stays within the user's maximum initial withdrawal rate.
+ * on mean returns and whose first-year withdrawal stays within the user's
+ * maximum initial withdrawal rate. The first-year draw is the full target when
+ * retiring before the pension starts (the bridge), otherwise the income gap.
  */
 export function computeRetirement(input: RetirementInput): RetirementResult {
   const breakdown = incomeBreakdown(input);
@@ -91,29 +106,30 @@ export function computeRetirement(input: RetirementInput): RetirementResult {
 
   for (let age = input.currentAge; age < input.planningAge; age++) {
     const { points, depletionAge } = projectPath(input, age);
-    if (depletionAge === null) {
-      const atRetirement = points.find((p) => p.age === age);
-      const portfolioAtRetirement = atRetirement ? atRetirement.balance : null;
-      const impliedWithdrawalRate =
-        portfolioAtRetirement && portfolioAtRetirement > 0
-          ? breakdown.portfolioWithdrawal / portfolioAtRetirement
-          : null;
-      const withdrawalRateIsFeasible =
-        breakdown.portfolioWithdrawal === 0 ||
-        (impliedWithdrawalRate != null &&
-          impliedWithdrawalRate <= maxInitialWithdrawalRate);
+    if (depletionAge !== null) continue;
 
-      if (!withdrawalRateIsFeasible) continue;
+    const atRetirement = points.find((p) => p.age === age);
+    const portfolioAtRetirement = atRetirement ? atRetirement.balance : null;
+    const firstYearWithdrawal = withdrawalAtAge(input, breakdown, age);
+    const impliedWithdrawalRate =
+      portfolioAtRetirement && portfolioAtRetirement > 0
+        ? firstYearWithdrawal / portfolioAtRetirement
+        : null;
+    const withdrawalRateIsFeasible =
+      firstYearWithdrawal === 0 ||
+      (impliedWithdrawalRate != null &&
+        impliedWithdrawalRate <= maxInitialWithdrawalRate);
 
-      return {
-        ...breakdown,
-        earliestRetirementAge: age,
-        yearsUntilRetirement: age - input.currentAge,
-        portfolioAtRetirement,
-        impliedWithdrawalRate,
-        path: points,
-      };
-    }
+    if (!withdrawalRateIsFeasible) continue;
+
+    return {
+      ...breakdown,
+      earliestRetirementAge: age,
+      yearsUntilRetirement: age - input.currentAge,
+      portfolioAtRetirement,
+      impliedWithdrawalRate,
+      path: points,
+    };
   }
 
   return {
