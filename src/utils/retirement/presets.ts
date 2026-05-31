@@ -93,8 +93,12 @@ export const DEFAULTS = {
   /** Expected nominal return in retirement (typically more conservative), %. */
   retireReturn: 5.7,
   inflationRate: 2.1,
-  /** Maximum first-year withdrawal as a % of savings at retirement. */
-  swr: WITHDRAWAL_RATE_PRESETS.find((p) => p.id === "30-year")!.rate,
+  /**
+   * Maximum first-year withdrawal as a % of savings at retirement. Set to the
+   * self-consistent `recommendedSwr` for this default scenario so a fresh load
+   * matches its own recommendation (a test enforces this stays true).
+   */
+  swr: WITHDRAWAL_RATE_PRESETS.find((p) => p.id === "35-year")!.rate,
 } as const;
 
 export type WithdrawalRatePreset = (typeof WITHDRAWAL_RATE_PRESETS)[number];

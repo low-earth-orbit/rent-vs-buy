@@ -226,7 +226,7 @@ export default function InputForm({
                     <Text size="xs" c="dimmed">
                       Recommended {recommendedSwr}%
                       {recommendedHorizonYears != null
-                        ? ` for a ~${Math.round(
+                        ? ` for a ${Math.round(
                             recommendedHorizonYears,
                           )}-year retirement`
                         : ""}

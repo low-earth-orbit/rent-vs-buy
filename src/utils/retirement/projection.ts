@@ -1,3 +1,7 @@
+import {
+  WITHDRAWAL_RATE_PRESETS,
+  getWithdrawalRatePresetForHorizon,
+} from "./presets";
 import type {
   IncomeBreakdown,
   ProjectionPoint,
@@ -140,4 +144,37 @@ export function computeRetirement(input: RetirementInput): RetirementResult {
     impliedWithdrawalRate: null,
     path: null,
   };
+}
+
+export interface SwrRecommendation {
+  rate: number;
+  horizonYears: number;
+}
+
+/**
+ * A self-consistent safe initial withdrawal rate. A higher rate lets you retire
+ * earlier, which makes retirement *longer*, which needs a *lower* safe rate — so
+ * a naive "rate for planningAge − retirementAge" recommendation ping-pongs
+ * between two presets (the rate that selects the age also depends on the age).
+ *
+ * Instead we pick the highest preset rate that is still safe for the horizon it
+ * produces. This doesn't depend on the user's current `swr`, so it's stable.
+ */
+export function recommendedSwr(
+  input: RetirementInput,
+): SwrRecommendation | null {
+  for (const preset of WITHDRAWAL_RATE_PRESETS) {
+    const age = computeRetirement({
+      ...input,
+      swr: preset.rate,
+    }).earliestRetirementAge;
+    if (age == null) continue;
+
+    const horizonYears = Math.max(0, input.planningAge - age);
+    const safeRate = getWithdrawalRatePresetForHorizon(horizonYears).rate;
+    if (preset.rate <= safeRate + 1e-9) {
+      return { rate: preset.rate, horizonYears };
+    }
+  }
+  return null;
 }

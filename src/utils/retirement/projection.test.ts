@@ -6,6 +6,7 @@ import {
   phaseRealMean,
   projectPath,
   realMean,
+  recommendedSwr,
 } from "./projection";
 import type { RetirementInput } from "./types";
 
@@ -62,10 +63,11 @@ describe("incomeBreakdown", () => {
 
 describe("withdrawal rate recommendations", () => {
   it("selects a conservative preset that covers the estimated horizon", () => {
-    expect(getWithdrawalRatePresetForHorizon(30).rate).toBe(3.75);
-    expect(getWithdrawalRatePresetForHorizon(31).rate).toBe(3.5);
-    expect(getWithdrawalRatePresetForHorizon(40).rate).toBe(3.5);
-    expect(getWithdrawalRatePresetForHorizon(51).rate).toBe(3.25);
+    expect(getWithdrawalRatePresetForHorizon(20).rate).toBe(5.2);
+    expect(getWithdrawalRatePresetForHorizon(30).rate).toBe(3.8);
+    expect(getWithdrawalRatePresetForHorizon(31).rate).toBe(3.4);
+    expect(getWithdrawalRatePresetForHorizon(40).rate).toBe(3.2);
+    expect(getWithdrawalRatePresetForHorizon(60).rate).toBe(3.2);
   });
 });
 
@@ -179,5 +181,26 @@ describe("computeRetirement", () => {
     expect(flexible.earliestRetirementAge!).toBeLessThanOrEqual(
       cautious.earliestRetirementAge!,
     );
+  });
+});
+
+describe("recommendedSwr", () => {
+  it("does not depend on the current swr (no feedback loop)", () => {
+    const aggressive = recommendedSwr(base({ swr: 5.2 }));
+    const cautious = recommendedSwr(base({ swr: 3.2 }));
+    expect(aggressive).not.toBeNull();
+    expect(aggressive!.rate).toBe(cautious!.rate);
+  });
+
+  it("recommends a rate that is safe for the horizon it produces", () => {
+    const rec = recommendedSwr(base())!;
+    expect(rec.rate).toBeLessThanOrEqual(
+      getWithdrawalRatePresetForHorizon(rec.horizonYears).rate + 1e-9,
+    );
+  });
+
+  it("keeps the default swr consistent with its own recommendation", () => {
+    // Guards against DEFAULTS.swr drifting away from what the engine recommends.
+    expect(recommendedSwr(DEFAULTS)!.rate).toBe(DEFAULTS.swr);
   });
 });
