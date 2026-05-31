@@ -12,9 +12,11 @@ interface Constraint {
   label: string;
 }
 
+// Labels match the on-screen field labels so validation errors name the field
+// the user is looking at.
 export const FIELD_CONSTRAINTS: Record<RetirementInputKey, Constraint> = {
   currentAge: { min: 18, max: 90, step: 1, label: "Current age" },
-  planningAge: { min: 60, max: 110, step: 1, label: "Plan-to age" },
+  planningAge: { min: 60, max: 110, step: 1, label: "Planning age" },
   currentSavings: {
     min: 0,
     max: 100_000_000,
@@ -25,25 +27,20 @@ export const FIELD_CONSTRAINTS: Record<RetirementInputKey, Constraint> = {
     min: 1,
     max: 100_000_000,
     step: 1000,
-    label: "Current income",
+    label: "Current annual income",
   },
-  contributionPct: { min: 0, max: 100, step: 1, label: "Savings rate" },
-  targetIncomePct: {
-    min: 0,
-    max: 150,
-    step: 1,
-    label: "Target retirement income",
-  },
-  guaranteedIncomePct: {
-    min: 0,
-    max: 100,
-    step: 1,
-    label: "Guaranteed income",
-  },
-  accumReturn: { min: 0, max: 15, step: 0.1, label: "Return (working)" },
-  retireReturn: { min: 0, max: 15, step: 0.1, label: "Return (retired)" },
+  contributionPct: { min: 0, max: 100, step: 1, label: "Annual savings" },
+  targetIncomePct: { min: 0, max: 150, step: 1, label: "Target income" },
+  guaranteedIncomePct: { min: 0, max: 100, step: 1, label: "Pension amount" },
+  accumReturn: { min: 0, max: 15, step: 0.1, label: "Return while working" },
+  retireReturn: { min: 0, max: 15, step: 0.1, label: "Return in retirement" },
   inflationRate: { min: 0, max: 5, step: 0.1, label: "Inflation" },
-  swr: { min: 0.1, max: 10, step: 0.1, label: "Max initial withdrawal rate" },
+  swr: {
+    min: 0.1,
+    max: 10,
+    step: 0.1,
+    label: "Safe initial withdrawal rate",
+  },
 };
 
 const KEYS = Object.keys(DEFAULTS) as RetirementInputKey[];
@@ -57,7 +54,7 @@ export function validateRetirementInput(
     const value = input[key];
     const { min, max, label } = FIELD_CONSTRAINTS[key];
 
-    if (value === ("" as unknown) || value == null || Number.isNaN(value)) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
       errors[key] = `${label} is required.`;
       continue;
     }

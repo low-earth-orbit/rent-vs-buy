@@ -15,7 +15,6 @@ export interface ProjectionPoint {
   age: number;
   /** Portfolio balance in today's (real) dollars at the start of this age. */
   balance: number;
-  phase: "accumulation" | "retirement";
 }
 
 /** Annual income breakdown (real $/yr) - independent of retirement age. */

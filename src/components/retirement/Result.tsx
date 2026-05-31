@@ -5,16 +5,15 @@ import { IconInfoCircle } from "@tabler/icons-react";
 import Headline from "./Headline";
 import ProjectionChart from "./ProjectionChart";
 import { formatCAD } from "@/utils/format";
-import { computeRetirement } from "@/utils/retirement/projection";
 import type {
-  RetirementErrors,
   RetirementInput,
   RetirementResult,
 } from "@/utils/retirement/types";
 
 interface ResultProps {
   input: RetirementInput;
-  errors: RetirementErrors;
+  /** Computed in Main; null while inputs are incomplete/invalid. */
+  result: RetirementResult | null;
 }
 
 function LegendItem({
@@ -97,8 +96,8 @@ function IncomeSummary({ result }: { result: RetirementResult }) {
   );
 }
 
-export default function Result({ input, errors }: ResultProps) {
-  if (Object.keys(errors).length > 0) {
+export default function Result({ input, result }: ResultProps) {
+  if (!result) {
     return (
       <Alert
         variant="light"
@@ -110,8 +109,6 @@ export default function Result({ input, errors }: ResultProps) {
       </Alert>
     );
   }
-
-  const result = computeRetirement(input);
 
   return (
     <Stack gap="lg">

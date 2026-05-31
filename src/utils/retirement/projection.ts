@@ -25,18 +25,10 @@ export function phaseRealMean(
 }
 
 /**
- * The annual gross (taxable) amount the portfolio must supply: the gap between
- * the target gross retirement income and guaranteed income (CPP/OAS/DB). Both
- * are taxable and measured in gross terms, so guaranteed income offsets the
- * target dollar-for-dollar and tax is implicit in the gross target.
+ * Target gross income, guaranteed income, and the gap the portfolio must fund.
+ * All taxable and in gross terms, so guaranteed income offsets the target
+ * dollar-for-dollar and tax is implicit in the gross target.
  */
-export function grossPortfolioWithdrawal(input: RetirementInput): number {
-  const targetGrossIncome = (input.currentIncome * input.targetIncomePct) / 100;
-  const guaranteedIncome =
-    (input.currentIncome * input.guaranteedIncomePct) / 100;
-  return Math.max(0, targetGrossIncome - guaranteedIncome);
-}
-
 export function incomeBreakdown(input: RetirementInput): IncomeBreakdown {
   const targetGrossIncome = (input.currentIncome * input.targetIncomePct) / 100;
   const guaranteedIncome =
@@ -46,6 +38,11 @@ export function incomeBreakdown(input: RetirementInput): IncomeBreakdown {
     guaranteedIncome,
     portfolioWithdrawal: Math.max(0, targetGrossIncome - guaranteedIncome),
   };
+}
+
+/** The annual gross (taxable) amount the portfolio must supply. */
+export function grossPortfolioWithdrawal(input: RetirementInput): number {
+  return incomeBreakdown(input).portfolioWithdrawal;
 }
 
 interface PathResult {
@@ -67,13 +64,8 @@ export function projectPath(
   const contribution = (input.currentIncome * input.contributionPct) / 100;
   const withdrawal = grossPortfolioWithdrawal(input);
 
-  const phaseAt = (age: number): ProjectionPoint["phase"] =>
-    age < retirementAge ? "accumulation" : "retirement";
-
   let balance = input.currentSavings;
-  const points: ProjectionPoint[] = [
-    { age: input.currentAge, balance, phase: phaseAt(input.currentAge) },
-  ];
+  const points: ProjectionPoint[] = [{ age: input.currentAge, balance }];
   let depletionAge: number | null = null;
 
   for (let age = input.currentAge; age < input.planningAge; age++) {
@@ -82,17 +74,11 @@ export function projectPath(
     balance = balance * (1 + r) + flow * (1 + r / 2);
 
     const nextAge = age + 1;
-    points.push({ age: nextAge, balance, phase: phaseAt(nextAge) });
+    points.push({ age: nextAge, balance });
     if (balance < 0 && depletionAge === null) depletionAge = nextAge;
   }
 
   return { points, depletionAge };
-}
-
-export function estimateRetirementHorizonYears(input: RetirementInput): number {
-  const retirementAge = computeRetirement(input).earliestRetirementAge;
-  const startAge = retirementAge ?? input.currentAge;
-  return Math.max(0, input.planningAge - startAge);
 }
 
 /**

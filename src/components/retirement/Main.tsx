@@ -8,12 +8,13 @@ import {
   DEFAULTS,
   getWithdrawalRatePresetForHorizon,
 } from "@/utils/retirement/presets";
-import { estimateRetirementHorizonYears } from "@/utils/retirement/projection";
+import { computeRetirement } from "@/utils/retirement/projection";
 import { loadInput, saveInput } from "@/utils/retirement/storage";
 import { validateRetirementInput } from "@/utils/retirement/validation";
 import type {
   RetirementInput,
   RetirementInputKey,
+  RetirementResult,
 } from "@/utils/retirement/types";
 import type { FieldValue } from "@/types";
 
@@ -22,30 +23,12 @@ interface SwrRecommendation {
   horizonYears: number;
 }
 
-// Fields the horizon estimate depends on; the recommendation is skipped while
-// any of them is mid-edit (empty / non-finite).
-const RECOMMENDATION_INPUTS: RetirementInputKey[] = [
-  "currentAge",
-  "planningAge",
-  "currentSavings",
-  "currentIncome",
-  "contributionPct",
-  "targetIncomePct",
-  "guaranteedIncomePct",
-  "accumReturn",
-  "retireReturn",
-  "inflationRate",
-];
-
 function getSwrRecommendation(
   input: RetirementInput,
-): SwrRecommendation | null {
-  const ready = RECOMMENDATION_INPUTS.every((key) =>
-    Number.isFinite(input[key]),
-  );
-  if (!ready || input.planningAge <= input.currentAge) return null;
-
-  const horizonYears = estimateRetirementHorizonYears(input);
+  result: RetirementResult,
+): SwrRecommendation {
+  const retirementAge = result.earliestRetirementAge ?? input.currentAge;
+  const horizonYears = Math.max(0, input.planningAge - retirementAge);
   return {
     rate: getWithdrawalRatePresetForHorizon(horizonYears).rate,
     horizonYears,
@@ -55,7 +38,11 @@ function getSwrRecommendation(
 export default function Main() {
   const [input, setInput] = useState<RetirementInput>(() => loadInput());
 
-  const recommendation = getSwrRecommendation(input);
+  const errors = validateRetirementInput(input);
+  // Only run the engine on valid input; "" mid-edit fields would poison it.
+  const result =
+    Object.keys(errors).length === 0 ? computeRetirement(input) : null;
+  const recommendation = result ? getSwrRecommendation(input, result) : null;
 
   function handleChange(key: RetirementInputKey, value: FieldValue) {
     setInput((prev) => {
@@ -75,13 +62,10 @@ export default function Main() {
 
   function handleReset() {
     const fresh: RetirementInput = { ...DEFAULTS };
-    const rec = getSwrRecommendation(fresh);
-    if (rec) fresh.swr = rec.rate;
+    fresh.swr = getSwrRecommendation(fresh, computeRetirement(fresh)).rate;
     setInput(fresh);
     saveInput(fresh);
   }
-
-  const errors = validateRetirementInput(input);
 
   return (
     <Container size="xl" pb="xl">
@@ -98,7 +82,7 @@ export default function Main() {
           />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>
-          <Result input={input} errors={errors} />
+          <Result input={input} result={result} />
         </Grid.Col>
       </Grid>
     </Container>
