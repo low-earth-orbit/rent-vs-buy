@@ -1,4 +1,13 @@
-import { Alert, Card, Group, Stack, Text, Title } from "@mantine/core";
+import {
+  Alert,
+  Card,
+  Flex,
+  Group,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import { IconAlertTriangle, IconBeach } from "@tabler/icons-react";
 import { formatCAD } from "@/utils/format";
 import type {
@@ -9,6 +18,32 @@ import type {
 interface HeadlineProps {
   input: RetirementInput;
   result: RetirementResult;
+}
+
+function StatTile({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+}) {
+  return (
+    <Stack gap={0}>
+      <Text size="xs" c="dimmed" fw={600} tt="uppercase">
+        {label}
+      </Text>
+      <Text fw={700} fz="lg" lh={1.2}>
+        {value}
+      </Text>
+      {note && (
+        <Text size="xs" c="dimmed">
+          {note}
+        </Text>
+      )}
+    </Stack>
+  );
 }
 
 export default function Headline({ input, result }: HeadlineProps) {
@@ -32,10 +67,17 @@ export default function Headline({ input, result }: HeadlineProps) {
 
   const { earliestRetirementAge, yearsUntilRetirement } = result;
   const retireNow = yearsUntilRetirement === 0;
+  const swrNote =
+    typeof input.swr === "number" ? `within your ${input.swr}% cap` : undefined;
 
   return (
     <Card withBorder radius="md" padding="lg">
-      <Group justify="space-between" align="flex-end" wrap="nowrap" gap="lg">
+      <Flex
+        direction={{ base: "column", sm: "row" }}
+        justify="space-between"
+        align={{ base: "stretch", sm: "flex-end" }}
+        gap="lg"
+      >
         <Stack gap={2}>
           <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
             Estimated retirement age
@@ -56,24 +98,26 @@ export default function Headline({ input, result }: HeadlineProps) {
           </Text>
         </Stack>
         {result.portfolioAtRetirement != null && (
-          <Stack gap={2} align="flex-end" visibleFrom="xs">
-            <Text size="sm">Savings at retirement</Text>
-            <Text fw={700} fz="xl">
-              {formatCAD(result.portfolioAtRetirement)}
-            </Text>
+          <SimpleGrid
+            cols={2}
+            spacing="lg"
+            w={{ base: "100%", sm: "auto" }}
+            style={{ flexShrink: 0 }}
+          >
+            <StatTile
+              label="Savings at retirement"
+              value={formatCAD(result.portfolioAtRetirement)}
+            />
             {result.impliedWithdrawalRate != null && (
-              <>
-                <Text size="sm">
-                  Initial withdrawal rate
-                </Text>
-                <Text fw={700} fz="xl">
-                  {(result.impliedWithdrawalRate * 100).toFixed(1)}%
-                </Text>
-              </>
+              <StatTile
+                label="Initial withdrawal"
+                value={`${(result.impliedWithdrawalRate * 100).toFixed(1)}%`}
+                note={swrNote}
+              />
             )}
-          </Stack>
+          </SimpleGrid>
         )}
-      </Group>
+      </Flex>
     </Card>
   );
 }

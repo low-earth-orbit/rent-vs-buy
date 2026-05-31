@@ -11,8 +11,6 @@ export type RetirementInput = Record<RetirementInputKey, number>;
 
 export type RetirementErrors = Partial<Record<RetirementInputKey, string>>;
 
-export type WithdrawalRateMode = "auto" | "preset" | "custom";
-
 export interface ProjectionPoint {
   age: number;
   /** Portfolio balance in today's (real) dollars at the start of this age. */

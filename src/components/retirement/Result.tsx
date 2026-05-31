@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Card, SimpleGrid, Stack, Text } from "@mantine/core";
+import { Alert, Box, Card, Group, Stack, Text } from "@mantine/core";
 import { IconInfoCircle } from "@tabler/icons-react";
 import Headline from "./Headline";
 import ProjectionChart from "./ProjectionChart";
@@ -17,64 +17,82 @@ interface ResultProps {
   errors: RetirementErrors;
 }
 
-function Stat({
+function LegendItem({
+  color,
   label,
   value,
-  note,
 }: {
+  color: string;
   label: string;
   value: string;
-  note?: string;
 }) {
   return (
-    <Stack gap={2}>
-      <Text size="xs" c="dimmed" fw={600}>
-        {label}
-      </Text>
-      <Text fw={700}>{value}</Text>
-      {note && (
+    <Stack gap={0}>
+      <Group gap={6} wrap="nowrap">
+        <Box
+          w={10}
+          h={10}
+          style={{ borderRadius: 2, backgroundColor: color }}
+        />
         <Text size="xs" c="dimmed">
-          {note}
+          {label}
         </Text>
-      )}
+      </Group>
+      <Text fw={600} size="sm">
+        {value} /yr
+      </Text>
     </Stack>
   );
 }
 
-function IncomeSummary({
-  input,
-  result,
-}: {
-  input: RetirementInput;
-  result: RetirementResult;
-}) {
-  const savingsTarget =
-    result.portfolioWithdrawal > 0
-      ? result.portfolioWithdrawal / (input.swr / 100)
-      : 0;
+function IncomeSummary({ result }: { result: RetirementResult }) {
+  const { targetGrossIncome, guaranteedIncome, portfolioWithdrawal } = result;
+  const total = Math.max(targetGrossIncome, 1);
+  const guaranteedPct = (Math.min(guaranteedIncome, total) / total) * 100;
+  const portfolioPct = (portfolioWithdrawal / total) * 100;
 
   return (
     <Card withBorder radius="md" padding="md">
-      <Text fw={600} mb="sm">
-        Retirement income need
-      </Text>
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-        <Stat
-          label="Target income"
-          value={`${formatCAD(result.targetGrossIncome)} /yr`}
-          note="Gross income in today's dollars"
+      <Group justify="space-between" mb={8}>
+        <Text fw={600}>Where your retirement income comes from</Text>
+        <Text size="sm" c="dimmed">
+          {formatCAD(targetGrossIncome)} /yr target
+        </Text>
+      </Group>
+      <Box
+        style={{
+          display: "flex",
+          height: 28,
+          borderRadius: 6,
+          overflow: "hidden",
+          backgroundColor: "var(--mantine-color-gray-2)",
+        }}
+      >
+        <Box
+          style={{
+            width: `${guaranteedPct}%`,
+            backgroundColor: "var(--mantine-color-teal-6)",
+          }}
         />
-        <Stat
-          label="Guaranteed income"
-          value={`${formatCAD(result.guaranteedIncome)} /yr`}
-          note="CPP, OAS, and pensions"
+        <Box
+          style={{
+            width: `${portfolioPct}%`,
+            backgroundColor: "var(--mantine-color-indigo-5)",
+          }}
         />
-        <Stat
-          label="Portfolio withdrawal"
-          value={`${formatCAD(result.portfolioWithdrawal)} /yr`}
-          note="The remaining gross income gap"
+      </Box>
+      <Group mt="sm" gap="xl">
+        <LegendItem
+          color="var(--mantine-color-teal-6)"
+          label="Guaranteed (CPP/OAS/pension)"
+          value={formatCAD(guaranteedIncome)}
         />
-      </SimpleGrid>
+        <LegendItem
+          color="var(--mantine-color-indigo-5)"
+          label="From your portfolio"
+          value={formatCAD(portfolioWithdrawal)}
+        />
+      </Group>
     </Card>
   );
 }
@@ -98,7 +116,7 @@ export default function Result({ input, errors }: ResultProps) {
   return (
     <Stack gap="lg">
       <Headline input={input} result={result} />
-      <IncomeSummary input={input} result={result} />
+      <IncomeSummary result={result} />
       <ProjectionChart result={result} />
     </Stack>
   );

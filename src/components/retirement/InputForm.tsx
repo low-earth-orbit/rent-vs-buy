@@ -17,14 +17,12 @@ import {
   RETURN_PRESETS,
   WITHDRAWAL_RATE_PRESETS,
   type ReturnPreset,
-  type WithdrawalRatePreset,
 } from "@/utils/retirement/presets";
 import { FIELD_CONSTRAINTS } from "@/utils/retirement/validation";
 import type {
   RetirementErrors,
   RetirementInput,
   RetirementInputKey,
-  WithdrawalRateMode,
 } from "@/utils/retirement/types";
 import type { FieldValue } from "@/types";
 
@@ -32,28 +30,21 @@ interface InputFormProps {
   input: RetirementInput;
   errors: RetirementErrors;
   onChange: (key: RetirementInputKey, value: FieldValue) => void;
-  onWithdrawalRatePreset: (rate: number) => void;
-  onWithdrawalRateCustomChange: (value: FieldValue) => void;
-  onUseRecommendedWithdrawalRate: () => void;
+  onUseRecommendedSwr: () => void;
   onReset: () => void;
-  recommendedWithdrawalPreset?: WithdrawalRatePreset;
-  recommendedWithdrawalHorizonYears?: number;
-  withdrawalRateMode: WithdrawalRateMode;
+  recommendedSwr?: number;
+  recommendedHorizonYears?: number;
 }
 
 export default function InputForm({
   input,
   errors,
   onChange,
-  onWithdrawalRatePreset,
-  onWithdrawalRateCustomChange,
-  onUseRecommendedWithdrawalRate,
+  onUseRecommendedSwr,
   onReset,
-  recommendedWithdrawalPreset,
-  recommendedWithdrawalHorizonYears,
-  withdrawalRateMode,
+  recommendedSwr,
+  recommendedHorizonYears,
 }: InputFormProps) {
-  const [customizeWithdrawalRate, setCustomizeWithdrawalRate] = useState(false);
   const [customizeReturns, setCustomizeReturns] = useState(false);
 
   const bind = (key: RetirementInputKey) => (value: FieldValue) =>
@@ -70,31 +61,15 @@ export default function InputForm({
       isSameRate(input.accumReturn, preset.accumReturn) &&
       isSameRate(input.retireReturn, preset.retireReturn),
   );
-  const showWithdrawalRateInput =
-    customizeWithdrawalRate || !activeWithdrawalPreset;
   const showReturnInputs = customizeReturns || !activeReturnPreset;
-  const withdrawalRateStatus =
-    withdrawalRateMode === "auto"
-      ? "Auto"
-      : activeWithdrawalPreset
-        ? "Preset"
-        : "Custom";
   const returnStatus = activeReturnPreset ? "Preset" : "Custom";
+  const showRecommendation =
+    recommendedSwr != null && !isSameRate(input.swr, recommendedSwr);
 
   const applyReturnPreset = (preset: ReturnPreset) => {
     setCustomizeReturns(false);
     onChange("accumReturn", preset.accumReturn);
     onChange("retireReturn", preset.retireReturn);
-  };
-
-  const applyWithdrawalPreset = (preset: WithdrawalRatePreset) => {
-    setCustomizeWithdrawalRate(false);
-    onWithdrawalRatePreset(preset.rate);
-  };
-
-  const useRecommendedWithdrawalRate = () => {
-    setCustomizeWithdrawalRate(false);
-    onUseRecommendedWithdrawalRate();
   };
 
   const num = (key: RetirementInputKey) => {
@@ -205,23 +180,14 @@ export default function InputForm({
                 />
               </SimpleGrid>
               <Stack gap={6}>
-                <Group justify="space-between" align="center" gap="xs">
-                  <Text size="sm" fw={600}>
-                    Safe initial withdrawal rate
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    {withdrawalRateStatus}
-                  </Text>
-                </Group>
-                {recommendedWithdrawalPreset &&
-                  recommendedWithdrawalHorizonYears != null && (
-                    <Text size="xs" c="dimmed">
-                      This rate determines your retirement income following the
-                      constant $ amount withdrawal strategy. Recommended{" "}
-                      {recommendedWithdrawalPreset.label} for a{" "}
-                      {Math.round(recommendedWithdrawalHorizonYears)}y horizon.
-                    </Text>
-                  )}
+                <Text size="sm" fw={600}>
+                  Safe initial withdrawal rate
+                </Text>
+                <Text size="xs" c="dimmed">
+                  The most you&apos;ll draw in year one, as a % of savings at
+                  retirement. Lower is safer over a long retirement. Pick a
+                  preset or set your own.
+                </Text>
                 <Group
                   gap="xs"
                   role="group"
@@ -238,45 +204,38 @@ export default function InputForm({
                       size="xs"
                       radius="lg"
                       aria-pressed={activeWithdrawalPreset?.id === preset.id}
-                      onClick={() => applyWithdrawalPreset(preset)}
+                      onClick={() => onChange("swr", preset.rate)}
                     >
                       {preset.label}
                     </Button>
                   ))}
                 </Group>
-                {showWithdrawalRateInput && (
-                  <div className="mt-2">
-                    <UserInputFormItem
-                      {...num("swr")}
-                      label={undefined}
-                      onChange={onWithdrawalRateCustomChange}
-                      suffix="%"
-                    />
-                  </div>
-                )}
-                <Group gap="xs">
-                  {!showWithdrawalRateInput && (
+                <UserInputFormItem
+                  {...num("swr")}
+                  label={undefined}
+                  suffix="%"
+                />
+                {showRecommendation && (
+                  <Group gap="xs" align="center">
+                    <Text size="xs" c="dimmed">
+                      Recommended {recommendedSwr}%
+                      {recommendedHorizonYears != null
+                        ? ` for a ~${Math.round(
+                            recommendedHorizonYears,
+                          )}-year retirement`
+                        : ""}
+                      .
+                    </Text>
                     <Button
                       variant="subtle"
                       size="compact-xs"
-                      color="gray"
-                      onClick={() => setCustomizeWithdrawalRate(true)}
+                      color="teal"
+                      onClick={onUseRecommendedSwr}
                     >
-                      Customize
+                      Use
                     </Button>
-                  )}
-                  {withdrawalRateMode === "custom" &&
-                    recommendedWithdrawalPreset && (
-                      <Button
-                        variant="subtle"
-                        size="compact-xs"
-                        color="teal"
-                        onClick={useRecommendedWithdrawalRate}
-                      >
-                        Use recommendation
-                      </Button>
-                    )}
-                </Group>
+                  </Group>
+                )}
               </Stack>
             </Stack>
           </Accordion.Panel>
@@ -295,6 +254,10 @@ export default function InputForm({
                     {returnStatus}
                   </Text>
                 </Group>
+                <Text size="xs" c="dimmed">
+                  Stock / bond mix — e.g. 80/20 is 80% stocks. Two values are a
+                  glide path that grows more conservative in retirement.
+                </Text>
                 <SimpleGrid
                   cols={{ base: 1, xs: 3 }}
                   spacing="xs"

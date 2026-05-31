@@ -7,28 +7,23 @@ import Result from "./Result";
 import {
   DEFAULTS,
   getWithdrawalRatePresetForHorizon,
-  type WithdrawalRatePreset,
 } from "@/utils/retirement/presets";
 import { estimateRetirementHorizonYears } from "@/utils/retirement/projection";
-import {
-  loadInput,
-  loadWithdrawalRateMode,
-  saveInput,
-  saveWithdrawalRateMode,
-} from "@/utils/retirement/storage";
+import { loadInput, saveInput } from "@/utils/retirement/storage";
 import { validateRetirementInput } from "@/utils/retirement/validation";
 import type {
   RetirementInput,
   RetirementInputKey,
-  WithdrawalRateMode,
 } from "@/utils/retirement/types";
 import type { FieldValue } from "@/types";
 
-interface WithdrawalRateRecommendation {
+interface SwrRecommendation {
+  rate: number;
   horizonYears: number;
-  preset: WithdrawalRatePreset;
 }
 
+// Fields the horizon estimate depends on; the recommendation is skipped while
+// any of them is mid-edit (empty / non-finite).
 const RECOMMENDATION_INPUTS: RetirementInputKey[] = [
   "currentAge",
   "planningAge",
@@ -40,115 +35,50 @@ const RECOMMENDATION_INPUTS: RetirementInputKey[] = [
   "accumReturn",
   "retireReturn",
   "inflationRate",
-  "swr",
 ];
 
-function isNumericInput(input: RetirementInput): boolean {
-  return RECOMMENDATION_INPUTS.every((key) => {
-    const value = input[key];
-    return typeof value === "number" && Number.isFinite(value);
-  });
-}
-
-function isSameRate(a: number, b: number): boolean {
-  return Math.abs(a - b) < 0.001;
-}
-
-function getWithdrawalRateRecommendation(
+function getSwrRecommendation(
   input: RetirementInput,
-): WithdrawalRateRecommendation | null {
-  if (!isNumericInput(input) || input.planningAge <= input.currentAge) {
-    return null;
-  }
+): SwrRecommendation | null {
+  const ready = RECOMMENDATION_INPUTS.every((key) =>
+    Number.isFinite(input[key]),
+  );
+  if (!ready || input.planningAge <= input.currentAge) return null;
 
   const horizonYears = estimateRetirementHorizonYears(input);
   return {
+    rate: getWithdrawalRatePresetForHorizon(horizonYears).rate,
     horizonYears,
-    preset: getWithdrawalRatePresetForHorizon(horizonYears),
   };
 }
 
-function createInitialState(): {
-  input: RetirementInput;
-  withdrawalRateMode: WithdrawalRateMode;
-} {
-  let input = loadInput();
-  const recommendation = getWithdrawalRateRecommendation(input);
-  const fallbackMode =
-    recommendation && isSameRate(input.swr, recommendation.preset.rate)
-      ? "auto"
-      : "custom";
-
-  const withdrawalRateMode = loadWithdrawalRateMode(fallbackMode);
-  if (
-    withdrawalRateMode === "auto" &&
-    recommendation &&
-    !isSameRate(input.swr, recommendation.preset.rate)
-  ) {
-    input = { ...input, swr: recommendation.preset.rate };
-    saveInput(input);
-  }
-
-  return { input, withdrawalRateMode };
-}
-
 export default function Main() {
-  const [initialState] = useState(createInitialState);
-  const [input, setInput] = useState<RetirementInput>(initialState.input);
-  const [withdrawalRateMode, setWithdrawalRateMode] =
-    useState<WithdrawalRateMode>(initialState.withdrawalRateMode);
+  const [input, setInput] = useState<RetirementInput>(() => loadInput());
 
-  const withdrawalRateRecommendation = getWithdrawalRateRecommendation(input);
+  const recommendation = getSwrRecommendation(input);
 
   function handleChange(key: RetirementInputKey, value: FieldValue) {
     setInput((prev) => {
       // Keep "" while editing (mirrors rent-vs-buy); validation flags it.
-      let next = {
+      const next = {
         ...prev,
         [key]: value ? +value : value,
       } as RetirementInput;
-
-      if (withdrawalRateMode === "auto" && key !== "swr") {
-        const recommendation = getWithdrawalRateRecommendation(next);
-        if (recommendation) {
-          next = { ...next, swr: recommendation.preset.rate };
-        }
-      }
-
       saveInput(next);
       return next;
     });
   }
 
-  function setWithdrawalRateModeAndSave(mode: WithdrawalRateMode) {
-    setWithdrawalRateMode(mode);
-    saveWithdrawalRateMode(mode);
-  }
-
-  function handleWithdrawalRatePreset(rate: number) {
-    setWithdrawalRateModeAndSave("custom");
-    handleChange("swr", rate);
-  }
-
-  function handleWithdrawalRateCustomChange(value: FieldValue) {
-    setWithdrawalRateModeAndSave("custom");
-    handleChange("swr", value);
-  }
-
-  function handleUseRecommendedWithdrawalRate() {
-    if (!withdrawalRateRecommendation) return;
-    setWithdrawalRateModeAndSave("auto");
-    handleChange("swr", withdrawalRateRecommendation.preset.rate);
+  function handleUseRecommendedSwr() {
+    if (recommendation) handleChange("swr", recommendation.rate);
   }
 
   function handleReset() {
     const fresh: RetirementInput = { ...DEFAULTS };
-    const recommendation = getWithdrawalRateRecommendation(fresh);
-    if (recommendation) fresh.swr = recommendation.preset.rate;
-
+    const rec = getSwrRecommendation(fresh);
+    if (rec) fresh.swr = rec.rate;
     setInput(fresh);
     saveInput(fresh);
-    setWithdrawalRateModeAndSave("auto");
   }
 
   const errors = validateRetirementInput(input);
@@ -161,15 +91,10 @@ export default function Main() {
             input={input}
             errors={errors}
             onChange={handleChange}
-            onWithdrawalRatePreset={handleWithdrawalRatePreset}
-            onWithdrawalRateCustomChange={handleWithdrawalRateCustomChange}
-            onUseRecommendedWithdrawalRate={handleUseRecommendedWithdrawalRate}
+            onUseRecommendedSwr={handleUseRecommendedSwr}
             onReset={handleReset}
-            recommendedWithdrawalPreset={withdrawalRateRecommendation?.preset}
-            recommendedWithdrawalHorizonYears={
-              withdrawalRateRecommendation?.horizonYears
-            }
-            withdrawalRateMode={withdrawalRateMode}
+            recommendedSwr={recommendation?.rate}
+            recommendedHorizonYears={recommendation?.horizonYears}
           />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }}>

@@ -65,7 +65,7 @@ describe("withdrawal rate recommendations", () => {
     expect(getWithdrawalRatePresetForHorizon(30).rate).toBe(3.75);
     expect(getWithdrawalRatePresetForHorizon(31).rate).toBe(3.5);
     expect(getWithdrawalRatePresetForHorizon(40).rate).toBe(3.5);
-    expect(getWithdrawalRatePresetForHorizon(51).rate).toBe(3);
+    expect(getWithdrawalRatePresetForHorizon(51).rate).toBe(3.25);
   });
 });
 

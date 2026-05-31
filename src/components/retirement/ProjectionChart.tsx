@@ -5,6 +5,8 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceArea,
+  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -26,6 +28,11 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
     balance: Math.max(0, Math.round(p.balance)),
   }));
   const retireAge = result.earliestRetirementAge;
+  const lastAge = data[data.length - 1]?.age ?? retireAge;
+  const peak =
+    result.portfolioAtRetirement != null
+      ? Math.round(result.portfolioAtRetirement)
+      : null;
 
   return (
     <Card withBorder radius="md" padding="md">
@@ -43,6 +50,19 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
             margin={{ top: 16, right: 16, bottom: 32, left: 8 }}
           >
             <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+            <ReferenceArea
+              x1={retireAge}
+              x2={lastAge}
+              fill="var(--mantine-color-gray-5)"
+              fillOpacity={0.1}
+              ifOverflow="visible"
+              label={{
+                value: "Retirement",
+                position: "insideTopRight",
+                fill: "var(--mantine-color-gray-6)",
+                fontSize: 11,
+              }}
+            />
             <XAxis
               dataKey="age"
               tickMargin={8}
@@ -60,12 +80,6 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
               x={retireAge}
               stroke="var(--mantine-color-teal-6)"
               strokeDasharray="4 4"
-              label={{
-                value: `Retire at ${retireAge}`,
-                position: "top",
-                fill: "var(--mantine-color-teal-6)",
-                fontSize: 12,
-              }}
             />
             <Area
               type="monotone"
@@ -75,6 +89,24 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
               fillOpacity={0.2}
               isAnimationActive={false}
             />
+            {peak != null && (
+              <ReferenceDot
+                x={retireAge}
+                y={peak}
+                r={4}
+                fill="var(--mantine-color-teal-6)"
+                stroke="var(--mantine-color-body)"
+                strokeWidth={2}
+                ifOverflow="visible"
+                label={{
+                  value: `Retire at ${retireAge} · ${formatCADCompact(peak)}`,
+                  position: "top",
+                  fill: "var(--mantine-color-teal-7)",
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              />
+            )}
           </AreaChart>
         </ResponsiveContainer>
       </div>
