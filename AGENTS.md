@@ -31,7 +31,7 @@ A **Next.js (App Router)** site hosting a collection of personal finance calcula
 A hub landing page at `/` links to each tool, and every tool lives at its own route:
 
 - **Rent vs Buy** (`/rent-vs-buy`): compares the financial outcomes of renting versus buying a home. Users input assumptions, and the app generates a year-by-year net worth comparison over 50 years with Monte Carlo confidence bands and a probability-based summary of which option is more likely to win.
-- **Retirement Planner** (`/retirement`): planned, not yet built.
+- **When can I retire?** (`/retirement`): a quick retirement reality check. Projects a single combined portfolio in real (today's) dollars, grows savings until retirement, then draws from the portfolio to top up guaranteed income (CPP/OAS/DB, entered as a flat taxable amount) to a target gross income (a % of current income). Reports the earliest feasible retirement age. Deterministic single-return for now; Monte Carlo planned. Engine in `src/utils/retirement/`, components in `src/components/retirement/`.
 
 When adding a new tool: add its route under `src/app/<tool>/`, put tool-specific components in `src/components/<tool>/`, and reuse shared chrome/primitives from `src/components/shared/` and shared logic from `src/utils/`. Cross-folder imports use the `@/` alias (`@/* → ./src/*`).
 

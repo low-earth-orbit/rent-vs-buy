@@ -6,10 +6,10 @@ Latest deployed version: [Click Me](https://low-earth-orbit.github.io/personal-f
 
 ## Tools
 
-| Tool                                                   | Route          | Status      |
-| ------------------------------------------------------ | -------------- | ----------- |
-| **Rent vs Buy** — compare renting vs owning a home     | `/rent-vs-buy` | Live        |
-| **Retirement Planner** — project savings & withdrawals | `/retirement`  | Coming soon |
+| Tool                                                    | Route          | Status |
+| ------------------------------------------------------- | -------------- | ------ |
+| **Rent vs Buy** — compare renting vs owning a home      | `/rent-vs-buy` | Live   |
+| **When can I retire?** — quick retirement reality check | `/retirement`  | Live   |
 
 The site is a single statically-exported Next.js app: a hub landing page at `/`
 links to each tool, which lives at its own route.

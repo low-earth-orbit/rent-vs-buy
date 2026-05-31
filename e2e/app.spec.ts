@@ -28,3 +28,20 @@ test("loads the calculator and renders the net worth chart", async ({
     page.getByRole("img", { name: /net worth projection chart/i }),
   ).toBeVisible();
 });
+
+test("retirement planner shows an earliest retirement age and chart", async ({
+  page,
+}) => {
+  await page.goto("/retirement");
+
+  await expect(
+    page.getByRole("heading", { name: "When can I retire?" }),
+  ).toBeVisible();
+
+  // The Summary headline reports a retirement age on the default inputs.
+  await expect(page.getByText(/retire/i).first()).toBeVisible();
+
+  await expect(
+    page.getByRole("img", { name: /retirement portfolio projection chart/i }),
+  ).toBeVisible();
+});
