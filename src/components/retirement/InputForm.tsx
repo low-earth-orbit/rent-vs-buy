@@ -30,6 +30,7 @@ interface InputFormProps {
   errors: RetirementErrors;
   onChange: (key: RetirementInputKey, value: FieldValue) => void;
   onReset: () => void;
+  planSWR: number | null;
 }
 
 export default function InputForm({
@@ -37,6 +38,7 @@ export default function InputForm({
   errors,
   onChange,
   onReset,
+  planSWR,
 }: InputFormProps) {
   const [customizeReturns, setCustomizeReturns] = useState(false);
 
@@ -216,6 +218,15 @@ export default function InputForm({
                   label={undefined}
                   suffix="%"
                 />
+                {planSWR != null && (
+                  <Text size="sm" c="dimmed">
+                    Safe withdrawal rate:{" "}
+                    <Text span fw={600} c="teal">
+                      {(planSWR * 100).toFixed(1)}%
+                    </Text>{" "}
+                    of savings + future pension value
+                  </Text>
+                )}
               </Stack>
             </Stack>
           </Accordion.Panel>

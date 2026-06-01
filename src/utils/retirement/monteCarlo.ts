@@ -259,6 +259,23 @@ function retirementAgeRange(
 }
 
 /**
+ * The MC-derived safe withdrawal rate for the retirement phase: the fraction of
+ * the required starting balance that covers the portfolio withdrawal, at the
+ * user's target confidence. Uses the same bisection as `requiredWealth` so it
+ * is cheap to call alongside `computeRetirement`.
+ */
+export function computePlanSWR(
+  input: RetirementInput,
+  retireAge: number,
+): number {
+  const target = input.targetSuccessRate / 100;
+  const rw = requiredWealth(input, retireAge, target);
+  if (rw <= 0) return 0;
+  const { portfolioWithdrawal } = incomeBreakdown(input);
+  return portfolioWithdrawal / rw;
+}
+
+/**
  * Earliest retirement age whose simulated plan meets the user's target success
  * rate, on the deterministic (mean-return) accumulation path. Success rises
  * monotonically with age (more saved, shorter drawdown), so the first age that
