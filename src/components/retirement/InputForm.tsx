@@ -83,7 +83,7 @@ export default function InputForm({
         color="red"
         leftSection={<IconRotate size={14} />}
         onClick={onReset}
-        mb="md"
+        my="md"
       >
         Reset to defaults
       </Button>
@@ -224,7 +224,7 @@ export default function InputForm({
                     <Text span fw={600} c="teal">
                       {(planSWR * 100).toFixed(1)}%
                     </Text>{" "}
-                    of savings + future pension value
+                    of savings + future pension value for Yr 1 of retirement
                   </Text>
                 )}
               </Stack>

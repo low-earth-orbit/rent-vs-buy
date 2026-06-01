@@ -12,6 +12,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  ReferenceDot,
 } from "recharts";
 import {
   IconAlertTriangle,
@@ -233,6 +234,23 @@ export default function ProjectionChart({
               isAnimationActive={false}
             />
             <ReferenceLine x={retireAge} stroke={TEAL} strokeDasharray="4 4" />
+            {result.portfolioAtRetirement != null && (
+              <ReferenceDot
+                x={retireAge}
+                y={Math.max(0, Math.round(result.portfolioAtRetirement))}
+                r={5}
+                fill={TEAL}
+                stroke="white"
+                strokeWidth={2}
+                label={{
+                  value: `Age ${retireAge}`,
+                  position: "top",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fill: "var(--mantine-color-teal-7)",
+                }}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>

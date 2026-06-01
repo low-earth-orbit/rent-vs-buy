@@ -104,10 +104,10 @@ export default function Headline({ input, result }: HeadlineProps) {
         </Stack>
         {result.portfolioAtRetirement != null && (
           <SimpleGrid
-            cols={1}
-            spacing="lg"
+            cols={{ base: 2, sm: 1 }}
+            spacing="sm"
+            m="auto"
             w={{ base: "100%", sm: "auto" }}
-            style={{ flexShrink: 0 }}
           >
             <StatTile
               label="Savings at retirement"
