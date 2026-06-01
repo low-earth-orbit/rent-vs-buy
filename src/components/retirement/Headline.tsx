@@ -1,15 +1,16 @@
+import type { ReactNode } from "react";
 import {
   Alert,
   Card,
-  Flex,
+  Divider,
   Group,
   SimpleGrid,
   Stack,
   Text,
   Title,
 } from "@mantine/core";
-import { IconAlertTriangle, IconBeach } from "@tabler/icons-react";
-import { formatCAD } from "@/utils/format";
+import { IconAlertTriangle } from "@tabler/icons-react";
+import { formatCADCompact } from "@/utils/format";
 import SwrTechnicalNote from "./SwrTechnicalNote";
 import type {
   RetirementInput,
@@ -23,22 +24,27 @@ interface HeadlineProps {
   planSWR: number | null;
 }
 
-function StatTile({
+/** One cell in the metric strip below the retirement-age hero. */
+function Metric({
   label,
   value,
   note,
+  info,
 }: {
   label: string;
   value: string;
-  note?: string;
+  note?: ReactNode;
+  /** Optional adornment shown next to the label (e.g. an info-icon button). */
+  info?: ReactNode;
 }) {
   return (
-    <Stack gap={0}>
-      <Text size="xs" c="dimmed">
-        {label}
-      </Text>
-      <Text fw={600} fz="lg" lh={1.2}>
+    <Stack gap={2}>
+      <Group gap={4} align="center" wrap="nowrap">
+        <Text size="sm">{label}</Text>
+      </Group>
+      <Text fw={600} fz="md">
         {value}
+        {info}
       </Text>
       {note && (
         <Text size="xs" c="dimmed">
@@ -68,77 +74,68 @@ export default function Headline({ input, result, planSWR }: HeadlineProps) {
     );
   }
 
-  const { earliestRetirementAge, yearsUntilRetirement } = result;
+  const { earliestRetirementAge, yearsUntilRetirement, retirementAgeRange } =
+    result;
   const retireNow = yearsUntilRetirement === 0;
 
   return (
     <Card withBorder radius="md" padding="lg">
-      <Flex
-        direction={{ base: "column", sm: "row" }}
-        justify="space-between"
-        align={{ base: "stretch", sm: "flex-end" }}
-        gap="lg"
-      >
-        <Stack gap={2} my="auto">
-          <Text size="sm" fw={600}>
-            Estimated retirement age
-          </Text>
-          <Group gap="xs" align="center">
-            <IconBeach size={38} color="var(--mantine-color-teal-6)" />
-            <Title order={2} fz={{ base: 40, sm: 48 }} lh={1.5} c="teal">
+      <Stack gap="sm">
+        {/* Hero: the retirement age */}
+        <Stack gap={2}>
+          <Text>🏖 {retireNow ? "You can retire" : "You can retire at"}</Text>
+          <Group gap="xs" align="baseline" wrap="nowrap">
+            <Title order={2} fz={{ base: 30, sm: 36 }} c="teal">
               {retireNow ? "Now" : `Age ${earliestRetirementAge}`}
             </Title>
+            {!retireNow && (
+              <Text size="sm">
+                in {yearsUntilRetirement}{" "}
+                {yearsUntilRetirement === 1 ? "year" : "years"}
+              </Text>
+            )}
           </Group>
-          <Text size="sm" c="dimmed">
+          <Text size="xs" c="dimmed">
             {retireNow
-              ? "Your savings already support your target income"
-              : `${yearsUntilRetirement} ${
-                  yearsUntilRetirement === 1 ? "year" : "years"
-                } from now`}
-            , with the portfolio projected to last to age {input.planningAge}.
+              ? `Your savings already support your target income, projected to last to age ${input.planningAge}.`
+              : `Projected to last to age ${input.planningAge}.`}
+            {!retireNow && retirementAgeRange && (
+              <>
+                {" "}
+                There&apos;s a ~50% chance you retire between ages{" "}
+                {retirementAgeRange.p25} and {retirementAgeRange.p75}.
+              </>
+            )}
           </Text>
-          {!retireNow && result.retirementAgeRange && (
-            <Text size="xs" c="dimmed" mt={4}>
-              Depending on market luck, about a 50% chance you retire between
-              age {result.retirementAgeRange.p25} and{" "}
-              {result.retirementAgeRange.p75}.
-            </Text>
+        </Stack>
+
+        <Divider />
+
+        {/* Metric strip */}
+        <SimpleGrid cols={{ base: 1, xs: 3 }} spacing="lg" verticalSpacing="md">
+          {result.portfolioAtRetirement != null && (
+            <Metric
+              label="Savings at retirement"
+              value={formatCADCompact(result.portfolioAtRetirement)}
+            />
+          )}
+          {result.guaranteedIncome > 0 && (
+            <Metric
+              label="Pension income"
+              value={`${formatCADCompact(result.guaranteedIncome)} /yr`}
+              note={`from age ${input.pensionStartAge}`}
+            />
           )}
           {planSWR != null && (
-            <Text size="sm" c="dimmed" mt="xs">
-              Year-1 withdrawal rate:{" "}
-              <Text span fw={600} c="teal">
-                {(planSWR * 100).toFixed(1)}%
-              </Text>{" "}
-              of savings
-              {earliestRetirementAge < input.pensionStartAge
-                ? ` (higher until your pension at ${input.pensionStartAge})`
-                : ""}{" "}
-              — <SwrTechnicalNote input={input} />
-            </Text>
-          )}
-        </Stack>
-        {result.portfolioAtRetirement != null && (
-          <SimpleGrid
-            cols={{ base: 2, sm: 1 }}
-            spacing="sm"
-            m="auto"
-            w={{ base: "100%", sm: "auto" }}
-          >
-            <StatTile
-              label="Savings at retirement"
-              value={formatCAD(result.portfolioAtRetirement)}
+            <Metric
+              label="Year-1 withdrawal"
+              value={`${(planSWR * 100).toFixed(1)}%`}
+              note="of savings"
+              info={<SwrTechnicalNote input={input} />}
             />
-            {result.guaranteedIncome > 0 && (
-              <StatTile
-                label="Pension income"
-                value={`${formatCAD(result.guaranteedIncome)} /yr`}
-                note={`from age ${input.pensionStartAge}`}
-              />
-            )}
-          </SimpleGrid>
-        )}
-      </Flex>
+          )}
+        </SimpleGrid>
+      </Stack>
     </Card>
   );
 }

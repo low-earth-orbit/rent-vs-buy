@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  Anchor,
+  ActionIcon,
   Group,
   Loader,
   Modal,
@@ -11,6 +11,7 @@ import {
   Text,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { IconInfoCircle } from "@tabler/icons-react";
 import { safeWithdrawalRate } from "@/utils/retirement/monteCarlo";
 import {
   SWR_TABLE_ALLOCATIONS,
@@ -87,9 +88,16 @@ export default function SwrTechnicalNote({ input }: SwrTechnicalNoteProps) {
 
   return (
     <>
-      <Anchor component="button" type="button" size="sm" onClick={open}>
-        What is this?
-      </Anchor>
+      <ActionIcon
+        variant="subtle"
+        color="gray"
+        size="sm"
+        radius="xl"
+        onClick={open}
+        aria-label="About the safe withdrawal rate"
+      >
+        <IconInfoCircle size={16} />
+      </ActionIcon>
 
       <Modal
         opened={opened}
