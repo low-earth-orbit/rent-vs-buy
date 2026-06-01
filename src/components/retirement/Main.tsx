@@ -68,11 +68,10 @@ export default function Main() {
             errors={errors}
             onChange={handleChange}
             onReset={handleReset}
-            planSWR={planSWR}
           />
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 6 }} order={{ base: 1, md: 2 }}>
-          <Result input={input} result={result} />
+          <Result input={input} result={result} planSWR={planSWR} />
         </Grid.Col>
       </Grid>
     </Container>

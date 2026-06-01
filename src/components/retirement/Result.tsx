@@ -14,6 +14,8 @@ interface ResultProps {
   input: RetirementInput;
   /** Computed in Main; null while inputs are incomplete/invalid. */
   result: RetirementResult | null;
+  /** Headline year-1 withdrawal rate (fraction); null when no feasible plan. */
+  planSWR: number | null;
 }
 
 const TEAL = "var(--mantine-color-teal-6)";
@@ -175,7 +177,7 @@ function IncomeSummary({
   );
 }
 
-export default function Result({ input, result }: ResultProps) {
+export default function Result({ input, result, planSWR }: ResultProps) {
   if (!result) {
     return (
       <Alert
@@ -191,7 +193,7 @@ export default function Result({ input, result }: ResultProps) {
 
   return (
     <Stack gap="lg">
-      <Headline input={input} result={result} />
+      <Headline input={input} result={result} planSWR={planSWR} />
       <IncomeSummary input={input} result={result} />
       <ProjectionChart input={input} result={result} />
     </Stack>

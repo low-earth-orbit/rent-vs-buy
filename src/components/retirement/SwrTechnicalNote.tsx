@@ -35,11 +35,14 @@ interface TableRow {
  */
 export default function SwrTechnicalNote({ input }: SwrTechnicalNoteProps) {
   const [opened, { open, close }] = useDisclosure(false);
-  // Cache the computed table tagged with the (success, inflation) it was built
-  // for; `rows` is null (→ loader) until a result for the current key arrives.
-  const [table, setTable] = useState<{ key: string; rows: TableRow[] } | null>(
-    null,
-  );
+  // The table is computed one allocation-row at a time, yielding between rows, so
+  // the modal stays responsive and fills progressively. Tagged with the
+  // (success, inflation) key it was built for; a stale key shows the loader.
+  const [table, setTable] = useState<{
+    key: string;
+    rows: TableRow[];
+    done: boolean;
+  } | null>(null);
 
   const successPct = input.targetSuccessRate;
   const successRate = successPct / 100;
@@ -48,29 +51,39 @@ export default function SwrTechnicalNote({ input }: SwrTechnicalNoteProps) {
 
   useEffect(() => {
     if (!opened) return;
-    const k = `${successRate}|${inflation}`;
-    // Defer so the modal paints before the (brief) synchronous MC burst.
-    const id = setTimeout(() => {
-      setTable({
-        key: k,
-        rows: SWR_TABLE_ALLOCATIONS.map((a) => ({
-          label: a.label,
-          swrs: SWR_TABLE_HORIZONS.map((h) =>
-            safeWithdrawalRate(
-              a.returnPct,
-              a.volatility,
-              inflation,
-              h,
-              successRate,
-            ),
+    let cancelled = false;
+    const acc: TableRow[] = [];
+    let i = 0;
+    const step = () => {
+      if (cancelled) return;
+      const a = SWR_TABLE_ALLOCATIONS[i];
+      acc.push({
+        label: a.label,
+        swrs: SWR_TABLE_HORIZONS.map((h) =>
+          safeWithdrawalRate(
+            a.returnPct,
+            a.volatility,
+            inflation,
+            h,
+            successRate,
           ),
-        })),
+        ),
       });
-    }, 0);
-    return () => clearTimeout(id);
-  }, [opened, successRate, inflation]);
+      i += 1;
+      const done = i >= SWR_TABLE_ALLOCATIONS.length;
+      setTable({ key, rows: acc.slice(), done });
+      if (!done) setTimeout(step, 0);
+    };
+    const id = setTimeout(step, 0);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+    };
+  }, [opened, key, successRate, inflation]);
 
-  const rows = table && table.key === key ? table.rows : null;
+  const current = table && table.key === key ? table : null;
+  const rows = current?.rows ?? null;
+  const computing = current !== null && !current.done;
 
   return (
     <>
@@ -129,37 +142,44 @@ export default function SwrTechnicalNote({ input }: SwrTechnicalNoteProps) {
               <Loader size="sm" />
             </Group>
           ) : (
-            <Table
-              withTableBorder
-              withColumnBorders
-              striped
-              horizontalSpacing="xs"
-              verticalSpacing={6}
-              fz="xs"
-            >
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Stocks / Bonds</Table.Th>
-                  {SWR_TABLE_HORIZONS.map((h) => (
-                    <Table.Th key={h} ta="center">
-                      {h}y
-                    </Table.Th>
-                  ))}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {rows.map((r) => (
-                  <Table.Tr key={r.label}>
-                    <Table.Td fw={600}>{r.label}</Table.Td>
-                    {r.swrs.map((s, i) => (
-                      <Table.Td key={i} ta="center">
-                        {(s * 100).toFixed(1)}%
-                      </Table.Td>
+            <>
+              <Table
+                withTableBorder
+                withColumnBorders
+                striped
+                horizontalSpacing="xs"
+                verticalSpacing={6}
+                fz="xs"
+              >
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Stocks / Bonds</Table.Th>
+                    {SWR_TABLE_HORIZONS.map((h) => (
+                      <Table.Th key={h} ta="center">
+                        {h}y
+                      </Table.Th>
                     ))}
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+                </Table.Thead>
+                <Table.Tbody>
+                  {rows.map((r) => (
+                    <Table.Tr key={r.label}>
+                      <Table.Td fw={600}>{r.label}</Table.Td>
+                      {r.swrs.map((s, i) => (
+                        <Table.Td key={i} ta="center">
+                          {(s * 100).toFixed(1)}%
+                        </Table.Td>
+                      ))}
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+              {computing && (
+                <Group justify="center" py={4}>
+                  <Loader size="xs" />
+                </Group>
+              )}
+            </>
           )}
 
           <Text size="xs" c="dimmed">

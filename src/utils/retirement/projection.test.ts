@@ -85,4 +85,17 @@ describe("accumulationBalances", () => {
     )!.balance;
     expect(at60).toBeCloseTo(viaPath, 6);
   });
+
+  it("saves a pension that begins while still working (before retirement)", () => {
+    const early = accumulationBalances(
+      base({ pensionStartAge: 60, guaranteedIncomePct: 25 }),
+    );
+    const late = accumulationBalances(
+      base({ pensionStartAge: 90, guaranteedIncomePct: 25 }),
+    );
+    // By age 70 the early pension (from 60) has been added to savings each year.
+    const earlyAt70 = early.find((p) => p.age === 70)!.balance;
+    const lateAt70 = late.find((p) => p.age === 70)!.balance;
+    expect(earlyAt70).toBeGreaterThan(lateAt70);
+  });
 });

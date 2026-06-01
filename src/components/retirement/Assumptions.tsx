@@ -26,7 +26,7 @@ const Assumptions = () => {
         >
           PWL Capital
         </Anchor>
-        .
+        , sanity-checked against RBC and FP Canada assumptions.
       </Text>
     </Container>
   );

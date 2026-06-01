@@ -178,7 +178,7 @@ describe("SWR calibration – 80/20, 90% success", () => {
   }
 });
 
-describe("SWR calibration – 100/20, 90% success", () => {
+describe("SWR calibration – 100/0, 90% success", () => {
   const testEquityAllocation = 100;
   const results: { horizon: number; appSWR: number; morningstar: number }[] =
     [];

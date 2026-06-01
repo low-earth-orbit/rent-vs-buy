@@ -3,7 +3,9 @@ import { DEFAULTS } from "./presets";
 import { accumulationBalances } from "./projection";
 import {
   NUM_SIMULATIONS,
+  computePlanSWR,
   computeRetirement,
+  safeWithdrawalRate,
   simulateRetirementPhase,
 } from "./monteCarlo";
 import type { RetirementInput } from "./types";
@@ -152,5 +154,44 @@ describe("computeRetirement", () => {
 
   it("runs the configured number of simulations", () => {
     expect(NUM_SIMULATIONS).toBe(1000);
+  });
+});
+
+describe("computePlanSWR", () => {
+  const input = base({
+    currentIncome: 100_000,
+    targetIncomePct: 60, // $60k target
+    guaranteedIncomePct: 25, // $25k pension → $35k gap
+    pensionStartAge: 65,
+  });
+
+  it("uses the full target income in year 1 when retiring before the pension (bridge)", () => {
+    // Retire at 60 (< pensionStartAge): year-1 draw is the whole $60k target.
+    expect(computePlanSWR(input, 60, 1_000_000)).toBeCloseTo(0.06, 6);
+  });
+
+  it("uses the post-pension gap when retiring at/after the pension starts", () => {
+    // Retire at 65: pension is already flowing, so year-1 draw is the $35k gap.
+    expect(computePlanSWR(input, 65, 1_000_000)).toBeCloseTo(0.035, 6);
+  });
+
+  it("returns 0 for non-positive savings", () => {
+    expect(computePlanSWR(input, 65, 0)).toBe(0);
+  });
+});
+
+describe("safeWithdrawalRate", () => {
+  it("returns a plausible 60/40 rate that falls as the horizon lengthens", () => {
+    const swr30 = safeWithdrawalRate(5.67, 8.79, 2.1, 30, 0.9);
+    const swr50 = safeWithdrawalRate(5.67, 8.79, 2.1, 50, 0.9);
+    expect(swr30).toBeGreaterThan(0.025);
+    expect(swr30).toBeLessThan(0.05);
+    expect(swr50).toBeLessThan(swr30);
+  });
+
+  it("falls as the required success rate rises", () => {
+    const swr80 = safeWithdrawalRate(5.67, 8.79, 2.1, 30, 0.8);
+    const swr95 = safeWithdrawalRate(5.67, 8.79, 2.1, 30, 0.95);
+    expect(swr95).toBeLessThan(swr80);
   });
 });

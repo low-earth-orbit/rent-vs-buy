@@ -10,6 +10,7 @@ import {
 } from "@mantine/core";
 import { IconAlertTriangle, IconBeach } from "@tabler/icons-react";
 import { formatCAD } from "@/utils/format";
+import SwrTechnicalNote from "./SwrTechnicalNote";
 import type {
   RetirementInput,
   RetirementResult,
@@ -18,6 +19,8 @@ import type {
 interface HeadlineProps {
   input: RetirementInput;
   result: RetirementResult;
+  /** Year-1 withdrawal rate (fraction); null when no feasible plan. */
+  planSWR: number | null;
 }
 
 function StatTile({
@@ -46,7 +49,7 @@ function StatTile({
   );
 }
 
-export default function Headline({ input, result }: HeadlineProps) {
+export default function Headline({ input, result, planSWR }: HeadlineProps) {
   if (result.earliestRetirementAge === null) {
     return (
       <Alert
@@ -99,6 +102,19 @@ export default function Headline({ input, result }: HeadlineProps) {
               Depending on market luck, about a 50% chance you retire between
               age {result.retirementAgeRange.p25} and{" "}
               {result.retirementAgeRange.p75}.
+            </Text>
+          )}
+          {planSWR != null && (
+            <Text size="sm" c="dimmed" mt="xs">
+              Year-1 withdrawal rate:{" "}
+              <Text span fw={600} c="teal">
+                {(planSWR * 100).toFixed(1)}%
+              </Text>{" "}
+              of savings
+              {earliestRetirementAge < input.pensionStartAge
+                ? ` (higher until your pension at ${input.pensionStartAge})`
+                : ""}{" "}
+              — <SwrTechnicalNote input={input} />
             </Text>
           )}
         </Stack>

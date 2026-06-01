@@ -12,7 +12,6 @@ import {
 import { IconRotate } from "@tabler/icons-react";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
 import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
-import SwrTechnicalNote from "./SwrTechnicalNote";
 import {
   RETURN_PRESETS,
   SUCCESS_RATE_PRESETS,
@@ -31,7 +30,6 @@ interface InputFormProps {
   errors: RetirementErrors;
   onChange: (key: RetirementInputKey, value: FieldValue) => void;
   onReset: () => void;
-  planSWR: number | null;
 }
 
 export default function InputForm({
@@ -39,7 +37,6 @@ export default function InputForm({
   errors,
   onChange,
   onReset,
-  planSWR,
 }: InputFormProps) {
   const [customizeReturns, setCustomizeReturns] = useState(false);
 
@@ -187,7 +184,7 @@ export default function InputForm({
                 </Text>
                 <Text size="xs" c="dimmed">
                   The share of simulated markets your savings must outlast to
-                  your planning age. We run the simulation and return the
+                  your planning age. I run the simulation and return the
                   earliest age that clears this target — higher confidence means
                   retiring later.
                 </Text>
@@ -219,17 +216,6 @@ export default function InputForm({
                   label={undefined}
                   suffix="%"
                 />
-                {planSWR != null && (
-                  <Stack gap={2}>
-                    <Text size="sm" c="dimmed">
-                      Year-1 withdrawal rate:{" "}
-                      <Text span fw={600} c="teal">
-                        {(planSWR * 100).toFixed(1)}%
-                      </Text>{" "}
-                      of your savings — <SwrTechnicalNote input={input} />
-                    </Text>
-                  </Stack>
-                )}
               </Stack>
             </Stack>
           </Accordion.Panel>

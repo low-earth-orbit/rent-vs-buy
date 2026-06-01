@@ -73,5 +73,16 @@ export function validateRetirementInput(
     errors.planningAge = "Planning age must be greater than your current age.";
   }
 
+  // Cross-field: a pension you set but would never receive (starts after the plan ends).
+  if (
+    !errors.pensionStartAge &&
+    !errors.planningAge &&
+    input.guaranteedIncomePct > 0 &&
+    input.pensionStartAge > input.planningAge
+  ) {
+    errors.pensionStartAge =
+      "Pension start age must be before your planning age.";
+  }
+
   return errors;
 }

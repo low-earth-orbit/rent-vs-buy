@@ -266,9 +266,10 @@ function retirementAgeRange(
 
 /**
  * Headline safe withdrawal rate: the first retirement year's portfolio draw as a
- * fraction of savings at retirement — the true initial withdrawal rate, directly
- * comparable to the "4% rule". The year-1 draw is the FULL target income when
- * retiring before the pension starts (the bridge), otherwise the post-pension gap.
+ * fraction of savings at retirement — the true initial withdrawal rate. The year-1
+ * draw is the FULL target income when retiring before the pension starts (the
+ * bridge — so this runs high), otherwise the post-pension gap (comparable to the
+ * "4% rule").
  */
 export function computePlanSWR(
   input: RetirementInput,

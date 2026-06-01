@@ -4,54 +4,66 @@
  */
 export const SUCCESS_RATE_PRESETS = [80, 85, 90, 95, 99] as const;
 
+/**
+ * Single source of truth for each stock/bond mix's nominal expected return and
+ * volatility (%, PWL Capital-based). The glide-path presets and the SWR reference
+ * table both derive their numbers from here, so an assumption change is one edit.
+ */
+const ALLOCATIONS = {
+  "100/0": { returnPct: 6.87, volatility: 12.57 },
+  "80/20": { returnPct: 6.29, volatility: 10.62 },
+  "60/40": { returnPct: 5.67, volatility: 8.79 },
+  "40/60": { returnPct: 5.01, volatility: 7.17 },
+} as const;
+
 export const RETURN_PRESETS = [
   {
     id: "glide-path-80-20-to-60-40",
     label: "80/20 to 60/40",
-    accumReturn: 6.29,
-    accumVolatility: 10.62,
-    retireReturn: 5.67,
-    retireVolatility: 8.79,
+    accumReturn: ALLOCATIONS["80/20"].returnPct,
+    accumVolatility: ALLOCATIONS["80/20"].volatility,
+    retireReturn: ALLOCATIONS["60/40"].returnPct,
+    retireVolatility: ALLOCATIONS["60/40"].volatility,
   },
   {
     id: "glide-path-80-20-to-40-60",
     label: "80/20 to 40/60",
-    accumReturn: 6.29,
-    accumVolatility: 10.62,
-    retireReturn: 5.01,
-    retireVolatility: 7.17,
+    accumReturn: ALLOCATIONS["80/20"].returnPct,
+    accumVolatility: ALLOCATIONS["80/20"].volatility,
+    retireReturn: ALLOCATIONS["40/60"].returnPct,
+    retireVolatility: ALLOCATIONS["40/60"].volatility,
   },
   {
     id: "glide-path-60-40",
     label: "60/40",
-    accumReturn: 5.67,
-    accumVolatility: 8.79,
-    retireReturn: 5.67,
-    retireVolatility: 8.79,
+    accumReturn: ALLOCATIONS["60/40"].returnPct,
+    accumVolatility: ALLOCATIONS["60/40"].volatility,
+    retireReturn: ALLOCATIONS["60/40"].returnPct,
+    retireVolatility: ALLOCATIONS["60/40"].volatility,
   },
   {
     id: "glide-path-100-0-to-80-20",
     label: "100/0 to 80/20",
-    accumReturn: 6.87,
-    accumVolatility: 12.57,
-    retireReturn: 6.29,
-    retireVolatility: 10.62,
+    accumReturn: ALLOCATIONS["100/0"].returnPct,
+    accumVolatility: ALLOCATIONS["100/0"].volatility,
+    retireReturn: ALLOCATIONS["80/20"].returnPct,
+    retireVolatility: ALLOCATIONS["80/20"].volatility,
   },
   {
     id: "glide-path-100-0-to-60-40",
     label: "100/0 to 60/40",
-    accumReturn: 6.87,
-    accumVolatility: 12.57,
-    retireReturn: 5.67,
-    retireVolatility: 8.79,
+    accumReturn: ALLOCATIONS["100/0"].returnPct,
+    accumVolatility: ALLOCATIONS["100/0"].volatility,
+    retireReturn: ALLOCATIONS["60/40"].returnPct,
+    retireVolatility: ALLOCATIONS["60/40"].volatility,
   },
   {
     id: "glide-path-80-20",
     label: "80/20",
-    accumReturn: 6.29,
-    accumVolatility: 10.62,
-    retireReturn: 6.29,
-    retireVolatility: 10.62,
+    accumReturn: ALLOCATIONS["80/20"].returnPct,
+    accumVolatility: ALLOCATIONS["80/20"].volatility,
+    retireReturn: ALLOCATIONS["80/20"].returnPct,
+    retireVolatility: ALLOCATIONS["80/20"].volatility,
   },
 ] as const;
 
@@ -61,10 +73,10 @@ export const RETURN_PRESETS = [
  * values (PWL Capital-based) and span the allocation axis users recognize.
  */
 export const SWR_TABLE_ALLOCATIONS = [
-  { label: "100/0", returnPct: 6.87, volatility: 12.57 },
-  { label: "80/20", returnPct: 6.29, volatility: 10.62 },
-  { label: "60/40", returnPct: 5.67, volatility: 8.79 },
-  { label: "40/60", returnPct: 5.01, volatility: 7.17 },
+  { label: "100/0", ...ALLOCATIONS["100/0"] },
+  { label: "80/20", ...ALLOCATIONS["80/20"] },
+  { label: "60/40", ...ALLOCATIONS["60/40"] },
+  { label: "40/60", ...ALLOCATIONS["40/60"] },
 ] as const;
 
 /** Retirement horizons (years) shown as columns in the SWR reference table. */
