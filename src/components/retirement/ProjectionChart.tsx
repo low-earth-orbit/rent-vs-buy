@@ -117,8 +117,8 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
                 strokeWidth={2}
                 ifOverflow="visible"
                 label={{
-                  value: `Retire at ${retireAge} · ${formatCADCompact(peak)}`,
-                  position: "left",
+                  value: `Retire`,
+                  position: "top",
                   fill: "var(--mantine-color-teal-7)",
                   fontSize: 12,
                   fontWeight: 600,
