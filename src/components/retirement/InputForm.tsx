@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Accordion,
   Button,
-  Card,
   Group,
   SimpleGrid,
   Stack,
@@ -87,17 +86,16 @@ export default function InputForm({
 
   return (
     <>
-      <Group justify="space-between" mb="sm">
-        <Button
-          variant="subtle"
-          size="xs"
-          color="red"
-          leftSection={<IconRotate size={14} />}
-          onClick={onReset}
-        >
-          Reset to defaults
-        </Button>
-      </Group>
+      <Button
+        variant="subtle"
+        size="xs"
+        color="red"
+        leftSection={<IconRotate size={14} />}
+        onClick={onReset}
+        mb="md"
+      >
+        Reset to defaults
+      </Button>
 
       <Accordion
         multiple
@@ -190,66 +188,6 @@ export default function InputForm({
                   suffix=" yrs"
                 />
               </SimpleGrid>
-              <Stack gap={6}>
-                <Text size="sm" fw={600}>
-                  Safe withdrawal rate
-                </Text>
-                <Text size="xs" c="dimmed">
-                  Target retirement income as a % of savings at retirement +
-                  future pension value. Under fixed-dollar withdrawals, lower is
-                  safer with longer retirement horizon, less pension income, or
-                  more stocks in retirement. Pick a preset or set your own.
-                </Text>
-                <Group
-                  gap="xs"
-                  role="group"
-                  aria-label="Safe withdrawal rate"
-                  my="xs"
-                >
-                  {WITHDRAWAL_RATE_PRESETS.map((preset) => (
-                    <Button
-                      key={preset.id}
-                      variant={
-                        activeWithdrawalPreset?.id === preset.id
-                          ? "filled"
-                          : "light"
-                      }
-                      size="xs"
-                      radius="lg"
-                      aria-pressed={activeWithdrawalPreset?.id === preset.id}
-                      onClick={() => onChange("swr", preset.rate)}
-                    >
-                      {preset.label}
-                    </Button>
-                  ))}
-                </Group>
-                <UserInputFormItem
-                  {...num("swr")}
-                  label={undefined}
-                  suffix="%"
-                />
-                {showRecommendation && (
-                  <Group gap="xs" align="center">
-                    <Text size="xs" c="dimmed">
-                      Recommended {recommendedSwr}%
-                      {recommendedHorizonYears != null
-                        ? ` for a ${Math.round(
-                            recommendedHorizonYears,
-                          )}-year retirement`
-                        : ""}
-                      .
-                    </Text>
-                    <Button
-                      variant="subtle"
-                      size="compact-xs"
-                      color="teal"
-                      onClick={onUseRecommendedSwr}
-                    >
-                      Use
-                    </Button>
-                  </Group>
-                )}
-              </Stack>
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
@@ -257,67 +195,120 @@ export default function InputForm({
         <Accordion.Item value="assumptions">
           <Accordion.Control>Market assumptions</Accordion.Control>
           <Accordion.Panel>
-            <Stack gap="md">
-              <Stack gap={6}>
-                <Group justify="space-between" align="center" gap="xs">
-                  <Text size="sm" fw={600}>
-                    Expected return
-                  </Text>
+            <Stack gap={4} mb="xs">
+              <Text size="sm" fw={600}>
+                Safe withdrawal rate
+              </Text>
+              <Text size="xs" c="dimmed">
+                Target retirement income as a % of savings at retirement +
+                future pension value. Under fixed-dollar withdrawals, lower is
+                safer with longer retirement horizon, less pension income, or
+                more stocks in retirement. Pick a preset or set your own.
+              </Text>
+              <Group
+                gap="xs"
+                role="group"
+                aria-label="Safe withdrawal rate"
+                my="xs"
+              >
+                {WITHDRAWAL_RATE_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.id}
+                    variant={
+                      activeWithdrawalPreset?.id === preset.id
+                        ? "filled"
+                        : "light"
+                    }
+                    size="xs"
+                    radius="lg"
+                    aria-pressed={activeWithdrawalPreset?.id === preset.id}
+                    onClick={() => onChange("swr", preset.rate)}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </Group>
+              <UserInputFormItem {...num("swr")} label={undefined} suffix="%" />
+              {showRecommendation && (
+                <Group gap="xs" align="center">
                   <Text size="xs" c="dimmed">
-                    {returnStatus}
+                    Recommended {recommendedSwr}%
+                    {recommendedHorizonYears != null
+                      ? ` for a ${Math.round(
+                          recommendedHorizonYears,
+                        )}-year retirement`
+                      : ""}
+                    .
                   </Text>
+                  <Button
+                    variant="subtle"
+                    size="compact-xs"
+                    color="teal"
+                    onClick={onUseRecommendedSwr}
+                  >
+                    Use
+                  </Button>
                 </Group>
-                <Text size="xs" c="dimmed">
-                  Based on stock / bond mix — e.g. 80/20 is 80% stocks — before
-                  and after retirement. For simplicity, two distinct allocations
-                  are used, no gradual transition in-between.
+              )}
+            </Stack>
+            <Stack gap="xs" mb="xs">
+              <Group justify="space-between" align="center" gap="xs">
+                <Text size="sm" fw={600}>
+                  Expected return
                 </Text>
-                <SimpleGrid
-                  cols={{ base: 1, xs: 3 }}
-                  spacing="xs"
-                  role="group"
-                  aria-label="Portfolio return presets"
-                >
-                  {RETURN_PRESETS.map((preset) => (
-                    <Button
-                      key={preset.id}
-                      variant={
-                        activeReturnPreset?.id === preset.id
-                          ? "filled"
-                          : "light"
-                      }
-                      size="xs"
-                      radius="lg"
-                      h={44}
-                      aria-pressed={activeReturnPreset?.id === preset.id}
-                      onClick={() => applyReturnPreset(preset)}
-                    >
-                      <Stack gap={0} align="center">
-                        <Text span size="xs" fw={600}>
-                          {preset.label}
-                        </Text>
-                        <Text span size="10px">
-                          {preset.accumReturn === preset.retireReturn
-                            ? `${preset.accumReturn}%`
-                            : `${preset.accumReturn}% / ${preset.retireReturn}%`}
-                        </Text>
-                      </Stack>
-                    </Button>
-                  ))}
-                </SimpleGrid>
-                {!showReturnInputs && (
-                  <Group>
-                    <Button
-                      variant="subtle"
-                      size="compact-xs"
-                      color="gray"
-                      onClick={() => setCustomizeReturns(true)}
-                    >
-                      Customize
-                    </Button>
-                  </Group>
-                )}
-              </Stack>
+                <Text size="xs" c="dimmed">
+                  {returnStatus}
+                </Text>
+              </Group>
+              <Text size="xs" c="dimmed">
+                Based on stock / bond mix — e.g. 80/20 is 80% stocks — before
+                and after retirement. For simplicity, two distinct allocations
+                are used, no gradual transition in-between.
+              </Text>
+              <SimpleGrid
+                cols={{ base: 1, xs: 3 }}
+                spacing="xs"
+                role="group"
+                aria-label="Portfolio return presets"
+                my="xs"
+              >
+                {RETURN_PRESETS.map((preset) => (
+                  <Button
+                    key={preset.id}
+                    variant={
+                      activeReturnPreset?.id === preset.id ? "filled" : "light"
+                    }
+                    size="xs"
+                    radius="lg"
+                    h={44}
+                    aria-pressed={activeReturnPreset?.id === preset.id}
+                    onClick={() => applyReturnPreset(preset)}
+                  >
+                    <Stack gap={0} align="center">
+                      <Text span size="xs" fw={600}>
+                        {preset.label}
+                      </Text>
+                      <Text span size="10px">
+                        {preset.accumReturn === preset.retireReturn
+                          ? `${preset.accumReturn}%`
+                          : `${preset.accumReturn}% / ${preset.retireReturn}%`}
+                      </Text>
+                    </Stack>
+                  </Button>
+                ))}
+              </SimpleGrid>
+              {!showReturnInputs && (
+                <Group>
+                  <Button
+                    variant="subtle"
+                    size="compact-xs"
+                    color="gray"
+                    onClick={() => setCustomizeReturns(true)}
+                  >
+                    Customize
+                  </Button>
+                </Group>
+              )}
               {showReturnInputs && (
                 <SimpleGrid cols={{ base: 1, sm: 2 }}>
                   <UserInputFormItem
@@ -332,12 +323,12 @@ export default function InputForm({
                   />
                 </SimpleGrid>
               )}
-              <UserInputFormItem
-                {...num("inflationRate")}
-                label="Inflation"
-                suffix="%"
-              />
             </Stack>
+            <UserInputFormItem
+              {...num("inflationRate")}
+              label="Inflation"
+              suffix="%"
+            />
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion>

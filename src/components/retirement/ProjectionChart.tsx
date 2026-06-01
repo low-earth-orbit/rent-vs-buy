@@ -45,20 +45,20 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
         title="Understanding the projection"
       >
         <Text size="xs">
-          The chart shows your projected median net worth based on your
-          assumptions. While an aggressive portfolio allocation may increase
-          your overall net worth in retirement, it also comes with greater
-          return variance, increasing the chance of running out money in
-          retirement. Therefore, a higher equity allocation should not
-          automatically be interpreted as the better choice for your retirement.
+          The chart shows your projected portfolio based on your assumptions.
+          While an aggressive portfolio allocation may increase your savings in
+          retirement, it also comes with greater return variance, increasing the
+          chance of running out of money in retirement. Therefore, a higher
+          equity allocation should not automatically be interpreted as the
+          better choice for your retirement.
         </Text>
       </Alert>
       <div
         role="img"
         aria-label="Retirement portfolio projection chart"
-        style={{ width: "100%", minWidth: 0, height: 360, minHeight: 360 }}
+        style={{ width: "100%", minWidth: 0 }}
       >
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={360}>
           <AreaChart
             data={data}
             margin={{ top: 32, right: 0, bottom: 32, left: 0 }}

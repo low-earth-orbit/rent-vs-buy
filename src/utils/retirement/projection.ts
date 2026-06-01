@@ -121,14 +121,15 @@ export function computeRetirement(input: RetirementInput): RetirementResult {
 
     const portfolioAtRetirement = atRetirement ? atRetirement.balance : null;
 
-    const netWorthAtRetirement = portfolioAtRetirement
-      ? portfolioAtRetirement + (pensionValue || 0)
+    const savingsAndFuturePensionValueAtRetirement = portfolioAtRetirement
+      ? portfolioAtRetirement + (pensionValue ?? 0)
       : null;
 
     const firstYearWithdrawal = withdrawalAtAge(input, breakdown, age);
-    const impliedWithdrawalRateFromNetWorth =
-      netWorthAtRetirement && netWorthAtRetirement > 0
-        ? firstYearWithdrawal / netWorthAtRetirement
+    const impliedWithdrawalRateFromSavingsAndFuturePensionValue =
+      savingsAndFuturePensionValueAtRetirement &&
+      savingsAndFuturePensionValueAtRetirement > 0
+        ? firstYearWithdrawal / savingsAndFuturePensionValueAtRetirement
         : null;
     const impliedWithdrawalRateFromPortfolio =
       portfolioAtRetirement && portfolioAtRetirement > 0
@@ -136,8 +137,9 @@ export function computeRetirement(input: RetirementInput): RetirementResult {
         : null;
     const withdrawalRateIsFeasible =
       firstYearWithdrawal === 0 ||
-      (impliedWithdrawalRateFromNetWorth != null &&
-        impliedWithdrawalRateFromNetWorth <= maxInitialWithdrawalRate);
+      (impliedWithdrawalRateFromSavingsAndFuturePensionValue != null &&
+        impliedWithdrawalRateFromSavingsAndFuturePensionValue <=
+          maxInitialWithdrawalRate);
 
     if (!withdrawalRateIsFeasible) continue;
 
@@ -147,7 +149,7 @@ export function computeRetirement(input: RetirementInput): RetirementResult {
       yearsUntilRetirement: age - input.currentAge,
       portfolioAtRetirement,
       pensionValue,
-      impliedWithdrawalRateFromNetWorth,
+      impliedWithdrawalRateFromSavingsAndFuturePensionValue,
       impliedWithdrawalRateFromPortfolio,
       path: points,
     };
@@ -159,7 +161,7 @@ export function computeRetirement(input: RetirementInput): RetirementResult {
     yearsUntilRetirement: null,
     portfolioAtRetirement: null,
     pensionValue: null,
-    impliedWithdrawalRateFromNetWorth: null,
+    impliedWithdrawalRateFromSavingsAndFuturePensionValue: null,
     impliedWithdrawalRateFromPortfolio: null,
     path: null,
   };

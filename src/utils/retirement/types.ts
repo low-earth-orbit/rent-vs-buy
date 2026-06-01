@@ -45,7 +45,7 @@ export interface RetirementResult {
   /** Gross (taxable) amount the portfolio must withdraw each year. */
   portfolioWithdrawal: number;
   /** First-year withdrawal ÷ portfolio at retirement + future pension value.*/
-  impliedWithdrawalRateFromNetWorth: number | null;
+  impliedWithdrawalRateFromSavingsAndFuturePensionValue: number | null;
   /** First-year withdrawal ÷ portfolio at retirement. */
   impliedWithdrawalRateFromPortfolio: number | null;
 }

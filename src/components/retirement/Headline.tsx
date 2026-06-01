@@ -116,6 +116,15 @@ export default function Headline({ input, result }: HeadlineProps) {
               <StatTile
                 label="Initial withdrawal from savings"
                 value={`${(result.impliedWithdrawalRateFromPortfolio * 100).toFixed(1)}%`}
+                note={
+                  result.impliedWithdrawalRateFromSavingsAndFuturePensionValue !=
+                  null
+                    ? `${(
+                        result.impliedWithdrawalRateFromSavingsAndFuturePensionValue *
+                        100
+                      ).toFixed(1)}% of savings + future pension`
+                    : undefined
+                }
               />
             )}
           </SimpleGrid>

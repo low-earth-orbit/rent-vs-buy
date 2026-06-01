@@ -70,7 +70,7 @@ export function validateRetirementInput(
     !errors.currentAge &&
     input.planningAge <= input.currentAge
   ) {
-    errors.planningAge = "Plan-to age must be greater than your current age.";
+    errors.planningAge = "Planning age must be greater than your current age.";
   }
 
   return errors;
