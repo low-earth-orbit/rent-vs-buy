@@ -32,8 +32,13 @@ export default function Main() {
       : null;
 
   const planSWR =
-    result?.earliestRetirementAge != null
-      ? computePlanSWR(debouncedInput, result.earliestRetirementAge)
+    result?.earliestRetirementAge != null &&
+    result.portfolioAtRetirement != null
+      ? computePlanSWR(
+          debouncedInput,
+          result.earliestRetirementAge,
+          result.portfolioAtRetirement,
+        )
       : null;
 
   function handleChange(key: RetirementInputKey, value: FieldValue) {

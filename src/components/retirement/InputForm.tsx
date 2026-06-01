@@ -222,12 +222,11 @@ export default function InputForm({
                 {planSWR != null && (
                   <Stack gap={2}>
                     <Text size="sm" c="dimmed">
-                      Safe withdrawal rate:{" "}
+                      Year-1 withdrawal rate:{" "}
                       <Text span fw={600} c="teal">
                         {(planSWR * 100).toFixed(1)}%
                       </Text>{" "}
-                      of savings + future pension value —{" "}
-                      <SwrTechnicalNote input={input} />
+                      of your savings — <SwrTechnicalNote input={input} />
                     </Text>
                   </Stack>
                 )}

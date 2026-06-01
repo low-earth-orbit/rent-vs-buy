@@ -39,13 +39,13 @@ describe("incomeBreakdown", () => {
       base({
         currentIncome: 100_000,
         targetIncomePct: 60,
-        guaranteedIncomePct: 10,
+        guaranteedIncomePct: 25,
       }),
     );
 
     expect(result.targetGrossIncome).toBe(60_000);
-    expect(result.guaranteedIncome).toBe(10_000);
-    expect(result.portfolioWithdrawal).toBe(50_000);
+    expect(result.guaranteedIncome).toBe(25_000);
+    expect(result.portfolioWithdrawal).toBe(35_000);
   });
 });
 

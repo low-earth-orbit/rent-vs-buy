@@ -75,26 +75,34 @@ export default function SwrTechnicalNote({ input }: SwrTechnicalNoteProps) {
   return (
     <>
       <Anchor component="button" type="button" size="sm" onClick={open}>
-        Why this figure?
+        What is this?
       </Anchor>
 
       <Modal
         opened={opened}
         onClose={close}
         title="About the safe withdrawal rate"
-        size="lg"
+        size="xl"
         centered
       >
         <Stack gap="sm">
           <Text size="sm">
-            It may look low next to the famous US &ldquo;4% rule.&rdquo; I
-            believe it&apos;s right, for two reasons:
+            The rate on your plan is your{" "}
+            <strong>first-year withdrawal as a % of your savings</strong> at
+            retirement, and it reflects your pension. If you retire before your
+            pension starts, year 1 runs higher — your portfolio covers your
+            whole income until the pension kicks in (the &ldquo;bridge&rdquo;).
+          </Text>
+          <Text size="sm">
+            For some, it may look low next to the famous US &ldquo;4%
+            rule.&rdquo; I believe it&apos;s right, for two reasons:
           </Text>
           <Text size="sm" component="div">
             <strong>1. Forward-looking Canadian returns.</strong> My return
             assumptions come from PWL Capital&apos;s capital-market estimates
-            (corroborated by FP Canada&apos;s planning guidelines) — more modest
-            than the 20th-century US history the 4% rule was built on.
+            (corroborated by FP Canada&apos;s planning guidelines & RBC
+            assumptions) — more modest than the 20th-century US history the 4%
+            rule was built on.
           </Text>
           <Text size="sm" component="div">
             <strong>2. Longer retirements need lower rates.</strong> A 30-year
@@ -103,10 +111,9 @@ export default function SwrTechnicalNote({ input }: SwrTechnicalNoteProps) {
           </Text>
           <Text size="sm">
             I checked these rates against 150 years of global market history (16
-            countries, 1870–2020): they are in line with — and a touch more
-            cautious than — what real history would have sustained. The takeaway
-            is that the withdrawal rate is driven by the return assumption, not
-            by an overly harsh risk model.
+            countries, 1870–2020): they are in line with what real history would
+            have sustained. The takeaway is that the withdrawal rate is driven
+            by the return assumption, not by an overly harsh risk model.
           </Text>
 
           <Text size="sm" fw={600} mt="xs">
@@ -156,11 +163,12 @@ export default function SwrTechnicalNote({ input }: SwrTechnicalNoteProps) {
           )}
 
           <Text size="xs" c="dimmed">
-            Each cell is the withdrawal — as a % of the starting portfolio, held
-            constant in real terms — with a {successPct}% chance of lasting the
-            full horizon. A general benchmark for a globally-diversified mix; it
-            excludes CPP/OAS/pension income, so it differs from the blended
-            figure shown on your plan.
+            Each cell is a constant withdrawal — as a % of the starting
+            portfolio, held in real terms — with a {successPct}% chance of
+            lasting the full horizon. It&apos;s a generic benchmark for a
+            globally-diversified mix and excludes CPP/OAS/pension, so it
+            won&apos;t exactly match your plan&apos;s year-1 rate above (which
+            reflects your pension).
           </Text>
         </Stack>
       </Modal>

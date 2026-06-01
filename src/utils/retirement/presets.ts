@@ -84,7 +84,7 @@ export const DEFAULTS = {
   /** Target gross retirement income, as a % of current income (replacement ratio). */
   targetIncomePct: 60,
   /** Guaranteed retirement income (CPP + OAS + DB pensions), as a % of income. Gross/taxable. */
-  guaranteedIncomePct: 10,
+  guaranteedIncomePct: 20,
   /** Age the guaranteed income starts. Before this, the portfolio funds the full target. */
   pensionStartAge: 65,
   /** Expected nominal return while still working (accumulation), % per year. */

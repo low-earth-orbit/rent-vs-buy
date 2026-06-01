@@ -227,6 +227,7 @@ function retirementAgeRange(
   }
 
   const contribution = (input.currentIncome * input.contributionPct) / 100;
+  const { guaranteedIncome } = incomeBreakdown(input);
   const mean = realMean(input.accumReturn, input.inflationRate);
   const sigma = phaseSigma(input, "accum");
   const rand = mulberry32(ACCUM_SEED);
@@ -245,7 +246,10 @@ function retirementAgeRange(
         RETURN_AUTOCORRELATION * deviation +
         INNOVATION_SCALE * sigma * standardNormalFrom(rand);
       const r = mean + deviation;
-      balance = balance * (1 + r) + contribution * (1 + r / 2);
+      // A pension that starts while still working is saved (matches accumulationBalances).
+      const inflow =
+        contribution + (age >= input.pensionStartAge ? guaranteedIncome : 0);
+      balance = balance * (1 + r) + inflow * (1 + r / 2);
     }
     // Paths that don't reach the bar within the window retire later still; count
     // them just past it so they lift only the upper tail, not the median.
@@ -261,20 +265,20 @@ function retirementAgeRange(
 }
 
 /**
- * The MC-derived safe withdrawal rate for the retirement phase: the fraction of
- * the required starting balance that covers the portfolio withdrawal, at the
- * user's target confidence. Uses the same bisection as `requiredWealth` so it
- * is cheap to call alongside `computeRetirement`.
+ * Headline safe withdrawal rate: the first retirement year's portfolio draw as a
+ * fraction of savings at retirement — the true initial withdrawal rate, directly
+ * comparable to the "4% rule". The year-1 draw is the FULL target income when
+ * retiring before the pension starts (the bridge), otherwise the post-pension gap.
  */
 export function computePlanSWR(
   input: RetirementInput,
   retireAge: number,
+  savingsAtRetirement: number,
 ): number {
-  const target = input.targetSuccessRate / 100;
-  const rw = requiredWealth(input, retireAge, target);
-  if (rw <= 0) return 0;
-  const { portfolioWithdrawal } = incomeBreakdown(input);
-  return portfolioWithdrawal / rw;
+  if (savingsAtRetirement <= 0) return 0;
+  const breakdown = incomeBreakdown(input);
+  const yearOneWithdrawal = withdrawalAtAge(input, breakdown, retireAge);
+  return yearOneWithdrawal / savingsAtRetirement;
 }
 
 /**

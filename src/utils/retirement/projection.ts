@@ -81,7 +81,8 @@ export function projectPath(
     const r = phaseRealMean(input, retirementAge, age);
     const flow =
       age < retirementAge
-        ? contribution
+        ? contribution +
+          (age >= input.pensionStartAge ? breakdown.guaranteedIncome : 0)
         : -withdrawalAtAge(input, breakdown, age);
     balance = balance * (1 + r) + flow * (1 + r / 2);
 
@@ -104,12 +105,16 @@ export function accumulationBalances(
   input: RetirementInput,
 ): ProjectionPoint[] {
   const contribution = (input.currentIncome * input.contributionPct) / 100;
+  const { guaranteedIncome } = incomeBreakdown(input);
   const r = realMean(input.accumReturn, input.inflationRate);
 
   let balance = input.currentSavings;
   const points: ProjectionPoint[] = [{ age: input.currentAge, balance }];
   for (let age = input.currentAge; age < input.planningAge; age++) {
-    balance = balance * (1 + r) + contribution * (1 + r / 2);
+    // A pension that starts while still working is saved (added to the portfolio).
+    const inflow =
+      contribution + (age >= input.pensionStartAge ? guaranteedIncome : 0);
+    balance = balance * (1 + r) + inflow * (1 + r / 2);
     points.push({ age: age + 1, balance });
   }
   return points;
