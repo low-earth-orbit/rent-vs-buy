@@ -323,7 +323,11 @@ export default function NetWorthChart({ userInput }: { userInput: UserInput }) {
           >
             <XAxis
               dataKey="year"
-              label={{ value: "Year", position: "insideBottom", offset: -10 }}
+              label={{
+                value: "Year",
+                position: "bottom",
+                fontSize: 12,
+              }}
               tick={{ fontSize: 12 }}
             />
             <YAxis

@@ -37,19 +37,21 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
   return (
     <Card withBorder radius="md" padding="md">
       <Text fw={600} mb="lg">
-        Projected portfolio (today&apos;s dollars)
+        Projected portfolio (in today&apos;s dollars)
       </Text>
       <Alert
         icon={<IconInfoCircle size={16} />}
         variant="default"
-        title="Understanding Your Projection"
+        title="Understanding the projection"
       >
-        The chart shows your projected median net worth based on your
-        assumptions. While a more aggressive portfolio allocation may increase
-        your overall net worth in retirement, it also comes with greater return
-        variance. This increased volatility increases the chance of running out
-        money in retirement. Therefore, a higher equity allocation should not
-        automatically be interpreted as the better choice for your retirement.
+        <Text size="xs">
+          The chart shows your projected median net worth based on your
+          assumptions. While an aggressive portfolio allocation may increase
+          your overall net worth in retirement, it also comes with greater
+          return variance, increasing the chance of running out money in
+          retirement. Therefore, a higher equity allocation should not
+          automatically be interpreted as the better choice for your retirement.
+        </Text>
       </Alert>
       <div
         role="img"
@@ -59,7 +61,7 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={data}
-            margin={{ top: 32, right: 16, bottom: 32, left: 8 }}
+            margin={{ top: 32, right: 0, bottom: 32, left: 0 }}
           >
             <ReferenceArea
               x1={retireAge}
@@ -71,21 +73,26 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
                 value: "Retirement",
                 position: "insideTopRight",
                 fill: "var(--mantine-color-gray-6)",
-                fontSize: 11,
+                fontSize: 12,
               }}
             />
             <XAxis
               dataKey="age"
               tickMargin={8}
-              label={{ value: "Age", position: "bottom" }}
+              label={{ value: "Age", position: "bottom", fontSize: 12 }}
+              tick={{ fontSize: 12 }}
             />
             <YAxis
-              width={70}
+              width={50}
               tickFormatter={(v) => formatCADCompact(Number(v))}
+              tick={{ fontSize: 12 }}
             />
             <Tooltip
               formatter={(v) => [formatCAD(Number(v)), "Portfolio"]}
               labelFormatter={(l) => `Age ${l}`}
+              contentStyle={{ borderRadius: "8px", padding: "12px" }}
+              itemStyle={{ fontSize: "12px" }} // Styles the "Portfolio: $X" text
+              labelStyle={{ fontSize: "14px", fontWeight: 600 }} // Styles the "Age X" text
             />
             <ReferenceLine
               x={retireAge}

@@ -86,7 +86,7 @@ export default function InputForm({
   };
 
   return (
-    <Card radius="md" padding="md">
+    <>
       <Group justify="space-between" mb="sm">
         <Button
           variant="subtle"
@@ -195,13 +195,17 @@ export default function InputForm({
                   Safe withdrawal rate
                 </Text>
                 <Text size="xs" c="dimmed">
-                  The most you&apos;ll draw in year one, as a % of savings at
-                  retirement + future pension value. Under fixed-dollar
-                  withdrawals, lower is safer with longer retirement horizon,
-                  less pension income, or more stocks in retirement. Pick a
-                  preset or set your own.
+                  Target retirement income as a % of savings at retirement +
+                  future pension value. Under fixed-dollar withdrawals, lower is
+                  safer with longer retirement horizon, less pension income, or
+                  more stocks in retirement. Pick a preset or set your own.
                 </Text>
-                <Group gap="xs" role="group" aria-label="Safe withdrawal rate">
+                <Group
+                  gap="xs"
+                  role="group"
+                  aria-label="Safe withdrawal rate"
+                  my="xs"
+                >
                   {WITHDRAWAL_RATE_PRESETS.map((preset) => (
                     <Button
                       key={preset.id}
@@ -251,7 +255,7 @@ export default function InputForm({
         </Accordion.Item>
 
         <Accordion.Item value="assumptions">
-          <Accordion.Control>Market Assumptions</Accordion.Control>
+          <Accordion.Control>Market assumptions</Accordion.Control>
           <Accordion.Panel>
             <Stack gap="md">
               <Stack gap={6}>
@@ -289,7 +293,7 @@ export default function InputForm({
                       onClick={() => applyReturnPreset(preset)}
                     >
                       <Stack gap={0} align="center">
-                        <Text span size="xs" fw={700}>
+                        <Text span size="xs" fw={600}>
                           {preset.label}
                         </Text>
                         <Text span size="10px">
@@ -337,6 +341,6 @@ export default function InputForm({
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion>
-    </Card>
+    </>
   );
 }

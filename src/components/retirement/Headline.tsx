@@ -31,10 +31,10 @@ function StatTile({
 }) {
   return (
     <Stack gap={0}>
-      <Text size="xs" c="dimmed" fw={600}>
+      <Text size="xs" c="dimmed">
         {label}
       </Text>
-      <Text fw={700} fz="lg" lh={1.2}>
+      <Text fw={600} fz="lg" lh={1.2}>
         {value}
       </Text>
       {note && (
@@ -76,13 +76,13 @@ export default function Headline({ input, result }: HeadlineProps) {
         align={{ base: "stretch", sm: "flex-end" }}
         gap="lg"
       >
-        <Stack gap={2}>
-          <Text size="sm" c="dimmed" fw={600}>
+        <Stack gap={2} my="auto">
+          <Text size="sm" fw={600}>
             Estimated retirement age
           </Text>
           <Group gap="xs" align="center">
             <IconBeach size={38} color="var(--mantine-color-teal-6)" />
-            <Title order={2} fz={{ base: 40, sm: 48 }} lh={1} c="teal">
+            <Title order={2} fz={{ base: 40, sm: 48 }} lh={1.5} c="teal">
               {retireNow ? "Now" : `Age ${earliestRetirementAge}`}
             </Title>
           </Group>
@@ -97,7 +97,7 @@ export default function Headline({ input, result }: HeadlineProps) {
         </Stack>
         {result.portfolioAtRetirement != null && (
           <SimpleGrid
-            cols={2}
+            cols={1}
             spacing="lg"
             w={{ base: "100%", sm: "auto" }}
             style={{ flexShrink: 0 }}

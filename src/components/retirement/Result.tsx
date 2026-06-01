@@ -123,18 +123,15 @@ function IncomeSummary({
 
   return (
     <Card withBorder radius="md" padding="md">
-      <Group justify="space-between" mb={8}>
-        <Text fw={600}>Where your retirement income comes from</Text>
-        <Text size="sm" c="dimmed">
-          {formatCAD(targetGrossIncome)} /yr target
-        </Text>
-      </Group>
+      <Text size="sm" fw={600} mb="sm">
+        Retirement income {formatCAD(targetGrossIncome)} /yr
+      </Text>
 
       {hasBridge ? (
         <Stack gap="md">
           <PhaseRow
             label={`Before pension · ${bridgeRange}`}
-            note={`${formatCAD(targetGrossIncome)} all from portfolio`}
+            note={`${formatCAD(targetGrossIncome)} all from savings`}
             guaranteed={0}
             portfolio={targetGrossIncome}
             total={targetGrossIncome}
@@ -150,7 +147,7 @@ function IncomeSummary({
           />
           <Group gap="xl">
             <LegendItem color={TEAL} label="Guaranteed (CPP/OAS/pension)" />
-            <LegendItem color={INDIGO} label="From your portfolio" />
+            <LegendItem color={INDIGO} label="From your savings" />
           </Group>
         </Stack>
       ) : (
