@@ -43,17 +43,19 @@ function phaseSigma(input: RetirementInput, phase: "accum" | "retire"): number {
 }
 
 /**
- * AR(1) coefficient on the annual return deviation. It is *negative* on purpose:
- * an above-average year tends to be followed by a below-average one (and vice
- * versa) — i.e. mean reversion. Negative serial correlation lowers the variance
- * of multi-year cumulative returns relative to iid: the long-horizon variance
- * ratio is (1+φ)/(1−φ) ≈ 0.67 at φ=−0.2, so ~⅓ less dispersion. That curbs the
- * sequence-risk overstatement of iid returns and lands the implied safe
- * withdrawal rate (≈3.85% for a 30y/90% 60-40 plan) in line with Bengen /
- * Morningstar. A positive φ would instead be momentum, which understates the SWR.
- * The innovation is scaled so the stationary stdev of the deviation stays `sigma`.
+ * AR(1) coefficient on the annual return deviation. Set to 0: each year's real
+ * return is drawn iid around the phase mean — the industry-standard default for
+ * retirement Monte Carlo. An earlier version used −0.2 to assume mean reversion,
+ * which lifts the implied SWR ~0.2pp and had been tuned to match Morningstar's 30y
+ * headline. We dropped it: global return history (JST Macrohistory, 1870–2020)
+ * shows real returns have *at least* as much multi-year dispersion as iid — crashes
+ * and high-inflation decades cluster — so a variance-reducing φ<0 is not empirically
+ * supported and was quietly inflating the result. The AR(1) machinery is left in
+ * place (just zeroed) so a separately justified mean-reversion view could be
+ * reintroduced via this one constant. INNOVATION_SCALE keeps the deviation's
+ * stationary stdev at `sigma` (= 1 when φ = 0).
  */
-const RETURN_AUTOCORRELATION = -0.2;
+const RETURN_AUTOCORRELATION = 0;
 const INNOVATION_SCALE = Math.sqrt(
   1 - RETURN_AUTOCORRELATION * RETURN_AUTOCORRELATION,
 );
@@ -273,6 +275,61 @@ export function computePlanSWR(
   if (rw <= 0) return 0;
   const { portfolioWithdrawal } = incomeBreakdown(input);
   return portfolioWithdrawal / rw;
+}
+
+/**
+ * Pure-drawdown safe withdrawal rate (real, as a fraction of the starting balance):
+ * the largest constant real withdrawal sustainable for `years` with at least
+ * `successRate` survival, for a portfolio with the given nominal mean return and
+ * volatility. Independent of the user's savings/pension — this generalizes the
+ * headline figure across allocations and horizons for the technical-note reference
+ * table. Uses the same normal-return + AR(1) + mid-year-withdrawal dynamics as
+ * `simulate` (φ is currently 0, i.e. iid). Lighter `numSims` since it's a table cell.
+ */
+export function safeWithdrawalRate(
+  retireReturnPct: number,
+  retireVolPct: number,
+  inflationPct: number,
+  years: number,
+  successRate: number,
+  numSims: number = 800,
+): number {
+  const mean = realMean(retireReturnPct, inflationPct);
+  const sigma = retireVolPct / 100;
+
+  const survival = (w: number): number => {
+    const rand = mulberry32(SEED);
+    let successes = 0;
+    for (let sim = 0; sim < numSims; sim++) {
+      let balance = 1;
+      let depleted = false;
+      let deviation = 0;
+      for (let i = 0; i < years; i++) {
+        deviation =
+          RETURN_AUTOCORRELATION * deviation +
+          INNOVATION_SCALE * sigma * standardNormalFrom(rand);
+        const r = mean + deviation;
+        if (!depleted) {
+          balance = balance * (1 + r) - w * (1 + r / 2);
+          if (balance <= 0) {
+            balance = 0;
+            depleted = true;
+          }
+        }
+      }
+      if (!depleted) successes++;
+    }
+    return successes / numSims;
+  };
+
+  let lo = 0;
+  let hi = 0.2; // 20%/yr is an unreachable ceiling for any realistic horizon
+  for (let i = 0; i < 20; i++) {
+    const mid = (lo + hi) / 2;
+    if (survival(mid) >= successRate) lo = mid;
+    else hi = mid;
+  }
+  return lo;
 }
 
 /**

@@ -56,6 +56,21 @@ export const RETURN_PRESETS = [
 ] as const;
 
 /**
+ * Stock/bond mixes shown in the SWR technical-note reference table, with their
+ * nominal expected return and volatility (%). These mirror the return-preset
+ * values (PWL Capital-based) and span the allocation axis users recognize.
+ */
+export const SWR_TABLE_ALLOCATIONS = [
+  { label: "100/0", returnPct: 6.87, volatility: 12.57 },
+  { label: "80/20", returnPct: 6.29, volatility: 10.62 },
+  { label: "60/40", returnPct: 5.67, volatility: 8.79 },
+  { label: "40/60", returnPct: 5.01, volatility: 7.17 },
+] as const;
+
+/** Retirement horizons (years) shown as columns in the SWR reference table. */
+export const SWR_TABLE_HORIZONS = [20, 25, 30, 35, 40, 45, 50] as const;
+
+/**
  * Default numeric inputs for the retirement planner. Rates are stored as
  * percentages. Dollar amounts are in today's dollars.
  */

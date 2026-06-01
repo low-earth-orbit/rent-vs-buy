@@ -136,7 +136,7 @@ Note: `maintPct` and `propertyTaxRate` are user-known starting levels and intent
 
 ### Investment returns
 
-Drawn as **lognormal** to preserve the arithmetic mean: `logMean = log(1 + μ) − σ²/2`, then `R = exp(logMean + σ·Z) − 1`. This avoids volatility-drag bias that would result from naive normal sampling. The standardized shock `Z` follows a **mean-reverting AR(1)** (`INVESTMENT_AUTOCORRELATION = −0.2`, innovation scaled to keep each year's σ): negative serial correlation shrinks multi-year cumulative dispersion (variance ratio `(1+φ)/(1−φ) ≈ 0.67`) so the renter's investment band doesn't fan out unrealistically over the 50-year horizon. Long-run-mean uncertainty (`investmentReturnSigma`, drawn once per sim) is the dominant source of long-horizon spread and is intentionally left untouched.
+Drawn as **lognormal** to preserve the arithmetic mean: `logMean = log(1 + μ) − σ²/2`, then `R = exp(logMean + σ·Z) − 1` with an **iid** standard-normal shock `Z` each year (no serial correlation). This avoids the volatility-drag bias of naive normal sampling. A previous version applied a mean-reverting AR(1) to `Z` to curb long-horizon fan-out, but it was removed: empirically real returns have at least as much multi-year dispersion as iid, so iid is the honest default (matching the `/retirement` engine — see `docs/retirement-swr-methodology.md`). Long-run-mean uncertainty (`investmentReturnSigma`, drawn once per sim) remains the dominant source of long-horizon spread; per-year noise is iid around that drawn mean.
 
 ### Mortgage renewals
 

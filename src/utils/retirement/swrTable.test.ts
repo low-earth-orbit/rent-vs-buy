@@ -10,7 +10,7 @@ import { realMean } from "./projection";
 
 // ── MC engine constants (mirrored from monteCarlo.ts) ────────────────────────
 
-const RETURN_AUTOCORRELATION = -0.2;
+const RETURN_AUTOCORRELATION = 0;
 const INNOVATION_SCALE = Math.sqrt(
   1 - RETURN_AUTOCORRELATION * RETURN_AUTOCORRELATION,
 );

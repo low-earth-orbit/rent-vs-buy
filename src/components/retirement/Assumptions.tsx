@@ -13,12 +13,11 @@ const Assumptions = () => {
         retirement. It finds the earliest age at which your savings can fund a
         constant gross income target and still last to your planning age in at
         least your chosen share of simulated markets. The retirement phase is
-        run as a Monte Carlo simulation with year-to-year return swings (and
-        mild mean reversion) to capture sequence-of-returns risk; accumulation
-        uses the expected return.
+        run as a Monte Carlo simulation with year-to-year return swings to
+        capture sequence-of-returns risk; accumulation uses the expected return.
       </Text>
       <Text size="sm" pb="xs" c="dimmed">
-        Acknowledgement: return and volatility assumptions are partially adopted
+        Acknowledgement: Return and volatility assumptions are partially adopted
         from{" "}
         <Anchor
           href="https://pwlcapital.com/financial-planning-assumptions-market-capitalization-weighted-portfolio/"
@@ -26,14 +25,6 @@ const Assumptions = () => {
           rel="noreferrer"
         >
           PWL Capital
-        </Anchor>
-        ; retirement-spending research from{" "}
-        <Anchor
-          href="https://www.morningstar.com/retirement/whats-safe-retirement-withdrawal-rate-2026"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Morningstar
         </Anchor>
         .
       </Text>

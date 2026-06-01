@@ -12,6 +12,7 @@ import {
 import { IconRotate } from "@tabler/icons-react";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
 import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
+import SwrTechnicalNote from "./SwrTechnicalNote";
 import {
   RETURN_PRESETS,
   SUCCESS_RATE_PRESETS,
@@ -219,13 +220,16 @@ export default function InputForm({
                   suffix="%"
                 />
                 {planSWR != null && (
-                  <Text size="sm" c="dimmed">
-                    Safe withdrawal rate:{" "}
-                    <Text span fw={600} c="teal">
-                      {(planSWR * 100).toFixed(1)}%
-                    </Text>{" "}
-                    of savings + future pension value for Yr 1 of retirement
-                  </Text>
+                  <Stack gap={2}>
+                    <Text size="sm" c="dimmed">
+                      Safe withdrawal rate:{" "}
+                      <Text span fw={600} c="teal">
+                        {(planSWR * 100).toFixed(1)}%
+                      </Text>{" "}
+                      of savings + future pension value —{" "}
+                      <SwrTechnicalNote input={input} />
+                    </Text>
+                  </Stack>
                 )}
               </Stack>
             </Stack>
