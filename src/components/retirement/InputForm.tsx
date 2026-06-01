@@ -86,11 +86,12 @@ export default function InputForm({
   };
 
   return (
-    <Card withBorder radius="md" padding="md">
+    <Card radius="md" padding="md">
       <Group justify="space-between" mb="sm">
         <Button
           variant="subtle"
-          size="compact-sm"
+          size="xs"
+          color="red"
           leftSection={<IconRotate size={14} />}
           onClick={onReset}
         >
@@ -98,7 +99,11 @@ export default function InputForm({
         </Button>
       </Group>
 
-      <Accordion multiple defaultValue={["you", "goals", "assumptions"]}>
+      <Accordion
+        multiple
+        defaultValue={["you", "goals", "assumptions"]}
+        variant="contained"
+      >
         <Accordion.Item value="you">
           <Accordion.Control>About you</Accordion.Control>
           <Accordion.Panel>
@@ -187,20 +192,16 @@ export default function InputForm({
               </SimpleGrid>
               <Stack gap={6}>
                 <Text size="sm" fw={600}>
-                  Safe initial withdrawal rate
+                  Safe withdrawal rate
                 </Text>
                 <Text size="xs" c="dimmed">
                   The most you&apos;ll draw in year one, as a % of savings at
-                  retirement. Under fixed-dollar withdrawals, lower is safer
-                  with a longer retirement, less guaranteed pension income, or
-                  greater equity allocation in retirement. Pick a preset or set
-                  your own.
+                  retirement + future pension value. Under fixed-dollar
+                  withdrawals, lower is safer with longer retirement horizon,
+                  less pension income, or more stocks in retirement. Pick a
+                  preset or set your own.
                 </Text>
-                <Group
-                  gap="xs"
-                  role="group"
-                  aria-label="Initial withdrawal rate"
-                >
+                <Group gap="xs" role="group" aria-label="Safe withdrawal rate">
                   {WITHDRAWAL_RATE_PRESETS.map((preset) => (
                     <Button
                       key={preset.id}

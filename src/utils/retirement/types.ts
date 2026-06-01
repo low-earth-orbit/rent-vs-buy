@@ -33,6 +33,7 @@ export interface RetirementResult {
   yearsUntilRetirement: number | null;
   /** Portfolio balance (real $) at the recommended retirement age. */
   portfolioAtRetirement: number | null;
+  pensionValue: number | null;
   /** Year-by-year balance path for the recommended retirement age. */
   path: ProjectionPoint[] | null;
 
@@ -43,6 +44,8 @@ export interface RetirementResult {
   guaranteedIncome: number;
   /** Gross (taxable) amount the portfolio must withdraw each year. */
   portfolioWithdrawal: number;
-  /** First-year withdrawal ÷ portfolio at retirement (a sustainable-rate proxy). */
-  impliedWithdrawalRate: number | null;
+  /** First-year withdrawal ÷ portfolio at retirement + future pension value.*/
+  impliedWithdrawalRateFromNetWorth: number | null;
+  /** First-year withdrawal ÷ portfolio at retirement. */
+  impliedWithdrawalRateFromPortfolio: number | null;
 }

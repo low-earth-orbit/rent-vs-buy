@@ -101,28 +101,43 @@ export function projectPath(
 /**
  * Deterministic earliest retirement age whose plan survives to `planningAge`
  * on mean returns and whose first-year withdrawal stays within the user's
- * maximum initial withdrawal rate. The first-year draw is the full target when
+ * safe withdrawal rate. The first-year draw is the full target when
  * retiring before the pension starts (the bridge), otherwise the income gap.
  */
 export function computeRetirement(input: RetirementInput): RetirementResult {
   const breakdown = incomeBreakdown(input);
   const maxInitialWithdrawalRate = input.swr / 100;
 
+  const pensionValue =
+    breakdown.guaranteedIncome > 0
+      ? breakdown.guaranteedIncome * (input.planningAge - input.pensionStartAge)
+      : null;
+
   for (let age = input.currentAge; age < input.planningAge; age++) {
     const { points, depletionAge } = projectPath(input, age);
     if (depletionAge !== null) continue;
 
     const atRetirement = points.find((p) => p.age === age);
+
     const portfolioAtRetirement = atRetirement ? atRetirement.balance : null;
+
+    const netWorthAtRetirement = portfolioAtRetirement
+      ? portfolioAtRetirement + (pensionValue || 0)
+      : null;
+
     const firstYearWithdrawal = withdrawalAtAge(input, breakdown, age);
-    const impliedWithdrawalRate =
+    const impliedWithdrawalRateFromNetWorth =
+      netWorthAtRetirement && netWorthAtRetirement > 0
+        ? firstYearWithdrawal / netWorthAtRetirement
+        : null;
+    const impliedWithdrawalRateFromPortfolio =
       portfolioAtRetirement && portfolioAtRetirement > 0
         ? firstYearWithdrawal / portfolioAtRetirement
         : null;
     const withdrawalRateIsFeasible =
       firstYearWithdrawal === 0 ||
-      (impliedWithdrawalRate != null &&
-        impliedWithdrawalRate <= maxInitialWithdrawalRate);
+      (impliedWithdrawalRateFromNetWorth != null &&
+        impliedWithdrawalRateFromNetWorth <= maxInitialWithdrawalRate);
 
     if (!withdrawalRateIsFeasible) continue;
 
@@ -131,7 +146,9 @@ export function computeRetirement(input: RetirementInput): RetirementResult {
       earliestRetirementAge: age,
       yearsUntilRetirement: age - input.currentAge,
       portfolioAtRetirement,
-      impliedWithdrawalRate,
+      pensionValue,
+      impliedWithdrawalRateFromNetWorth,
+      impliedWithdrawalRateFromPortfolio,
       path: points,
     };
   }
@@ -141,7 +158,9 @@ export function computeRetirement(input: RetirementInput): RetirementResult {
     earliestRetirementAge: null,
     yearsUntilRetirement: null,
     portfolioAtRetirement: null,
-    impliedWithdrawalRate: null,
+    pensionValue: null,
+    impliedWithdrawalRateFromNetWorth: null,
+    impliedWithdrawalRateFromPortfolio: null,
     path: null,
   };
 }
@@ -152,7 +171,7 @@ export interface SwrRecommendation {
 }
 
 /**
- * A self-consistent safe initial withdrawal rate. A higher rate lets you retire
+ * A self-consistent safe withdrawal rate. A higher rate lets you retire
  * earlier, which makes retirement *longer*, which needs a *lower* safe rate — so
  * a naive "rate for planningAge − retirementAge" recommendation ping-pongs
  * between two presets (the rate that selects the age also depends on the age).

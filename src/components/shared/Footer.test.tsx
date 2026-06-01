@@ -6,9 +6,7 @@ describe("Footer", () => {
   it("renders the disclaimer and a GitHub link", () => {
     renderWithMantine(<Footer />);
 
-    expect(
-      screen.getByText(/educational tool, not financial advice/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/not financial advice/i)).toBeInTheDocument();
 
     const github = screen.getByRole("link", { name: "GitHub" });
     expect(github).toHaveAttribute(

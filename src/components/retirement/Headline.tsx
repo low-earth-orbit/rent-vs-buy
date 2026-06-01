@@ -31,7 +31,7 @@ function StatTile({
 }) {
   return (
     <Stack gap={0}>
-      <Text size="xs" c="dimmed" fw={600} tt="uppercase">
+      <Text size="xs" c="dimmed" fw={600}>
         {label}
       </Text>
       <Text fw={700} fz="lg" lh={1.2}>
@@ -67,8 +67,6 @@ export default function Headline({ input, result }: HeadlineProps) {
 
   const { earliestRetirementAge, yearsUntilRetirement } = result;
   const retireNow = yearsUntilRetirement === 0;
-  const swrNote =
-    typeof input.swr === "number" ? `within your ${input.swr}% cap` : undefined;
 
   return (
     <Card withBorder radius="md" padding="lg">
@@ -79,7 +77,7 @@ export default function Headline({ input, result }: HeadlineProps) {
         gap="lg"
       >
         <Stack gap={2}>
-          <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
+          <Text size="sm" c="dimmed" fw={600}>
             Estimated retirement age
           </Text>
           <Group gap="xs" align="center">
@@ -108,11 +106,16 @@ export default function Headline({ input, result }: HeadlineProps) {
               label="Savings at retirement"
               value={formatCAD(result.portfolioAtRetirement)}
             />
-            {result.impliedWithdrawalRate != null && (
+            {result.pensionValue != null && (
               <StatTile
-                label="Initial withdrawal"
-                value={`${(result.impliedWithdrawalRate * 100).toFixed(1)}%`}
-                note={swrNote}
+                label="Future pension value"
+                value={formatCAD(result.pensionValue)}
+              />
+            )}
+            {result.impliedWithdrawalRateFromPortfolio != null && (
+              <StatTile
+                label="Initial withdrawal from savings"
+                value={`${(result.impliedWithdrawalRateFromPortfolio * 100).toFixed(1)}%`}
               />
             )}
           </SimpleGrid>

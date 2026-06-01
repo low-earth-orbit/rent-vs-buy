@@ -4,7 +4,6 @@ import { Alert, Card, Text } from "@mantine/core";
 import {
   Area,
   AreaChart,
-  CartesianGrid,
   ReferenceArea,
   ReferenceDot,
   ReferenceLine,
@@ -48,9 +47,9 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
         The chart shows your projected median net worth based on your
         assumptions. While a more aggressive portfolio allocation may increase
         your overall net worth in retirement, it also comes with greater return
-        variance. This increased volatility lowers your safe initial withdrawal
-        rate. Therefore, a higher equity allocation should not automatically be
-        interpreted as the better choice for your retirement.
+        variance. This increased volatility increases the chance of running out
+        money in retirement. Therefore, a higher equity allocation should not
+        automatically be interpreted as the better choice for your retirement.
       </Alert>
       <div
         role="img"

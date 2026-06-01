@@ -40,7 +40,7 @@ export const FIELD_CONSTRAINTS: Record<RetirementInputKey, Constraint> = {
     min: 0.1,
     max: 10,
     step: 0.1,
-    label: "Safe initial withdrawal rate",
+    label: "Safe withdrawal rate",
   },
 };
 

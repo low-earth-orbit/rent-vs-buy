@@ -7,7 +7,7 @@ const Footer = () => {
     <Container component="footer" size="xl" pt="xl" pb="xl">
       <Stack gap="sm">
         <Text size="sm" c="dimmed">
-          Disclaimer: This information provided on this page is as-is & not
+          Disclaimer: The information provided on this page is as-is & not
           financial advice.
         </Text>
         <Text size="sm" c="dimmed">

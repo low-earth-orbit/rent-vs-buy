@@ -94,7 +94,8 @@ describe("computeRetirement", () => {
 
     expect(result.earliestRetirementAge).toBe(65);
     expect(result.portfolioWithdrawal).toBe(0);
-    expect(result.impliedWithdrawalRate).toBeNull();
+    expect(result.impliedWithdrawalRateFromNetWorth).toBeNull();
+    expect(result.impliedWithdrawalRateFromPortfolio).toBeNull();
   });
 
   it("returns null when the plan can never be funded", () => {
@@ -122,8 +123,10 @@ describe("computeRetirement", () => {
     expect(age).toBeGreaterThan(input.currentAge);
     expect(age).toBeLessThan(input.planningAge);
     expect(projectPath(input, age).depletionAge).toBeNull();
-    expect(result.impliedWithdrawalRate).not.toBeNull();
-    expect(result.impliedWithdrawalRate!).toBeLessThanOrEqual(input.swr / 100);
+    expect(result.impliedWithdrawalRateFromNetWorth).not.toBeNull();
+    expect(result.impliedWithdrawalRateFromNetWorth!).toBeLessThanOrEqual(
+      input.swr / 100,
+    );
 
     const previousAge = age - 1;
     const previousPath = projectPath(input, previousAge);
@@ -150,12 +153,13 @@ describe("computeRetirement", () => {
       currentAge: 50,
       currentSavings: 5_000_000,
       pensionStartAge: 65,
+      guaranteedIncomePct: 0,
     });
     const result = computeRetirement(input);
 
     expect(result.earliestRetirementAge).toBe(50); // retires before the pension
     // First-year draw is the full target (not the income gap) during the bridge.
-    expect(result.impliedWithdrawalRate!).toBeCloseTo(
+    expect(result.impliedWithdrawalRateFromNetWorth!).toBeCloseTo(
       result.targetGrossIncome / 5_000_000,
       6,
     );
