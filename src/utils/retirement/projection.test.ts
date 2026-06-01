@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULTS, getWithdrawalRatePresetForHorizon } from "./presets";
+import { DEFAULTS } from "./presets";
 import {
-  computeRetirement,
+  accumulationBalances,
   incomeBreakdown,
   phaseRealMean,
   projectPath,
   realMean,
-  recommendedSwr,
 } from "./projection";
 import type { RetirementInput } from "./types";
 
@@ -14,17 +13,6 @@ const base = (overrides: Partial<RetirementInput> = {}): RetirementInput => ({
   ...DEFAULTS,
   ...overrides,
 });
-
-function balanceAt(
-  input: RetirementInput,
-  retirementAge: number,
-): number | null {
-  return (
-    projectPath(input, retirementAge).points.find(
-      (point) => point.age === retirementAge,
-    )?.balance ?? null
-  );
-}
 
 describe("realMean", () => {
   it("deflates nominal return by inflation", () => {
@@ -61,153 +49,40 @@ describe("incomeBreakdown", () => {
   });
 });
 
-describe("withdrawal rate recommendations", () => {
-  it("selects a conservative preset that covers the estimated horizon", () => {
-    expect(getWithdrawalRatePresetForHorizon(20).rate).toBe(5.2);
-    expect(getWithdrawalRatePresetForHorizon(30).rate).toBe(3.8);
-    expect(getWithdrawalRatePresetForHorizon(31).rate).toBe(3.4);
-    expect(getWithdrawalRatePresetForHorizon(40).rate).toBe(3.2);
-    expect(getWithdrawalRatePresetForHorizon(60).rate).toBe(3.2);
-  });
-});
-
-describe("computeRetirement", () => {
-  it("lets a heavily funded saver retire immediately", () => {
-    const result = computeRetirement(
-      base({ currentAge: 50, currentSavings: 10_000_000 }),
-    );
-
-    expect(result.earliestRetirementAge).toBe(50);
-    expect(result.yearsUntilRetirement).toBe(0);
-  });
-
-  it("retires immediately when guaranteed income meets the target", () => {
-    const result = computeRetirement(
-      base({
-        currentAge: 65,
-        targetIncomePct: 40,
-        guaranteedIncomePct: 40,
-        currentSavings: 0,
-        contributionPct: 0,
-      }),
-    );
-
-    expect(result.earliestRetirementAge).toBe(65);
-    expect(result.portfolioWithdrawal).toBe(0);
-    expect(
-      result.impliedWithdrawalRateFromSavingsAndFuturePensionValue,
-    ).toBeNull();
-    expect(result.impliedWithdrawalRateFromPortfolio).toBeNull();
-  });
-
-  it("returns null when the plan can never be funded", () => {
-    const result = computeRetirement(
-      base({
-        currentAge: 60,
-        currentSavings: 0,
-        contributionPct: 0,
-        guaranteedIncomePct: 0,
-        targetIncomePct: 60,
-      }),
-    );
-
-    expect(result.earliestRetirementAge).toBeNull();
-    expect(result.path).toBeNull();
-    expect(result.portfolioWithdrawal).toBeGreaterThan(0);
-  });
-
-  it("recommends the first age that survives and meets the withdrawal guardrail", () => {
+describe("projectPath", () => {
+  it("accumulates before retirement and draws down after", () => {
     const input = base();
-    const result = computeRetirement(input);
+    const { points } = projectPath(input, 60);
 
-    expect(result.earliestRetirementAge).not.toBeNull();
-    const age = result.earliestRetirementAge!;
-    expect(age).toBeGreaterThan(input.currentAge);
-    expect(age).toBeLessThan(input.planningAge);
-    expect(projectPath(input, age).depletionAge).toBeNull();
-    expect(
-      result.impliedWithdrawalRateFromSavingsAndFuturePensionValue,
-    ).not.toBeNull();
-    expect(
-      result.impliedWithdrawalRateFromSavingsAndFuturePensionValue!,
-    ).toBeLessThanOrEqual(input.swr / 100);
-
-    const previousAge = age - 1;
-    const previousPath = projectPath(input, previousAge);
-    const previousBalance = balanceAt(input, previousAge);
-    // Mirror the engine: the first-year draw is the full target before the
-    // pension starts, otherwise the income gap.
-    const previousFirstYearWithdrawal =
-      previousAge >= input.pensionStartAge
-        ? result.portfolioWithdrawal
-        : result.targetGrossIncome;
-    const previousWithdrawalRate =
-      previousBalance && previousBalance > 0
-        ? previousFirstYearWithdrawal / previousBalance
-        : Infinity;
-
-    expect(
-      previousPath.depletionAge !== null ||
-        previousWithdrawalRate > input.swr / 100,
-    ).toBe(true);
-  });
-
-  it("uses the full target for the first-year rate when retiring before the pension", () => {
-    const input = base({
-      currentAge: 50,
-      currentSavings: 5_000_000,
-      pensionStartAge: 65,
-      guaranteedIncomePct: 0,
+    expect(points[0]).toEqual({
+      age: input.currentAge,
+      balance: input.currentSavings,
     });
-    const result = computeRetirement(input);
-
-    expect(result.earliestRetirementAge).toBe(50); // retires before the pension
-    // First-year draw is the full target (not the income gap) during the bridge.
-    expect(
-      result.impliedWithdrawalRateFromSavingsAndFuturePensionValue!,
-    ).toBeCloseTo(result.targetGrossIncome / 5_000_000, 6);
-  });
-
-  it("makes retirement no earlier when the pension starts later (longer bridge)", () => {
-    const earlyPension = computeRetirement(base({ pensionStartAge: 60 }));
-    const latePension = computeRetirement(base({ pensionStartAge: 72 }));
-
-    expect(earlyPension.earliestRetirementAge).not.toBeNull();
-    expect(latePension.earliestRetirementAge).not.toBeNull();
-    expect(latePension.earliestRetirementAge!).toBeGreaterThanOrEqual(
-      earlyPension.earliestRetirementAge!,
-    );
-  });
-
-  it("does not make retirement later when the withdrawal guardrail is relaxed", () => {
-    const cautious = computeRetirement(base({ swr: 3 }));
-    const flexible = computeRetirement(base({ swr: 5 }));
-
-    expect(cautious.earliestRetirementAge).not.toBeNull();
-    expect(flexible.earliestRetirementAge).not.toBeNull();
-    expect(flexible.earliestRetirementAge!).toBeLessThanOrEqual(
-      cautious.earliestRetirementAge!,
-    );
+    const atRetire = points.find((p) => p.age === 60)!.balance;
+    expect(atRetire).toBeGreaterThan(input.currentSavings); // accumulated
   });
 });
 
-describe("recommendedSwr", () => {
-  it("does not depend on the current swr (no feedback loop)", () => {
-    const aggressive = recommendedSwr(base({ swr: 5.2 }));
-    const cautious = recommendedSwr(base({ swr: 3.2 }));
-    expect(aggressive).not.toBeNull();
-    expect(aggressive!.rate).toBe(cautious!.rate);
+describe("accumulationBalances", () => {
+  it("starts at current savings and grows each year to the planning age", () => {
+    const input = base({ currentSavings: 100_000 });
+    const points = accumulationBalances(input);
+
+    expect(points).toHaveLength(input.planningAge - input.currentAge + 1);
+    expect(points[0]).toEqual({ age: input.currentAge, balance: 100_000 });
+    expect(points.at(-1)!.age).toBe(input.planningAge);
+    for (let i = 1; i < points.length; i++) {
+      expect(points[i].balance).toBeGreaterThan(points[i - 1].balance);
+    }
   });
 
-  it("recommends a rate that is safe for the horizon it produces", () => {
-    const rec = recommendedSwr(base())!;
-    expect(rec.rate).toBeLessThanOrEqual(
-      getWithdrawalRatePresetForHorizon(rec.horizonYears).rate + 1e-9,
-    );
-  });
-
-  it("keeps the default swr consistent with its own recommendation", () => {
-    // Guards against DEFAULTS.swr drifting away from what the engine recommends.
-    expect(recommendedSwr(DEFAULTS)!.rate).toBe(DEFAULTS.swr);
+  it("matches the deterministic accumulation portion of projectPath", () => {
+    const input = base();
+    const at60 = accumulationBalances(input).find((p) => p.age === 60)!.balance;
+    // Still accumulating at 60 when retiring at 70, so the paths agree there.
+    const viaPath = projectPath(input, 70).points.find(
+      (p) => p.age === 60,
+    )!.balance;
+    expect(at60).toBeCloseTo(viaPath, 6);
   });
 });

@@ -193,7 +193,7 @@ export default function Result({ input, result }: ResultProps) {
     <Stack gap="lg">
       <Headline input={input} result={result} />
       <IncomeSummary input={input} result={result} />
-      <ProjectionChart result={result} />
+      <ProjectionChart input={input} result={result} />
     </Stack>
   );
 }

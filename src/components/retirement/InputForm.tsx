@@ -14,7 +14,7 @@ import UserInputFormItem from "@/components/shared/UserInputFormItem";
 import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
 import {
   RETURN_PRESETS,
-  WITHDRAWAL_RATE_PRESETS,
+  SUCCESS_RATE_PRESETS,
   type ReturnPreset,
 } from "@/utils/retirement/presets";
 import { FIELD_CONSTRAINTS } from "@/utils/retirement/validation";
@@ -29,20 +29,14 @@ interface InputFormProps {
   input: RetirementInput;
   errors: RetirementErrors;
   onChange: (key: RetirementInputKey, value: FieldValue) => void;
-  onUseRecommendedSwr: () => void;
   onReset: () => void;
-  recommendedSwr?: number;
-  recommendedHorizonYears?: number;
 }
 
 export default function InputForm({
   input,
   errors,
   onChange,
-  onUseRecommendedSwr,
   onReset,
-  recommendedSwr,
-  recommendedHorizonYears,
 }: InputFormProps) {
   const [customizeReturns, setCustomizeReturns] = useState(false);
 
@@ -52,9 +46,6 @@ export default function InputForm({
   const isSameRate = (value: FieldValue, presetValue: number) =>
     typeof value === "number" && Math.abs(value - presetValue) < 0.001;
 
-  const activeWithdrawalPreset = WITHDRAWAL_RATE_PRESETS.find((preset) =>
-    isSameRate(input.swr, preset.rate),
-  );
   const activeReturnPreset = RETURN_PRESETS.find(
     (preset) =>
       isSameRate(input.accumReturn, preset.accumReturn) &&
@@ -62,8 +53,6 @@ export default function InputForm({
   );
   const showReturnInputs = customizeReturns || !activeReturnPreset;
   const returnStatus = activeReturnPreset ? "Preset" : "Custom";
-  const showRecommendation =
-    recommendedSwr != null && !isSameRate(input.swr, recommendedSwr);
 
   const applyReturnPreset = (preset: ReturnPreset) => {
     setCustomizeReturns(false);
@@ -188,6 +177,46 @@ export default function InputForm({
                   suffix=" yrs"
                 />
               </SimpleGrid>
+
+              <Stack gap={4}>
+                <Text size="sm" fw={600}>
+                  Plan confidence
+                </Text>
+                <Text size="xs" c="dimmed">
+                  The share of simulated markets your savings must outlast to
+                  your planning age. We run the simulation and return the
+                  earliest age that clears this target — higher confidence means
+                  retiring later.
+                </Text>
+                <Group
+                  gap="xs"
+                  role="group"
+                  aria-label="Plan confidence target"
+                  my="xs"
+                >
+                  {SUCCESS_RATE_PRESETS.map((rate) => (
+                    <Button
+                      key={rate}
+                      variant={
+                        isSameRate(input.targetSuccessRate, rate)
+                          ? "filled"
+                          : "light"
+                      }
+                      size="xs"
+                      radius="lg"
+                      aria-pressed={isSameRate(input.targetSuccessRate, rate)}
+                      onClick={() => onChange("targetSuccessRate", rate)}
+                    >
+                      {rate}%
+                    </Button>
+                  ))}
+                </Group>
+                <UserInputFormItem
+                  {...num("targetSuccessRate")}
+                  label={undefined}
+                  suffix="%"
+                />
+              </Stack>
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
@@ -195,62 +224,6 @@ export default function InputForm({
         <Accordion.Item value="assumptions">
           <Accordion.Control>Market assumptions</Accordion.Control>
           <Accordion.Panel>
-            <Stack gap={4} mb="xs">
-              <Text size="sm" fw={600}>
-                Safe withdrawal rate
-              </Text>
-              <Text size="xs" c="dimmed">
-                Target retirement income as a % of savings at retirement +
-                future pension value. Under fixed-dollar withdrawals, lower is
-                safer with longer retirement horizon, less pension income, or
-                more stocks in retirement. Pick a preset or set your own.
-              </Text>
-              <Group
-                gap="xs"
-                role="group"
-                aria-label="Safe withdrawal rate"
-                my="xs"
-              >
-                {WITHDRAWAL_RATE_PRESETS.map((preset) => (
-                  <Button
-                    key={preset.id}
-                    variant={
-                      activeWithdrawalPreset?.id === preset.id
-                        ? "filled"
-                        : "light"
-                    }
-                    size="xs"
-                    radius="lg"
-                    aria-pressed={activeWithdrawalPreset?.id === preset.id}
-                    onClick={() => onChange("swr", preset.rate)}
-                  >
-                    {preset.label}
-                  </Button>
-                ))}
-              </Group>
-              <UserInputFormItem {...num("swr")} label={undefined} suffix="%" />
-              {showRecommendation && (
-                <Group gap="xs" align="center">
-                  <Text size="xs" c="dimmed">
-                    Recommended {recommendedSwr}%
-                    {recommendedHorizonYears != null
-                      ? ` for a ${Math.round(
-                          recommendedHorizonYears,
-                        )}-year retirement`
-                      : ""}
-                    .
-                  </Text>
-                  <Button
-                    variant="subtle"
-                    size="compact-xs"
-                    color="teal"
-                    onClick={onUseRecommendedSwr}
-                  >
-                    Use
-                  </Button>
-                </Group>
-              )}
-            </Stack>
             <Stack gap="xs" mb="xs">
               <Group justify="space-between" align="center" gap="xs">
                 <Text size="sm" fw={600}>

@@ -56,10 +56,10 @@ export default function Headline({ input, result }: HeadlineProps) {
         title="Your plan does not reach the target yet"
       >
         <Text size="sm">
-          Even working to age {input.planningAge - 1}, your projected portfolio
-          does not both fund your income target and last to age{" "}
-          {input.planningAge}. Try a lower target income, a higher savings rate,
-          more guaranteed income, or a higher withdrawal-rate guardrail.
+          Even working to age {input.planningAge - 1}, your plan doesn&apos;t
+          reach your {input.targetSuccessRate}% confidence target of lasting to
+          age {input.planningAge}. Try a lower target income, a higher savings
+          rate, more guaranteed income, or a lower confidence target.
         </Text>
       </Alert>
     );
@@ -94,6 +94,13 @@ export default function Headline({ input, result }: HeadlineProps) {
                 } from now`}
             , with the portfolio projected to last to age {input.planningAge}.
           </Text>
+          {!retireNow && result.retirementAgeRange && (
+            <Text size="xs" c="dimmed" mt={4}>
+              Depending on market luck, about a 50% chance you retire between
+              age {result.retirementAgeRange.p25} and{" "}
+              {result.retirementAgeRange.p75}.
+            </Text>
+          )}
         </Stack>
         {result.portfolioAtRetirement != null && (
           <SimpleGrid
@@ -106,25 +113,11 @@ export default function Headline({ input, result }: HeadlineProps) {
               label="Savings at retirement"
               value={formatCAD(result.portfolioAtRetirement)}
             />
-            {result.pensionValue != null && (
+            {result.guaranteedIncome > 0 && (
               <StatTile
-                label="Future pension value"
-                value={formatCAD(result.pensionValue)}
-              />
-            )}
-            {result.impliedWithdrawalRateFromPortfolio != null && (
-              <StatTile
-                label="Initial withdrawal from savings"
-                value={`${(result.impliedWithdrawalRateFromPortfolio * 100).toFixed(1)}%`}
-                note={
-                  result.impliedWithdrawalRateFromSavingsAndFuturePensionValue !=
-                  null
-                    ? `${(
-                        result.impliedWithdrawalRateFromSavingsAndFuturePensionValue *
-                        100
-                      ).toFixed(1)}% of savings + future pension`
-                    : undefined
-                }
+                label="Pension income"
+                value={`${formatCAD(result.guaranteedIncome)} /yr`}
+                note={`from age ${input.pensionStartAge}`}
               />
             )}
           </SimpleGrid>

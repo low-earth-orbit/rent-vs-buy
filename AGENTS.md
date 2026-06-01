@@ -136,7 +136,7 @@ Note: `maintPct` and `propertyTaxRate` are user-known starting levels and intent
 
 ### Investment returns
 
-Drawn as **lognormal** to preserve the arithmetic mean: `logMean = log(1 + μ) − σ²/2`, then `R = exp(logMean + σ·Z) − 1`. This avoids volatility-drag bias that would result from naive normal sampling.
+Drawn as **lognormal** to preserve the arithmetic mean: `logMean = log(1 + μ) − σ²/2`, then `R = exp(logMean + σ·Z) − 1`. This avoids volatility-drag bias that would result from naive normal sampling. The standardized shock `Z` follows a **mean-reverting AR(1)** (`INVESTMENT_AUTOCORRELATION = −0.2`, innovation scaled to keep each year's σ): negative serial correlation shrinks multi-year cumulative dispersion (variance ratio `(1+φ)/(1−φ) ≈ 0.67`) so the renter's investment band doesn't fan out unrealistically over the 50-year horizon. Long-run-mean uncertainty (`investmentReturnSigma`, drawn once per sim) is the dominant source of long-horizon spread and is intentionally left untouched.
 
 ### Mortgage renewals
 

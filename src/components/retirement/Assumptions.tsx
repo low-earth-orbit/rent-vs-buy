@@ -10,26 +10,30 @@ const Assumptions = () => {
         This is a quick reality check, not a full retirement plan. Results are
         shown in today&apos;s dollars and use a simple glide path — one expected
         return while you&apos;re working and another (usually lower) in
-        retirement. It finds the earliest age your savings can fund a constant
-        gross income target while keeping your first-year withdrawal within your
-        chosen safe rate.
+        retirement. It finds the earliest age at which your savings can fund a
+        constant gross income target and still last to your planning age in at
+        least your chosen share of simulated markets. The retirement phase is
+        run as a Monte Carlo simulation with year-to-year return swings (and
+        mild mean reversion) to capture sequence-of-returns risk; accumulation
+        uses the expected return.
       </Text>
       <Text size="sm" pb="xs" c="dimmed">
-        Acknowledgement: Safe withdrawal rates are partially adopted from{" "}
-        <Anchor
-          href="https://www.morningstar.com/retirement/whats-safe-retirement-withdrawal-rate-2026"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Morningstar
-        </Anchor>
-        . Expect return assumptions are from{" "}
+        Acknowledgement: return and volatility assumptions are partially adopted
+        from{" "}
         <Anchor
           href="https://pwlcapital.com/financial-planning-assumptions-market-capitalization-weighted-portfolio/"
           target="_blank"
           rel="noreferrer"
         >
           PWL Capital
+        </Anchor>
+        ; retirement-spending research from{" "}
+        <Anchor
+          href="https://www.morningstar.com/retirement/whats-safe-retirement-withdrawal-rate-2026"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Morningstar
         </Anchor>
         .
       </Text>

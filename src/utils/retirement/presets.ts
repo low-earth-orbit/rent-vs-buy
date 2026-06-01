@@ -1,73 +1,57 @@
-export const WITHDRAWAL_RATE_PRESETS = [
-  {
-    id: "20-year",
-    label: "5.2%",
-    horizonYears: 20,
-    rate: 5.2,
-  },
-  {
-    id: "25-year",
-    label: "4.3%",
-    horizonYears: 25,
-    rate: 4.3,
-  },
-  {
-    id: "30-year",
-    label: "3.8%",
-    horizonYears: 30,
-    rate: 3.8,
-  },
-
-  {
-    id: "35-year",
-    label: "3.4%",
-    horizonYears: 35,
-    rate: 3.4,
-  },
-  {
-    id: "40-year",
-    label: "3.2%",
-    horizonYears: 40,
-    rate: 3.2,
-  },
-] as const;
+/**
+ * Plan-confidence presets: the target % of simulated markets the plan must
+ * survive. The engine returns the earliest retirement age that hits the target.
+ */
+export const SUCCESS_RATE_PRESETS = [80, 85, 90, 95, 99] as const;
 
 export const RETURN_PRESETS = [
   {
     id: "glide-path-80-20-to-60-40",
     label: "80/20 to 60/40",
-    accumReturn: 6.3,
-    retireReturn: 5.7,
+    accumReturn: 6.29,
+    accumVolatility: 10.62,
+    retireReturn: 5.67,
+    retireVolatility: 8.79,
   },
   {
     id: "glide-path-80-20-to-40-60",
     label: "80/20 to 40/60",
-    accumReturn: 6.3,
-    retireReturn: 5,
+    accumReturn: 6.29,
+    accumVolatility: 10.62,
+    retireReturn: 5.01,
+    retireVolatility: 7.17,
   },
   {
     id: "glide-path-60-40",
     label: "60/40",
-    accumReturn: 5.7,
-    retireReturn: 5.7,
+    accumReturn: 5.67,
+    accumVolatility: 8.79,
+    retireReturn: 5.67,
+    retireVolatility: 8.79,
   },
   {
     id: "glide-path-100-0-to-80-20",
     label: "100/0 to 80/20",
-    accumReturn: 6.9,
-    retireReturn: 6.3,
+    accumReturn: 6.87,
+    accumVolatility: 12.57,
+    retireReturn: 6.29,
+    retireVolatility: 10.62,
   },
   {
     id: "glide-path-100-0-to-60-40",
     label: "100/0 to 60/40",
-    accumReturn: 6.9,
-    retireReturn: 5.7,
+    accumReturn: 6.87,
+    accumVolatility: 12.57,
+    retireReturn: 5.67,
+    retireVolatility: 8.79,
   },
   {
     id: "glide-path-80-20",
     label: "80/20",
-    accumReturn: 6.3,
-    retireReturn: 6.3,
+    accumReturn: 6.29,
+    accumVolatility: 10.62,
+    retireReturn: 6.29,
+    retireVolatility: 10.62,
   },
 ] as const;
 
@@ -89,35 +73,39 @@ export const DEFAULTS = {
   /** Age the guaranteed income starts. Before this, the portfolio funds the full target. */
   pensionStartAge: 65,
   /** Expected nominal return while still working (accumulation), % per year. */
-  accumReturn: 6.3,
+  accumReturn: 6.29,
   /** Expected nominal return in retirement (typically more conservative), %. */
-  retireReturn: 5.7,
+  retireReturn: 5.67,
   inflationRate: 2.1,
   /**
-   * Maximum first-year withdrawal as a % of savings at retirement. Set to the
-   * self-consistent `recommendedSwr` for this default scenario so a fresh load
-   * matches its own recommendation (a test enforces this stays true).
+   * Target plan confidence: the % of simulated markets the plan must survive.
+   * The engine returns the earliest retirement age that meets it; a higher
+   * target means retiring later.
    */
-  swr: WITHDRAWAL_RATE_PRESETS.find((p) => p.id === "35-year")!.rate,
+  targetSuccessRate: 90,
 } as const;
 
-export type WithdrawalRatePreset = (typeof WITHDRAWAL_RATE_PRESETS)[number];
 export type ReturnPreset = (typeof RETURN_PRESETS)[number];
 export type ReturnPresetId = ReturnPreset["id"];
-
-export function getWithdrawalRatePresetForHorizon(
-  horizonYears: number,
-): WithdrawalRatePreset {
-  return (
-    WITHDRAWAL_RATE_PRESETS.find(
-      (preset) => horizonYears <= preset.horizonYears,
-    ) ?? WITHDRAWAL_RATE_PRESETS[WITHDRAWAL_RATE_PRESETS.length - 1]
-  );
-}
 
 export function getReturnPresetById(
   id: ReturnPresetId | null,
 ): ReturnPreset | undefined {
   if (id === null) return undefined;
   return RETURN_PRESETS.find((preset) => preset.id === id);
+}
+
+/**
+ * Look up volatility from a return preset. Used by Monte Carlo to get precise
+ * volatility for known allocations rather than deriving it from returns.
+ * Returns undefined if the preset is not found or doesn't have that volatility.
+ */
+export function getVolatilityFromPreset(
+  presetId: ReturnPresetId | null,
+  phase: "accum" | "retire",
+): number | undefined {
+  if (presetId === null) return undefined;
+  const preset = getReturnPresetById(presetId);
+  if (!preset) return undefined;
+  return phase === "accum" ? preset.accumVolatility : preset.retireVolatility;
 }

@@ -1,12 +1,7 @@
-import {
-  WITHDRAWAL_RATE_PRESETS,
-  getWithdrawalRatePresetForHorizon,
-} from "./presets";
 import type {
   IncomeBreakdown,
   ProjectionPoint,
   RetirementInput,
-  RetirementResult,
 } from "./types";
 
 /**
@@ -49,7 +44,7 @@ export function incomeBreakdown(input: RetirementInput): IncomeBreakdown {
  * starts the portfolio funds the full target (the "bridge"); once guaranteed
  * income kicks in, only the remaining gap.
  */
-function withdrawalAtAge(
+export function withdrawalAtAge(
   input: RetirementInput,
   breakdown: IncomeBreakdown,
   age: number,
@@ -99,103 +94,23 @@ export function projectPath(
 }
 
 /**
- * Deterministic earliest retirement age whose plan survives to `planningAge`
- * on mean returns and whose first-year withdrawal stays within the user's
- * safe withdrawal rate. The first-year draw is the full target when
- * retiring before the pension starts (the bridge), otherwise the income gap.
+ * Deterministic accumulation balances (today's dollars) for every age from
+ * currentAge to planningAge, contributing each year and growing at the
+ * accumulation return. Pre-retirement growth doesn't depend on when you retire,
+ * so this is computed once and indexed by age for any candidate retirement age
+ * (the value at age A is the portfolio you'd retire on at age A).
  */
-export function computeRetirement(input: RetirementInput): RetirementResult {
-  const breakdown = incomeBreakdown(input);
-  const maxInitialWithdrawalRate = input.swr / 100;
-
-  const pensionValue =
-    breakdown.guaranteedIncome > 0
-      ? breakdown.guaranteedIncome * (input.planningAge - input.pensionStartAge)
-      : null;
-
-  for (let age = input.currentAge; age < input.planningAge; age++) {
-    const { points, depletionAge } = projectPath(input, age);
-    if (depletionAge !== null) continue;
-
-    const atRetirement = points.find((p) => p.age === age);
-
-    const portfolioAtRetirement = atRetirement ? atRetirement.balance : null;
-
-    const savingsAndFuturePensionValueAtRetirement = portfolioAtRetirement
-      ? portfolioAtRetirement + (pensionValue ?? 0)
-      : null;
-
-    const firstYearWithdrawal = withdrawalAtAge(input, breakdown, age);
-    const impliedWithdrawalRateFromSavingsAndFuturePensionValue =
-      savingsAndFuturePensionValueAtRetirement &&
-      savingsAndFuturePensionValueAtRetirement > 0
-        ? firstYearWithdrawal / savingsAndFuturePensionValueAtRetirement
-        : null;
-    const impliedWithdrawalRateFromPortfolio =
-      portfolioAtRetirement && portfolioAtRetirement > 0
-        ? firstYearWithdrawal / portfolioAtRetirement
-        : null;
-    const withdrawalRateIsFeasible =
-      firstYearWithdrawal === 0 ||
-      (impliedWithdrawalRateFromSavingsAndFuturePensionValue != null &&
-        impliedWithdrawalRateFromSavingsAndFuturePensionValue <=
-          maxInitialWithdrawalRate);
-
-    if (!withdrawalRateIsFeasible) continue;
-
-    return {
-      ...breakdown,
-      earliestRetirementAge: age,
-      yearsUntilRetirement: age - input.currentAge,
-      portfolioAtRetirement,
-      pensionValue,
-      impliedWithdrawalRateFromSavingsAndFuturePensionValue,
-      impliedWithdrawalRateFromPortfolio,
-      path: points,
-    };
-  }
-
-  return {
-    ...breakdown,
-    earliestRetirementAge: null,
-    yearsUntilRetirement: null,
-    portfolioAtRetirement: null,
-    pensionValue: null,
-    impliedWithdrawalRateFromSavingsAndFuturePensionValue: null,
-    impliedWithdrawalRateFromPortfolio: null,
-    path: null,
-  };
-}
-
-export interface SwrRecommendation {
-  rate: number;
-  horizonYears: number;
-}
-
-/**
- * A self-consistent safe withdrawal rate. A higher rate lets you retire
- * earlier, which makes retirement *longer*, which needs a *lower* safe rate — so
- * a naive "rate for planningAge − retirementAge" recommendation ping-pongs
- * between two presets (the rate that selects the age also depends on the age).
- *
- * Instead we pick the highest preset rate that is still safe for the horizon it
- * produces. This doesn't depend on the user's current `swr`, so it's stable.
- */
-export function recommendedSwr(
+export function accumulationBalances(
   input: RetirementInput,
-): SwrRecommendation | null {
-  for (const preset of WITHDRAWAL_RATE_PRESETS) {
-    const age = computeRetirement({
-      ...input,
-      swr: preset.rate,
-    }).earliestRetirementAge;
-    if (age == null) continue;
+): ProjectionPoint[] {
+  const contribution = (input.currentIncome * input.contributionPct) / 100;
+  const r = realMean(input.accumReturn, input.inflationRate);
 
-    const horizonYears = Math.max(0, input.planningAge - age);
-    const safeRate = getWithdrawalRatePresetForHorizon(horizonYears).rate;
-    if (preset.rate <= safeRate + 1e-9) {
-      return { rate: preset.rate, horizonYears };
-    }
+  let balance = input.currentSavings;
+  const points: ProjectionPoint[] = [{ age: input.currentAge, balance }];
+  for (let age = input.currentAge; age < input.planningAge; age++) {
+    balance = balance * (1 + r) + contribution * (1 + r / 2);
+    points.push({ age: age + 1, balance });
   }
-  return null;
+  return points;
 }

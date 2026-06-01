@@ -1,67 +1,171 @@
 "use client";
 
-import { Alert, Card, Text } from "@mantine/core";
+import type { ReactNode } from "react";
+import { Alert, Box, Card, Group, Paper, Text } from "@mantine/core";
 import {
   Area,
-  AreaChart,
+  ComposedChart,
+  Line,
   ReferenceArea,
-  ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  IconAlertTriangle,
+  IconThumbUp,
+  IconThumbDown,
+} from "@tabler/icons-react";
 import { formatCAD, formatCADCompact } from "@/utils/format";
-import type { RetirementResult } from "@/utils/retirement/types";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { NUM_SIMULATIONS } from "@/utils/retirement/monteCarlo";
+import type {
+  RetirementInput,
+  RetirementResult,
+} from "@/utils/retirement/types";
+
+const TEAL = "var(--mantine-color-teal-6)";
 
 interface ProjectionChartProps {
+  input: RetirementInput;
   result: RetirementResult;
 }
 
-export default function ProjectionChart({ result }: ProjectionChartProps) {
-  if (!result.path || result.earliestRetirementAge === null) return null;
+interface ChartPoint {
+  age: number;
+  /** Deterministic accumulation balance (currentAge..retireAge). */
+  accum?: number;
+  /** Monte Carlo median in retirement (retireAge..planningAge). */
+  median?: number;
+  bandBase?: number;
+  bandWidth?: number;
+  p10?: number;
+  p90?: number;
+}
 
-  const data = result.path.map((p) => ({
-    age: p.age,
-    balance: Math.max(0, Math.round(p.balance)),
-  }));
+/** Coarse, tiered read on how often the plan survives the simulated markets. */
+function SuccessSummary({
+  successRate,
+  target,
+  planningAge,
+}: {
+  successRate: number;
+  target: number;
+  planningAge: number;
+}) {
+  const pct = Math.round(successRate * 100);
+
+  let title: string;
+  let color: string;
+  let icon: ReactNode;
+  if (pct >= 95) {
+    title = "Very likely to last";
+    color = "teal";
+    icon = <IconThumbUp size={16} />;
+  } else if (pct >= 90) {
+    title = "Likely to last";
+    color = "teal";
+    icon = <IconThumbUp size={16} />;
+  } else if (pct >= 80) {
+    title = "Modest safety margin";
+    color = "yellow";
+    icon = <IconAlertTriangle size={16} />;
+  } else {
+    title = "Plan may fall short";
+    color = "red";
+    icon = <IconThumbDown size={16} />;
+  }
+
+  return (
+    <Alert icon={icon} color={color} title={title} variant="light" radius="md">
+      <Text size="sm">
+        Your savings last to age {planningAge} in about {pct}% of simulated
+        markets — within your {target}% confidence target.
+      </Text>
+    </Alert>
+  );
+}
+
+function ChartTooltip({ payload }: { payload?: { payload: ChartPoint }[] }) {
+  if (!payload || payload.length === 0) return null;
+  const p = payload[0].payload;
+  const inRetirement = p.median != null;
+  return (
+    <Paper px="md" py="sm" withBorder shadow="md" radius="md">
+      <Text fw={600} mb={4}>
+        Age {p.age}
+      </Text>
+      {inRetirement ? (
+        <>
+          <Text size="sm" c="teal">
+            Median: {formatCAD(p.median ?? 0)}
+          </Text>
+          <Text size="xs" c="dimmed">
+            10–90%: {formatCADCompact(p.p10 ?? 0)} –{" "}
+            {formatCADCompact(p.p90 ?? 0)}
+          </Text>
+        </>
+      ) : (
+        <Text size="sm" c="teal">
+          Projected: {formatCAD(p.accum ?? 0)}
+        </Text>
+      )}
+    </Paper>
+  );
+}
+
+export default function ProjectionChart({
+  input,
+  result,
+}: ProjectionChartProps) {
+  if (
+    result.earliestRetirementAge === null ||
+    !result.retirementBands ||
+    result.successRate === null
+  ) {
+    return null;
+  }
+
   const retireAge = result.earliestRetirementAge;
+
+  // Merge the deterministic accumulation path and the MC retirement bands by
+  // age. They overlap at retireAge (same balance), so the lines join cleanly.
+  const byAge = new Map<number, ChartPoint>();
+  for (const p of result.accumulationPath ?? []) {
+    byAge.set(p.age, { age: p.age, accum: Math.max(0, Math.round(p.balance)) });
+  }
+  for (const b of result.retirementBands) {
+    const point = byAge.get(b.age) ?? { age: b.age };
+    point.median = Math.max(0, Math.round(b.p50));
+    point.p10 = Math.max(0, Math.round(b.p10));
+    point.p90 = Math.max(0, Math.round(b.p90));
+    point.bandBase = point.p10;
+    point.bandWidth = Math.max(0, point.p90 - point.p10);
+    byAge.set(b.age, point);
+  }
+  const data = [...byAge.values()].sort((a, b) => a.age - b.age);
   const lastAge = data[data.length - 1]?.age ?? retireAge;
-  const peak =
-    result.portfolioAtRetirement != null
-      ? Math.round(result.portfolioAtRetirement)
-      : null;
 
   return (
     <Card withBorder radius="md" padding="md">
-      <Text fw={600} mb="lg">
+      <Text fw={600} mb="md">
         Projected portfolio (in today&apos;s dollars)
       </Text>
-      <Alert
-        icon={<IconInfoCircle size={16} />}
-        variant="default"
-        title="Understanding the projection"
-      >
-        <Text size="xs">
-          The chart shows your projected portfolio based on your assumptions.
-          While an aggressive portfolio allocation may increase your savings in
-          retirement, it also comes with greater return variance, increasing the
-          chance of running out of money in retirement. Therefore, a higher
-          equity allocation should not automatically be interpreted as the
-          better choice for your retirement.
-        </Text>
-      </Alert>
+      <SuccessSummary
+        successRate={result.successRate}
+        target={input.targetSuccessRate}
+        planningAge={input.planningAge}
+      />
       <div
         role="img"
-        aria-label="Retirement portfolio projection chart"
-        style={{ width: "100%", minWidth: 0 }}
+        aria-label="Retirement portfolio projection chart with a Monte Carlo range"
+        style={{ width: "100%", minWidth: 0, marginTop: 12 }}
       >
         <ResponsiveContainer width="100%" height={360}>
-          <AreaChart
+          <ComposedChart
             data={data}
-            margin={{ top: 32, right: 0, bottom: 32, left: 0 }}
+            margin={{ top: 24, right: 8, bottom: 28, left: 0 }}
           >
             <ReferenceArea
               x1={retireAge}
@@ -78,6 +182,8 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
             />
             <XAxis
               dataKey="age"
+              type="number"
+              domain={["dataMin", "dataMax"]}
               tickMargin={8}
               label={{ value: "Age", position: "bottom", fontSize: 12 }}
               tick={{ fontSize: 12 }}
@@ -87,47 +193,73 @@ export default function ProjectionChart({ result }: ProjectionChartProps) {
               tickFormatter={(v) => formatCADCompact(Number(v))}
               tick={{ fontSize: 12 }}
             />
-            <Tooltip
-              formatter={(v) => [formatCAD(Number(v)), "Portfolio"]}
-              labelFormatter={(l) => `Age ${l}`}
-              contentStyle={{ borderRadius: "8px", padding: "12px" }}
-              itemStyle={{ fontSize: "12px" }} // Styles the "Portfolio: $X" text
-              labelStyle={{ fontSize: "14px", fontWeight: 600 }} // Styles the "Age X" text
-            />
-            <ReferenceLine
-              x={retireAge}
-              stroke="var(--mantine-color-teal-6)"
-              strokeDasharray="4 4"
+            <Tooltip content={<ChartTooltip />} />
+            {/* Stacked-area band: transparent base to P10, shaded width to P90. */}
+            <Area
+              type="monotone"
+              dataKey="bandBase"
+              stackId="band"
+              stroke="none"
+              fill="transparent"
+              connectNulls={false}
+              isAnimationActive={false}
             />
             <Area
               type="monotone"
-              dataKey="balance"
-              stroke="var(--mantine-color-teal-6)"
-              fill="var(--mantine-color-teal-6)"
-              fillOpacity={0.2}
+              dataKey="bandWidth"
+              stackId="band"
+              stroke="none"
+              fill={TEAL}
+              fillOpacity={0.18}
+              connectNulls={false}
               isAnimationActive={false}
             />
-            {peak != null && (
-              <ReferenceDot
-                x={retireAge}
-                y={peak}
-                r={4}
-                fill="var(--mantine-color-teal-6)"
-                stroke="var(--mantine-color-body)"
-                strokeWidth={2}
-                ifOverflow="visible"
-                label={{
-                  value: `Retire`,
-                  position: "top",
-                  fill: "var(--mantine-color-teal-7)",
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
-              />
-            )}
-          </AreaChart>
+            <Line
+              type="monotone"
+              dataKey="accum"
+              stroke={TEAL}
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="median"
+              stroke={TEAL}
+              strokeWidth={2}
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+            <ReferenceLine x={retireAge} stroke={TEAL} strokeDasharray="4 4" />
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
+      <Group gap="lg" mt="sm" wrap="wrap">
+        <Group gap={6} wrap="nowrap">
+          <Box w={18} h={2} style={{ backgroundColor: TEAL }} aria-hidden />
+          <Text size="xs" c="dimmed">
+            Median
+          </Text>
+        </Group>
+        <Group gap={6} wrap="nowrap">
+          <Box
+            w={18}
+            h={10}
+            style={{ backgroundColor: TEAL, opacity: 0.18 }}
+            aria-hidden
+          />
+          <Text size="xs" c="dimmed">
+            10–90% range
+          </Text>
+        </Group>
+      </Group>
+      <Text size="xs" c="dimmed" mt="sm">
+        Accumulation is shown on mean returns; the retirement fan is{" "}
+        {NUM_SIMULATIONS.toLocaleString()} simulations with year-to-year return
+        swings, in today&apos;s dollars. Illustrative, not a guarantee.
+      </Text>
     </Card>
   );
 }

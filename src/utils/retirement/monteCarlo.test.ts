@@ -1,0 +1,156 @@
+import { describe, expect, it } from "vitest";
+import { DEFAULTS } from "./presets";
+import { accumulationBalances } from "./projection";
+import {
+  NUM_SIMULATIONS,
+  computeRetirement,
+  simulateRetirementPhase,
+} from "./monteCarlo";
+import type { RetirementInput } from "./types";
+
+const base = (overrides: Partial<RetirementInput> = {}): RetirementInput => ({
+  ...DEFAULTS,
+  ...overrides,
+});
+
+describe("simulateRetirementPhase", () => {
+  it("starts every simulation at the given balance with ordered percentiles", () => {
+    const start = 1_500_000;
+    const { bands } = simulateRetirementPhase(base(), 60, start);
+
+    expect(bands[0].age).toBe(60);
+    expect(bands[0].p10).toBe(start);
+    expect(bands[0].p50).toBe(start);
+    expect(bands[0].p90).toBe(start);
+    expect(bands.at(-1)!.age).toBe(DEFAULTS.planningAge);
+    for (const b of bands) {
+      expect(b.p10).toBeLessThanOrEqual(b.p50);
+      expect(b.p50).toBeLessThanOrEqual(b.p90);
+    }
+  });
+
+  it("is deterministic across runs (seeded)", () => {
+    const a = simulateRetirementPhase(base(), 60, 1_500_000);
+    const b = simulateRetirementPhase(base(), 60, 1_500_000);
+    expect(a.successRate).toBe(b.successRate);
+    expect(a.bands.at(-1)!.p50).toBe(b.bands.at(-1)!.p50);
+  });
+
+  it("keeps the success rate in [0, 1] and rising with a bigger starting balance", () => {
+    const lean = simulateRetirementPhase(base(), 60, 800_000).successRate;
+    const flush = simulateRetirementPhase(base(), 60, 5_000_000).successRate;
+    expect(lean).toBeGreaterThanOrEqual(0);
+    expect(flush).toBeLessThanOrEqual(1);
+    expect(flush).toBeGreaterThanOrEqual(lean);
+  });
+});
+
+describe("computeRetirement", () => {
+  it("returns the earliest age that meets the target success rate", () => {
+    const input = base();
+    const result = computeRetirement(input);
+    const target = input.targetSuccessRate / 100;
+
+    expect(result.earliestRetirementAge).not.toBeNull();
+    const age = result.earliestRetirementAge!;
+    expect(age).toBeGreaterThan(input.currentAge);
+    expect(age).toBeLessThan(input.planningAge);
+    expect(result.successRate!).toBeGreaterThanOrEqual(target);
+
+    // One year earlier should fall short of the target (else it'd be chosen).
+    const earlierBalance = accumulationBalances(input).find(
+      (p) => p.age === age - 1,
+    )!.balance;
+    expect(
+      simulateRetirementPhase(input, age - 1, earlierBalance).successRate,
+    ).toBeLessThan(target);
+  });
+
+  it("exposes the accumulation path and retirement bands for the chosen age", () => {
+    const result = computeRetirement(base());
+    const age = result.earliestRetirementAge!;
+
+    expect(result.accumulationPath![0].age).toBe(DEFAULTS.currentAge);
+    expect(result.accumulationPath!.at(-1)!.age).toBe(age);
+    expect(result.retirementBands![0].age).toBe(age);
+    expect(result.retirementBands!.at(-1)!.age).toBe(DEFAULTS.planningAge);
+    expect(result.portfolioAtRetirement).toBeCloseTo(
+      result.accumulationPath!.at(-1)!.balance,
+      6,
+    );
+  });
+
+  it("retires no earlier when the confidence target is higher", () => {
+    const relaxed = computeRetirement(base({ targetSuccessRate: 75 }));
+    const strict = computeRetirement(base({ targetSuccessRate: 95 }));
+
+    expect(relaxed.earliestRetirementAge).not.toBeNull();
+    expect(strict.earliestRetirementAge).not.toBeNull();
+    expect(strict.earliestRetirementAge!).toBeGreaterThanOrEqual(
+      relaxed.earliestRetirementAge!,
+    );
+  });
+
+  it("lets a heavily funded saver retire immediately", () => {
+    const result = computeRetirement(
+      base({ currentAge: 50, currentSavings: 10_000_000 }),
+    );
+    expect(result.earliestRetirementAge).toBe(50);
+    expect(result.yearsUntilRetirement).toBe(0);
+    expect(result.successRate!).toBeGreaterThanOrEqual(0.95);
+  });
+
+  it("returns nulls when no age can hit the target", () => {
+    const result = computeRetirement(
+      base({
+        currentAge: 60,
+        currentSavings: 0,
+        contributionPct: 0,
+        guaranteedIncomePct: 0,
+        targetIncomePct: 80,
+      }),
+    );
+    expect(result.earliestRetirementAge).toBeNull();
+    expect(result.retirementBands).toBeNull();
+    expect(result.successRate).toBeNull();
+    expect(result.portfolioWithdrawal).toBeGreaterThan(0);
+  });
+
+  it("includes a 50%-likely age range that brackets the point estimate", () => {
+    const result = computeRetirement(base());
+    const range = result.retirementAgeRange!;
+    expect(range).not.toBeNull();
+    expect(range.p25).toBeLessThanOrEqual(range.p50);
+    expect(range.p50).toBeLessThanOrEqual(range.p75);
+    const age = result.earliestRetirementAge!;
+    expect(age).toBeGreaterThanOrEqual(range.p25 - 1);
+    expect(age).toBeLessThanOrEqual(range.p75);
+  });
+
+  it("widens little and shifts later for a higher confidence target", () => {
+    const relaxed = computeRetirement(
+      base({ targetSuccessRate: 80 }),
+    ).retirementAgeRange!;
+    const strict = computeRetirement(
+      base({ targetSuccessRate: 95 }),
+    ).retirementAgeRange!;
+    expect(strict.p50).toBeGreaterThanOrEqual(relaxed.p50);
+  });
+
+  it("has no age range when the plan is infeasible", () => {
+    const result = computeRetirement(
+      base({
+        currentAge: 60,
+        currentSavings: 0,
+        contributionPct: 0,
+        guaranteedIncomePct: 0,
+        targetIncomePct: 80,
+      }),
+    );
+    expect(result.retirementAgeRange).toBeNull();
+  });
+
+  it("runs the configured number of simulations", () => {
+    expect(NUM_SIMULATIONS).toBe(1000);
+  });
+});

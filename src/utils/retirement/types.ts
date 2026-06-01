@@ -27,15 +27,31 @@ export interface IncomeBreakdown {
   portfolioWithdrawal: number;
 }
 
+/** A per-age percentile band of the simulated portfolio (today's dollars). */
+export interface RetirementBand {
+  age: number;
+  p10: number;
+  p50: number;
+  p90: number;
+}
+
 export interface RetirementResult {
-  /** Earliest age the user can retire and not run out before `planningAge`. */
+  /** Earliest age whose simulated plan meets the target success rate. */
   earliestRetirementAge: number | null;
   yearsUntilRetirement: number | null;
   /** Portfolio balance (real $) at the recommended retirement age. */
   portfolioAtRetirement: number | null;
-  pensionValue: number | null;
-  /** Year-by-year balance path for the recommended retirement age. */
-  path: ProjectionPoint[] | null;
+  /** Share of simulations (0–1) whose portfolio lasts to `planningAge`. */
+  successRate: number | null;
+  /** Deterministic accumulation balances, currentAge..retirementAge. */
+  accumulationPath: ProjectionPoint[] | null;
+  /** Monte Carlo percentile bands for the retirement phase, retirementAge..planningAge. */
+  retirementBands: RetirementBand[] | null;
+  /**
+   * 25th–75th percentile of the earliest feasible retirement age across
+   * stochastic accumulation paths — the "50% likely" range. Null if infeasible.
+   */
+  retirementAgeRange: { p25: number; p50: number; p75: number } | null;
 
   // Income breakdown (real $/yr), always populated — even for an infeasible plan.
   /** Target gross retirement income. */
@@ -44,8 +60,4 @@ export interface RetirementResult {
   guaranteedIncome: number;
   /** Gross (taxable) amount the portfolio must withdraw each year. */
   portfolioWithdrawal: number;
-  /** First-year withdrawal ÷ portfolio at retirement + future pension value.*/
-  impliedWithdrawalRateFromSavingsAndFuturePensionValue: number | null;
-  /** First-year withdrawal ÷ portfolio at retirement. */
-  impliedWithdrawalRateFromPortfolio: number | null;
 }
