@@ -45,6 +45,53 @@ describe("simulateRetirementPhase", () => {
     expect(flush).toBeLessThanOrEqual(1);
     expect(flush).toBeGreaterThanOrEqual(lean);
   });
+
+  it("0% flexibility produces identical results to no-flexibility baseline", () => {
+    const withZero = simulateRetirementPhase(
+      base({ spendingFlexibilityPct: 0 }),
+      60,
+      900_000,
+    );
+    const baseline = simulateRetirementPhase(base(), 60, 900_000);
+    expect(withZero.successRate).toBe(baseline.successRate);
+  });
+
+  it("guardrail flexibility raises success rate substantially on a lean balance", () => {
+    const strict = simulateRetirementPhase(
+      base({ spendingFlexibilityPct: 0 }),
+      60,
+      900_000,
+    ).successRate;
+    const flexible = simulateRetirementPhase(
+      base({ spendingFlexibilityPct: 20 }),
+      60,
+      900_000,
+    ).successRate;
+    // The guardrail trims spending while capital remains, so the effect is large
+    // (~+18pts here). A regression to cutting only at depletion would barely move
+    // this, so we assert a meaningful margin rather than a mere >=.
+    expect(flexible - strict).toBeGreaterThan(0.1);
+  });
+
+  it("success rate is non-decreasing as flexibility increases", () => {
+    const s0 = simulateRetirementPhase(
+      base({ spendingFlexibilityPct: 0 }),
+      60,
+      900_000,
+    ).successRate;
+    const s20 = simulateRetirementPhase(
+      base({ spendingFlexibilityPct: 20 }),
+      60,
+      900_000,
+    ).successRate;
+    const s50 = simulateRetirementPhase(
+      base({ spendingFlexibilityPct: 50 }),
+      60,
+      900_000,
+    ).successRate;
+    expect(s20).toBeGreaterThanOrEqual(s0);
+    expect(s50).toBeGreaterThanOrEqual(s20);
+  });
 });
 
 describe("computeRetirement", () => {
@@ -154,6 +201,19 @@ describe("computeRetirement", () => {
 
   it("runs the configured number of simulations", () => {
     expect(NUM_SIMULATIONS).toBe(1000);
+  });
+
+  it("retires no later with spending flexibility than without", () => {
+    const strict = computeRetirement(base({ spendingFlexibilityPct: 0 }));
+    const flexible = computeRetirement(base({ spendingFlexibilityPct: 20 }));
+    if (
+      strict.earliestRetirementAge !== null &&
+      flexible.earliestRetirementAge !== null
+    ) {
+      expect(flexible.earliestRetirementAge).toBeLessThanOrEqual(
+        strict.earliestRetirementAge,
+      );
+    }
   });
 });
 
