@@ -150,17 +150,17 @@ retirement (the retirement-date tent bottom) and the age it hits; `end` = termin
 no-bequest horizon artifact, not advice). BEFORE/AFTER = slope of accumulation / of the retirement
 approach into the tent.
 
-| Spending      | Ret. horizon | start | acc. avg | pre-ret | @ret | tent (age) | end |  BEFORE  |  AFTER  | CE income | Deplete |
-| ------------- | ------------ | ----- | -------- | ------- | ---- | ---------- | --- | -------- | ------- | --------- | ------- |
-| constant $    | 30y          | 100   | 68       | 40      | 50   | 40 (@66)   | 100 | Falling  | Rising  | $55,825   | 6.3%    |
-| constant $    | 40y          | 100   | 78       | 50      | 60   | 50 (@69)   | 80  | Falling  | Rising  | $50,804   | 11.8%   |
-| constant $    | 50y          | 100   | 84       | 60      | 70   | 70 (@65)   | 40  | Falling  | Rising  | $47,101   | 15.9%   |
-| semi-flex 50% | 30y          | 100   | 98       | 90      | 90   | 70 (@76)   | 100 | Flat     | Flat    | $69,470   | 1.5%    |
-| semi-flex 50% | 40y          | 100   | 94       | 80      | 80   | 70 (@69)   | 100 | Falling  | Flat    | $65,340   | 4.0%    |
-| semi-flex 50% | 50y          | 100   | 94       | 70      | 80   | 70 (@67)   | 50  | Falling  | Flat    | $60,516   | 7.8%    |
-| flexible 100% | 30y          | 100   | 99       | 90      | 90   | 80 (@69)   | 0   | Flat     | Flat    | $68,459   | 0.0%    |
-| flexible 100% | 40y          | 100   | 99       | 90      | 90   | 90 (@65)   | 0   | Flat     | Flat    | $66,123   | 0.0%    |
-| flexible 100% | 50y          | 100   | 99       | 90      | 90   | 90 (@65)   | 0   | Flat     | Flat    | $64,139   | 0.0%    |
+| Spending      | Ret. horizon | start | acc. avg | pre-ret | @ret | tent (age) | end | BEFORE  | AFTER  | CE income | Deplete |
+| ------------- | ------------ | ----- | -------- | ------- | ---- | ---------- | --- | ------- | ------ | --------- | ------- |
+| constant $    | 30y          | 100   | 68       | 40      | 50   | 40 (@66)   | 100 | Falling | Rising | $55,825   | 6.3%    |
+| constant $    | 40y          | 100   | 78       | 50      | 60   | 50 (@69)   | 80  | Falling | Rising | $50,804   | 11.8%   |
+| constant $    | 50y          | 100   | 84       | 60      | 70   | 70 (@65)   | 40  | Falling | Rising | $47,101   | 15.9%   |
+| semi-flex 50% | 30y          | 100   | 98       | 90      | 90   | 70 (@76)   | 100 | Flat    | Flat   | $69,470   | 1.5%    |
+| semi-flex 50% | 40y          | 100   | 94       | 80      | 80   | 70 (@69)   | 100 | Falling | Flat   | $65,340   | 4.0%    |
+| semi-flex 50% | 50y          | 100   | 94       | 70      | 80   | 70 (@67)   | 50  | Falling | Flat   | $60,516   | 7.8%    |
+| flexible 100% | 30y          | 100   | 99       | 90      | 90   | 80 (@69)   | 0   | Flat    | Flat   | $68,459   | 0.0%    |
+| flexible 100% | 40y          | 100   | 99       | 90      | 90   | 90 (@65)   | 0   | Flat    | Flat   | $66,123   | 0.0%    |
+| flexible 100% | 50y          | 100   | 99       | 90      | 90   | 90 (@65)   | 0   | Flat    | Flat   | $64,139   | 0.0%    |
 
 Figures: `optimal_glidepath_by_spending.png` (the three full age→equity curves overlaid) and
 `retire_equity_vs_horizon.png` (the constant-$ tent as the horizon grows).
@@ -182,17 +182,17 @@ Figures: `optimal_glidepath_by_spending.png` (the three full age→equity curves
 
 γ = 4, 30y retirement. Same columns.
 
-| Spending      | Accum. years | start | acc. avg | pre-ret | @ret | tent (age) | end |  BEFORE  | AFTER  | CE income | Deplete |
-| ------------- | ------------ | ----- | -------- | ------- | ---- | ---------- | --- | -------- | ------ | --------- | ------- |
-| constant $    | 20y          | 100   | 88       | 80      | 70   | 70 (@55)   | 90  | Falling  | Rising | $43,565   | 25.9%   |
-| constant $    | 30y          | 100   | 68       | 40      | 50   | 40 (@66)   | 100 | Falling  | Rising | $55,825   | 6.3%    |
-| constant $    | 40y          | 70    | 55       | 50      | 50   | 30 (@76)   | 60  | Falling  | Flat   | $59,407   | 1.1%    |
-| semi-flex 50% | 20y          | 100   | 92       | 80      | 70   | 70 (@55)   | 100 | Falling  | Rising | $53,812   | 7.3%    |
-| semi-flex 50% | 30y          | 100   | 98       | 90      | 90   | 70 (@76)   | 100 | Flat     | Flat   | $69,470   | 1.5%    |
-| semi-flex 50% | 40y          | 100   | 98       | 90      | 90   | 80 (@76)   | 40  | Flat     | Flat   | $86,831   | 0.3%    |
-| flexible 100% | 20y          | 100   | 100      | 100     | 90   | 90 (@55)   | 0   | Flat     | Flat   | $52,027   | 0.0%    |
-| flexible 100% | 30y          | 100   | 99       | 90      | 90   | 80 (@69)   | 0   | Flat     | Flat   | $68,459   | 0.0%    |
-| flexible 100% | 40y          | 100   | 96       | 90      | 90   | 80 (@76)   | 0   | Flat     | Flat   | $88,785   | 0.0%    |
+| Spending      | Accum. years | start | acc. avg | pre-ret | @ret | tent (age) | end | BEFORE  | AFTER  | CE income | Deplete |
+| ------------- | ------------ | ----- | -------- | ------- | ---- | ---------- | --- | ------- | ------ | --------- | ------- |
+| constant $    | 20y          | 100   | 88       | 80      | 70   | 70 (@55)   | 90  | Falling | Rising | $43,565   | 25.9%   |
+| constant $    | 30y          | 100   | 68       | 40      | 50   | 40 (@66)   | 100 | Falling | Rising | $55,825   | 6.3%    |
+| constant $    | 40y          | 70    | 55       | 50      | 50   | 30 (@76)   | 60  | Falling | Flat   | $59,407   | 1.1%    |
+| semi-flex 50% | 20y          | 100   | 92       | 80      | 70   | 70 (@55)   | 100 | Falling | Rising | $53,812   | 7.3%    |
+| semi-flex 50% | 30y          | 100   | 98       | 90      | 90   | 70 (@76)   | 100 | Flat    | Flat   | $69,470   | 1.5%    |
+| semi-flex 50% | 40y          | 100   | 98       | 90      | 90   | 80 (@76)   | 40  | Flat    | Flat   | $86,831   | 0.3%    |
+| flexible 100% | 20y          | 100   | 100      | 100     | 90   | 90 (@55)   | 0   | Flat    | Flat   | $52,027   | 0.0%    |
+| flexible 100% | 30y          | 100   | 99       | 90      | 90   | 80 (@69)   | 0   | Flat    | Flat   | $68,459   | 0.0%    |
+| flexible 100% | 40y          | 100   | 96       | 90      | 90   | 80 (@76)   | 0   | Flat    | Flat   | $88,785   | 0.0%    |
 
 Longer accumulation lets a constant-$ saver derisk _earlier and deeper_ (more time for a smaller,
 safer pile to still clear the floor → lower depletion: 26% → 1%). Flexible savers stay ~100%
@@ -245,11 +245,11 @@ Two readings, both important:
 
 ## 3. Does this validate or reject ACO and ERN?
 
-| Claim                                                    | Verdict under our iid model                                                                                                                                                                                                                                                                                                                              |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ACO:** ~100% equity, flat across life                  | **Validated — conditional on flexible spending (or a bequest motive).** When income moves with the market, flat ~100% is optimal here too, even on our smaller ~3.3pp premium. With _rigid_ spending and _no_ bequest it is **not** optimal: a ~60–80% level with a derisking tent into retirement beats flat 100% by $650–$2,000/yr.                       |
+| Claim                                                    | Verdict under our iid model                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ACO:** ~100% equity, flat across life                  | **Validated — conditional on flexible spending (or a bequest motive).** When income moves with the market, flat ~100% is optimal here too, even on our smaller ~3.3pp premium. With _rigid_ spending and _no_ bequest it is **not** optimal: a ~60–80% level with a derisking tent into retirement beats flat 100% by $650–$2,000/yr.                                                             |
 | **ERN / Kitces–Pfau:** rising equity glide in retirement | **Validated as a shape, for constant-$ spending — and shown to be sequence-risk, not valuation.** The derisk-then-rise glide emerges under pure iid, so it needs no CAPE>20. _But_ ERN's specific claim — that the glide _raises the SWR_ — does **not** reproduce (§2a): under iid it only ties the best flat weight. That boost is the valuation-conditional slice an iid model cannot contain. |
-| Both: beat the conventional **declining** (TDF) glide    | **Direction agreed, magnitude tiny.** A monotone-declining retirement glide is dominated in every cell — but the glide _shape_ is worth ≤ ~0.5% of CE. The spending rule and the equity _level_ dwarf it.                                                                                                                                                  |
+| Both: beat the conventional **declining** (TDF) glide    | **Direction agreed, magnitude tiny.** A monotone-declining retirement glide is dominated in every cell — but the glide _shape_ is worth ≤ ~0.5% of CE. The spending rule and the equity _level_ dwarf it.                                                                                                                                                                                         |
 
 ### 3a. Reconciling our constant-$ profile with ACO's Figure 3
 
@@ -311,12 +311,12 @@ three spending rules** — a 3×3 matrix, holding every other input at its defau
 [`analysis/glidepath_figures/`](../analysis/glidepath_figures/). What each lever does — and how the
 effect itself depends on the spending rule:
 
-| Lever                 | Effect on the optimal glide (spending-dependent)                                                                                                                                                  |
+| Lever                 | Effect on the optimal glide (spending-dependent)                                                                                                                                                 |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Spending** (`flex`) | rigid → deep retirement tent; flexible → flat ~100% (`glide_by_spending.png`).                                                                                                                     |
-| **Pension** (floor)   | a bigger guaranteed floor lets the portfolio derisk → **deeper, lower tent**; a 0% pension makes a rigid plan "go for broke" near 100% (it can only be saved by growth). The floor is your bond.   |
-| **Bequest** (motive)  | **constant-$**: lifts equity toward flat-high (upside stops being wasted → ACO). **Flexible**: ≈ no effect (already ~100%). **Semi-flex**: instead derisks mid-retirement to protect the estate.   |
-| **Risk aversion** (γ) | higher γ → lower equity / deeper tent — but mostly under **flexible/semi-flex** spending; the **constant-$ shape is ~γ-invariant** (its tent is driven by the rigid floor, not by taste).            |
+| **Spending** (`flex`) | rigid → deep retirement tent; flexible → flat ~100% (`glide_by_spending.png`).                                                                                                                   |
+| **Pension** (floor)   | a bigger guaranteed floor lets the portfolio derisk → **deeper, lower tent**; a 0% pension makes a rigid plan "go for broke" near 100% (it can only be saved by growth). The floor is your bond. |
+| **Bequest** (motive)  | **constant-$**: lifts equity toward flat-high (upside stops being wasted → ACO). **Flexible**: ≈ no effect (already ~100%). **Semi-flex**: instead derisks mid-retirement to protect the estate. |
+| **Risk aversion** (γ) | higher γ → lower equity / deeper tent — but mostly under **flexible/semi-flex** spending; the **constant-$ shape is ~γ-invariant** (its tent is driven by the rigid floor, not by taste).        |
 
 The pension and bequest panels are the concrete, dial-able form of the §3a reconciliation: for
 constant-$ they move the path between our "derisk" result and ACO's "flat ~100%."
