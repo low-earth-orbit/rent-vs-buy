@@ -1,7 +1,7 @@
 import { Anchor, Group, NumberInput, Stack, Text } from "@mantine/core";
 import { IconArrowBackUp, IconPlusMinus } from "@tabler/icons-react";
 import FieldLabel from "./FieldLabel";
-import type { FieldConstraint, FieldValue } from "../types";
+import type { FieldConstraint, FieldValue } from "@/types";
 
 const fmt = (n: FieldValue) => String(Number(Number(n).toFixed(2)));
 

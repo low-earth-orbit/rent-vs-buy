@@ -13,10 +13,10 @@ import {
 } from "@mantine/core";
 import { IconPlus, IconX, IconBulb } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
-import UserInputFormItem from "./UserInputFormItem";
-import UserInputRangeItem from "./UserInputRangeItem";
-import CurrencyPercentItem from "./CurrencyPercentItem";
-import { FIELD_CONSTRAINTS } from "../utils/validation";
+import UserInputFormItem from "@/components/shared/UserInputFormItem";
+import UserInputRangeItem from "@/components/shared/UserInputRangeItem";
+import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
+import { FIELD_CONSTRAINTS } from "@/utils/validation";
 import type {
   FieldErrors,
   FieldValue,
@@ -24,7 +24,7 @@ import type {
   SigmaKey,
   UserInput,
   UserInputKey,
-} from "../types";
+} from "@/types";
 import { formatCAD, formatPercentage } from "@/utils/format";
 import {
   calculateMonthlyMortgagePayment,
@@ -289,7 +289,7 @@ export default function UserInputForm({
                 helperText="Current annual property tax. Switch between dollar amount and rate (% of today's home value). Typical range: 0.5–1.5% depending on municipality."
                 unitAriaLabel="Property Tax input unit"
                 rate={userInput.propertyTaxRate}
-                homePrice={userInput.initialHomePrice}
+                percentBase={userInput.initialHomePrice}
                 onChange={bind("propertyTaxRate")}
                 error={errors.propertyTaxRate}
                 defaultUnit="$"
@@ -301,7 +301,7 @@ export default function UserInputForm({
                 helperText="Annual repairs and insurance. Toggle % of today's home price or $/yr. Excludes condo fees. Typically 0.5–1% for condos and 1–2% for detached homes."
                 unitAriaLabel="Maintenance and Insurance input unit"
                 rate={userInput.maintPct}
-                homePrice={userInput.initialHomePrice}
+                percentBase={userInput.initialHomePrice}
                 onChange={bind("maintPct")}
                 error={errors.maintPct}
                 defaultUnit="%"

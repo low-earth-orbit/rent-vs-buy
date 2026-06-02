@@ -1,16 +1,22 @@
-# rent-vs-buy
+# personal-finance
 
-A simple and sensible calculator for comparing renting vs owning a home.
+A small collection of free, sensible personal finance calculators for Canadians.
 
-Latest deployed version: [Click Me](https://low-earth-orbit.github.io/rent-vs-buy/)
+Latest deployed version: [Click Me](https://low-earth-orbit.github.io/personal-finance/)
+
+## Tools
+
+| Tool                                                    | Route          | Status |
+| ------------------------------------------------------- | -------------- | ------ |
+| **Rent vs Buy** — compare renting vs owning a home      | `/rent-vs-buy` | Live   |
+| **When can I retire?** — quick retirement reality check | `/retirement`  | Live   |
+
+The site is a single statically-exported Next.js app: a hub landing page at `/`
+links to each tool, which lives at its own route.
 
 ## Disclaimer
 
 An educational tool, **not financial advice**. Results are estimates from your assumptions, not predictions. Canada-specific and provided as-is — consult a professional before acting.
-
-## How It Works
-
-This calculator compares the financial outcomes of renting versus owning a home. Enter your assumptions, and the app generates a year-by-year net worth comparison. The underlying calculation uses a cash-flow method, assuming both the renter and the owner spend the same amount of money in each scenario — any savings the renter has over the owner's costs are invested in a portfolio.
 
 ## Development
 
@@ -26,3 +32,19 @@ npm run typecheck  # tsc --noEmit
 npm test           # Vitest unit + component tests
 npm run test:e2e   # Playwright end-to-end tests
 ```
+
+## Layout
+
+```
+src/
+  app/
+    page.tsx              # hub landing page (lists tools)
+    rent-vs-buy/page.tsx  # rent-vs-buy tool route
+  components/
+    shared/               # reusable chrome + form primitives (Header, Footer, inputs)
+    rent-vs-buy/          # rent-vs-buy-specific components
+  utils/                  # math, formatting, Monte Carlo (shared) + tool-specific logic
+  types.ts                # shared domain types
+```
+
+Cross-folder imports use the `@/` path alias (`@/* → ./src/*`).

@@ -26,9 +26,8 @@ const DisclaimerModal = ({ opened, onAccept }: DisclaimerModalProps) => {
     >
       <Stack gap="md">
         <Text size="sm">
-          An educational tool, not financial advice. Results are estimates from
-          your assumptions, not predictions. Canada-specific and provided as-is
-          — consult a professional before acting.
+          Not financial advice. Results are estimates from your assumptions, not
+          predictions. Canada-specific and provided as-is.
         </Text>
         <Group justify="flex-end" mt="xs">
           <Button variant="default" onClick={handleLeave}>

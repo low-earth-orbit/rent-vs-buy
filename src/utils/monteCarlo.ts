@@ -19,13 +19,19 @@ function percentile(sorted: number[], p: number): number {
 const MORTGAGE_TERM_YEARS = 5;
 export const SIMULATION_HORIZON_YEARS = 50;
 
+// Annual return volatility derived from the expected return: a higher expected
+// return implies more equity exposure, which implies more year-to-year risk.
+// Modelled as a exponential function.
+export function investmentAnnualVolPct(nominalReturnPct: number): number {
+  return 1.92 * Math.exp(0.271 * nominalReturnPct);
+}
+
 // Realized year-to-year volatility of each asset class — empirical properties
 // of the world, not user beliefs. User-facing sigmas in presets.js capture
 // uncertainty about the long-run mean; these capture noise around that mean.
 const ANNUAL_VOL = {
   inflation: 1.0, // hidden common factor σ (couples housing/rent/cost/rate)
   homePriceIdio: 6.0, // idiosyncratic real housing σ
-  investment: 12.0, // investment return lognormal σ (annual)
 };
 
 // Loadings of the hidden inflation factor on observable variables.
@@ -107,12 +113,16 @@ function drawPath(scenario: Scenario, horizon: number): ScenarioPath {
       INFLATION_BETA.homePrice * inflShock +
       normalRandom() * ANNUAL_VOL.homePriceIdio;
 
-    // Lognormal draw preserves the scenario arithmetic mean.
+    // Lognormal draw preserves the scenario arithmetic mean; the annual shock is
+    // iid (drawn fresh each year, no serial correlation).
     const muArith = scenario.investmentReturnMean / 100;
-    const sigma = ANNUAL_VOL.investment / 100;
-    const logMean = Math.log(1 + muArith) - 0.5 * sigma * sigma;
+    const investmentSigma =
+      investmentAnnualVolPct(scenario.investmentReturnMean) / 100;
+    const logMean =
+      Math.log(1 + muArith) - 0.5 * investmentSigma * investmentSigma;
+
     const investmentReturn =
-      (Math.exp(logMean + normalRandom() * sigma) - 1) * 100;
+      (Math.exp(logMean + normalRandom() * investmentSigma) - 1) * 100;
 
     const rentIncrease =
       scenario.rentIncreaseMean + INFLATION_BETA.rent * inflShock;

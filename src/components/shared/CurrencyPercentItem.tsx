@@ -7,26 +7,32 @@ import {
   Stack,
 } from "@mantine/core";
 import FieldLabel from "./FieldLabel";
-import type { FieldValue } from "../types";
+import type { FieldValue } from "@/types";
 
 interface CurrencyPercentItemProps {
   id: string;
   label: string;
   helperText: string;
   unitAriaLabel: string;
-  /** Stored value, as a percentage of today's home price. */
+  /** Stored value, as a percentage of `percentBase`. */
   rate: FieldValue;
-  homePrice: number;
+  /** The amount the percentage is taken of (e.g. home price, annual income). */
+  percentBase: number;
   /** Called with the new value, always normalized back to a percentage. */
   onChange: (rate: FieldValue) => void;
   error?: string;
   defaultUnit?: "$" | "%";
+  /** Suffix shown in dollar mode. Defaults to " /yr". */
+  dollarSuffix?: string;
+  amountStep?: number;
+  percentStep?: number;
 }
 
 /**
- * A recurring-cost input that toggles between a dollar amount (per year) and a
- * percentage of today's home price. Used for property tax and maintenance,
- * which share identical $/% conversion logic.
+ * An input that toggles between a dollar amount and a percentage of some base
+ * amount (`percentBase`), storing the value canonically as a percentage. Used
+ * for property tax / maintenance (% of home price) and retirement income
+ * (% of annual income), which share identical $/% conversion logic.
  */
 export default function CurrencyPercentItem({
   id,
@@ -34,10 +40,13 @@ export default function CurrencyPercentItem({
   helperText,
   unitAriaLabel,
   rate,
-  homePrice,
+  percentBase,
   onChange,
   error,
   defaultUnit = "$",
+  dollarSuffix = " /yr",
+  amountStep,
+  percentStep,
 }: CurrencyPercentItemProps) {
   const [unit, setUnit] = useState<string>(defaultUnit);
 
@@ -46,8 +55,8 @@ export default function CurrencyPercentItem({
     unit === "$"
       ? rateIsEmpty
         ? ""
-        : homePrice > 0
-          ? Math.round((+rate / 100) * homePrice)
+        : percentBase > 0
+          ? Math.round((+rate / 100) * percentBase)
           : 0
       : rate;
 
@@ -60,10 +69,10 @@ export default function CurrencyPercentItem({
       onChange(next);
       return;
     }
-    if (!homePrice || homePrice <= 0) return;
+    if (!percentBase || percentBase <= 0) return;
     // 4 dp avoids floating-point noise like 0.8500000000000001 while
-    // preserving $1/yr precision at a $1M home.
-    const pct = (+next / homePrice) * 100;
+    // preserving $1/yr precision at a $1M base.
+    const pct = (+next / percentBase) * 100;
     onChange(Math.round(pct * 10000) / 10000);
   };
 
@@ -90,10 +99,10 @@ export default function CurrencyPercentItem({
         onChange={handleChange}
         error={error}
         prefix={unit === "$" ? "$" : undefined}
-        suffix={unit === "$" ? " /yr" : "%"}
+        suffix={unit === "$" ? dollarSuffix : "%"}
         thousandSeparator={unit === "$" ? "," : undefined}
         min={0}
-        step={unit === "$" ? 100 : 0.1}
+        step={unit === "$" ? amountStep || 100 : percentStep || 0.1}
         allowNegative={false}
         clampBehavior="none"
       />

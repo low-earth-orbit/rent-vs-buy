@@ -13,9 +13,12 @@ const lato = Lato({
 });
 
 export const metadata: Metadata = {
-  title: "Rent vs Buy",
+  title: {
+    default: "Personal Finance",
+    template: "%s",
+  },
   description:
-    "A simple and sensible calculator for comparing renting vs owning a home.",
+    "Free, simple personal finance calculators for Canadians — compare renting vs buying, plan for retirement, and more.",
 };
 
 export const viewport: Viewport = {
@@ -24,7 +27,7 @@ export const viewport: Viewport = {
 };
 
 const FAVICON =
-  'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 100 100"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="90">🏠</text></svg>';
+  'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 100 100"><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" font-size="90">🤑</text></svg>';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
@@ -32,7 +35,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <ColorSchemeScript
           defaultColorScheme="auto"
-          localStorageKey="rent-vs-buy-color-scheme"
+          localStorageKey="personal-finance-color-scheme"
         />
         <link rel="icon" type="image/svg+xml" href={FAVICON} />
       </head>

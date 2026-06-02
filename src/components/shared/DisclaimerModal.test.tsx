@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { renderWithMantine, screen } from "../test-utils";
+import { renderWithMantine, screen } from "@/test-utils";
 import userEvent from "@testing-library/user-event";
 import DisclaimerModal from "./DisclaimerModal";
 
@@ -7,9 +7,7 @@ describe("DisclaimerModal", () => {
   it("shows the disclaimer body when opened", () => {
     renderWithMantine(<DisclaimerModal opened onAccept={() => {}} />);
 
-    expect(
-      screen.getByText(/educational tool, not financial advice/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/not financial advice/i)).toBeInTheDocument();
   });
 
   it("calls onAccept when the acknowledge button is clicked", async () => {

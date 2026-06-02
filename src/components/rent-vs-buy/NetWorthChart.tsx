@@ -16,8 +16,7 @@ import {
   IconChevronDown,
   IconChevronUp,
   IconDownload,
-  IconTrophy,
-  IconScale,
+  IconHeart,
 } from "@tabler/icons-react";
 import { useDebouncedValue } from "@mantine/hooks";
 import {
@@ -32,13 +31,13 @@ import {
   LabelList,
 } from "recharts";
 import type { ReactElement } from "react";
-import { formatCAD, formatCADCompact } from "../utils/format";
+import { formatCAD, formatCADCompact } from "@/utils/format";
 import type {
   MonteCarloResponse,
   MonteCarloYear,
   UserInput,
   UserInputKey,
-} from "../types";
+} from "@/types";
 
 const NUM_SIMULATIONS = 1000;
 
@@ -167,7 +166,7 @@ function Summary({
 
   return (
     <Alert
-      icon={winnerPct < 60 ? <IconScale size={16} /> : <IconTrophy size={16} />}
+      icon={winnerPct >= 60 && <IconHeart size={16} />}
       color={color}
       title={title}
       radius="md"
@@ -186,7 +185,7 @@ export default function NetWorthChart({ userInput }: { userInput: UserInput }) {
 
   useEffect(() => {
     workerRef.current = new Worker(
-      new URL("../workers/monteCarloWorker.ts", import.meta.url),
+      new URL("../../workers/monteCarloWorker.ts", import.meta.url),
     );
     workerRef.current.onmessage = (event: MessageEvent<MonteCarloResponse>) => {
       const { requestId, result } = event.data;
@@ -323,7 +322,11 @@ export default function NetWorthChart({ userInput }: { userInput: UserInput }) {
           >
             <XAxis
               dataKey="year"
-              label={{ value: "Year", position: "insideBottom", offset: -10 }}
+              label={{
+                value: "Year",
+                position: "bottom",
+                fontSize: 12,
+              }}
               tick={{ fontSize: 12 }}
             />
             <YAxis
