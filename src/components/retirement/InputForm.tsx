@@ -239,7 +239,7 @@ export default function InputForm({
                 are used, no gradual transition in-between.
               </Text>
               <SimpleGrid
-                cols={{ base: 1, xs: 3 }}
+                cols={{ base: 2, xs: 3 }}
                 spacing="xs"
                 role="group"
                 aria-label="Portfolio return presets"
