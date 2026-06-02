@@ -74,12 +74,13 @@ export default function InputForm({
   return (
     <>
       <Button
-        variant="subtle"
-        size="xs"
+        variant="transparent"
         color="red"
         leftSection={<IconRotate size={14} />}
         onClick={onReset}
-        my="md"
+        size="xs"
+        mt="md"
+        mb="2"
       >
         Reset to defaults
       </Button>
@@ -171,7 +172,7 @@ export default function InputForm({
                 <UserInputFormItem
                   {...num("planningAge")}
                   label="Plan Until"
-                  labelHelperText="The age your savings should last to (life expectancy). 95 is a common planning horizon."
+                  labelHelperText="The age your savings should last to (life expectancy). 95 is a common planning horizon, longer than the average ~85 to account for longevity risk."
                   suffix=" yrs"
                 />
               </SimpleGrid>
@@ -391,6 +392,23 @@ export default function InputForm({
               label="Inflation"
               suffix="%"
             />
+            {(input.inflationRate > 2.5 || input.inflationRate < 2) && (
+              <Group gap={6} wrap="nowrap" align="flex-start">
+                <IconAlertTriangle
+                  size={14}
+                  color="var(--mantine-color-yellow-7)"
+                  style={{ marginTop: 2, flexShrink: 0 }}
+                />
+                <Text size="xs" c="yellow.8">
+                  Most planners use 2–2.5% inflation assumptions.
+                  {input.inflationRate > 2.5
+                    ? " Higher rates can make your plan look more conservative "
+                    : " Lower rates can make your plan look more feasible "}
+                  — just make sure you have a good reason for using a different
+                  figure.
+                </Text>
+              </Group>
+            )}
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion>

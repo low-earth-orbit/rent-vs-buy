@@ -62,7 +62,7 @@ export default function Main() {
   return (
     <Container size="xl" pb="xl">
       <Grid gap="xl">
-        <Grid.Col span={{ base: 12, md: 6 }} order={{ base: 2, md: 1 }}>
+        <Grid.Col span={{ base: 12, lg: 6 }} order={{ base: 2, md: 1 }}>
           <InputForm
             input={input}
             errors={errors}
@@ -70,7 +70,7 @@ export default function Main() {
             onReset={handleReset}
           />
         </Grid.Col>
-        <Grid.Col span={{ base: 12, md: 6 }} order={{ base: 1, md: 2 }}>
+        <Grid.Col span={{ base: 12, lg: 6 }} order={{ base: 1, md: 2 }}>
           <Result input={input} result={result} planSWR={planSWR} />
         </Grid.Col>
       </Grid>
