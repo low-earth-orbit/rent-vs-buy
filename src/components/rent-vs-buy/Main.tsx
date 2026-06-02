@@ -2,14 +2,13 @@ import { useState } from "react";
 import { Container, Grid } from "@mantine/core";
 import Result from "./Result";
 import UserInputForm from "./UserInputForm";
-import DisclaimerModal from "./DisclaimerModal";
 import {
   DEFAULTS,
   PRESETS,
   INPUT_UNCERTAINTIES,
   getActivePreset,
-} from "../utils/presets";
-import { validateUserInput } from "../utils/validation";
+} from "@/utils/presets";
+import { validateUserInput } from "@/utils/validation";
 import {
   loadInput,
   saveInput,
@@ -23,17 +22,15 @@ import {
   saveHiddenBuiltins,
   loadActivePresetId,
   saveActivePresetId,
-  loadDisclaimerAccepted,
-  saveDisclaimerAccepted,
   clearAll,
-} from "../utils/storage";
+} from "@/utils/storage";
 import type {
   FieldValue,
   Preset,
   SigmaKey,
   UserInput,
   UserInputKey,
-} from "../types";
+} from "@/types";
 
 const PERTURBED_FIELDS: UserInputKey[] = [
   "rentIncreaseRate",
@@ -78,15 +75,8 @@ const Main = () => {
   const [activePresetId, setActivePresetIdState] = useState<string | null>(
     () => loadActivePresetId() ?? "defaults",
   );
-  const [disclaimerOpen, setDisclaimerOpen] = useState(
-    () => !loadDisclaimerAccepted(),
-  );
-  const errors = validateUserInput(userInput);
 
-  function acceptDisclaimer() {
-    saveDisclaimerAccepted();
-    setDisclaimerOpen(false);
-  }
+  const errors = validateUserInput(userInput);
 
   const visibleBuiltins = PRESETS.filter((p) => !hiddenBuiltins.includes(p.id));
   const allPresets = [...visibleBuiltins, ...customPresets];
@@ -192,7 +182,6 @@ const Main = () => {
 
   return (
     <Container size="xl" py="md">
-      <DisclaimerModal opened={disclaimerOpen} onAccept={acceptDisclaimer} />
       <Grid gap="xl">
         <Grid.Col span={{ base: 12, lg: 6 }}>
           <UserInputForm

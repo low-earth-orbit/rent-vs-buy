@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-// GitHub Pages serves the app under /rent-vs-buy; local dev and other builds run at the root.
+// GitHub Pages serves the app under /personal-finance; local dev and other builds run at the root.
 // The deploy workflow sets GITHUB_PAGES=true so only that build gets the prefix.
 const isGithubPages =
   process.env.NODE_ENV === "production" && process.env.GITHUB_PAGES === "true";
@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   reactCompiler: true,
   ...(isGithubPages && {
-    basePath: "/rent-vs-buy",
-    assetPrefix: "/rent-vs-buy/",
+    basePath: "/personal-finance",
+    assetPrefix: "/personal-finance/",
   }),
 };
 

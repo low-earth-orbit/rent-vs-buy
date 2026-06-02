@@ -1,7 +1,7 @@
 import { NumberInput, Text, Stack } from "@mantine/core";
 import type { ReactNode } from "react";
 import FieldLabel from "./FieldLabel";
-import type { FieldValue } from "../types";
+import type { FieldValue } from "@/types";
 
 interface UserInputFormItemProps {
   id: string;

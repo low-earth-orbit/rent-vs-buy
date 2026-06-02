@@ -1,5 +1,8 @@
+"use client";
+
 import {
   ActionIcon,
+  Anchor,
   Box,
   Container,
   Group,
@@ -8,9 +11,17 @@ import {
   Title,
   useMantineColorScheme,
 } from "@mantine/core";
-import { IconSun, IconMoon } from "@tabler/icons-react";
+import { IconSun, IconMoon, IconArrowLeft } from "@tabler/icons-react";
+import Link from "next/link";
 
-const Header = () => {
+type HeaderProps = {
+  title: string;
+  subtitle?: string;
+  /** Show a "← All tools" link back to the hub landing page. */
+  showHomeLink?: boolean;
+};
+
+const Header = ({ title, subtitle, showHomeLink = false }: HeaderProps) => {
   const { colorScheme, setColorScheme } = useMantineColorScheme();
 
   const toggle = () =>
@@ -20,11 +31,22 @@ const Header = () => {
     <Container component="header" size="xl" pt="xl" pb="xs">
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Stack gap={4}>
-          <Title order={1}>Is it better to rent or buy?</Title>
-          <Text c="dimmed">
-            A simple and sensible calculator for comparing renting vs owning a
-            home.
-          </Text>
+          {showHomeLink && (
+            <Anchor
+              component={Link}
+              href="/"
+              size="sm"
+              c="dimmed"
+              underline="hover"
+            >
+              <Group gap={4} wrap="nowrap" component="span">
+                <IconArrowLeft size={14} />
+                All tools
+              </Group>
+            </Anchor>
+          )}
+          <Title order={1}>{title}</Title>
+          {subtitle && <Text c="dimmed">{subtitle}</Text>}
         </Stack>
         <ActionIcon
           variant="default"

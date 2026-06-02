@@ -36,8 +36,8 @@ export const FIELD_CONSTRAINTS: Record<UserInputKey, FieldConstraint> = {
   amortization: { min: 5, max: 25, step: 5 },
   holdingPeriod: { min: 1, max: 50, step: 1 },
   investmentReturnRate: {
-    min: -10,
-    max: 20,
+    min: 0,
+    max: 10,
     step: 0.5,
     allowNegative: true,
   },

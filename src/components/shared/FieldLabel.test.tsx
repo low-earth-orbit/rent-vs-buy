@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderWithMantine, screen } from "../test-utils";
+import { renderWithMantine, screen } from "@/test-utils";
 import FieldLabel from "./FieldLabel";
 
 describe("FieldLabel", () => {
