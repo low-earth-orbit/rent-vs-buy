@@ -80,7 +80,7 @@ export default function InputForm({
         onClick={onReset}
         size="xs"
         mt="md"
-        mb="2"
+        mb="6"
       >
         Reset to defaults
       </Button>
