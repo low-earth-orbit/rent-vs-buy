@@ -347,7 +347,7 @@ export function recommendGlidePath(
 ): GlidePathResult {
   const accumYears = Math.max(
     1,
-    Math.round(input.retirementAge - input.currentAge),
+    Math.round(input.retirementAge - input.startAge),
   );
   const retireYears = Math.max(
     1,
@@ -407,7 +407,7 @@ export function recommendGlidePath(
     flex: input.flexibility,
     wr: input.withdrawalRate / 100,
     contrib: input.annualContribution,
-    startSavings: input.currentSavings,
+    startSavings: input.startSavings,
     isLog: Math.abs(gamma - 1) < 1e-9,
     oneMinusGamma: 1 - gamma,
     invOneMinusGamma: 1 / (1 - gamma),
@@ -505,7 +505,7 @@ export function recommendGlidePath(
       step: b,
       yearStart,
       yearEnd,
-      ageStart: input.currentAge + yearStart,
+      ageStart: input.startAge + yearStart,
       phase: yearStart < accumYears ? "accum" : "retire",
       equityPct: Math.round(grid[blockIdx[b]] * 1000) / 10,
     });
@@ -527,7 +527,7 @@ export function recommendGlidePath(
     accumDir,
     retireDir,
     tentPct: retireYears ? Math.round(ret[tentI] * 1000) / 10 : null,
-    tentAge: retireYears ? input.currentAge + accumYears + tentI : null,
+    tentAge: retireYears ? input.startAge + accumYears + tentI : null,
     ceIncome: Math.round(st.ceIncome),
     depletion: Math.round(st.depletion * 1e4) / 1e4,
     incomeCv: Math.round(st.incomeCv * 1e4) / 1e4,

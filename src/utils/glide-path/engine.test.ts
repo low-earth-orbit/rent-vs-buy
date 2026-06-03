@@ -15,10 +15,10 @@ describe("recommendGlidePath", () => {
   it("returns a coherent schedule covering the full horizon", () => {
     const input = base();
     const r = recommendGlidePath(input);
-    const nYears = input.planningAge - input.currentAge;
+    const nYears = input.planningAge - input.startAge;
 
     expect(r.equityByYear).toHaveLength(nYears);
-    expect(r.schedule[0].ageStart).toBe(input.currentAge);
+    expect(r.schedule[0].ageStart).toBe(input.startAge);
     expect(r.schedule.at(-1)!.yearEnd).toBe(nYears - 1);
     // Phases labelled by the block's first year.
     expect(r.schedule[0].phase).toBe("accum");

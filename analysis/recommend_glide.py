@@ -110,7 +110,7 @@ def main(argv=None):
                     help="target estate in YEARS of retirement spending (calibrated; overrides --bequest)")
     ap.add_argument("--start-age", type=int, default=None, help="label the schedule by age instead of year")
     # household scale (real dollars)
-    ap.add_argument("--savings", type=float, default=200_000.0, help="current savings ($)")
+    ap.add_argument("--savings", type=float, default=200_000.0, help="Start savings ($)")
     ap.add_argument("--contrib", type=float, default=20_000.0, help="annual contribution ($/yr, accumulation)")
     ap.add_argument("--target-income", type=float, default=60_000.0, help="target real retirement income ($/yr)")
     ap.add_argument("--pre-income", type=float, default=100_000.0,

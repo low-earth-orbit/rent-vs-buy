@@ -9,7 +9,7 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { IconAlertTriangle, IconRotate } from "@tabler/icons-react";
+import { IconAlertTriangle } from "@tabler/icons-react";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
 import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
 import {
@@ -24,6 +24,7 @@ import type {
   RetirementInputKey,
 } from "@/utils/retirement/types";
 import type { FieldValue } from "@/types";
+import FormResetButton from "../shared/FormResetButton";
 
 interface InputFormProps {
   input: RetirementInput;
@@ -73,18 +74,7 @@ export default function InputForm({
 
   return (
     <>
-      <Button
-        variant="transparent"
-        color="red"
-        leftSection={<IconRotate size={14} />}
-        onClick={onReset}
-        size="xs"
-        mt="md"
-        mb="6"
-      >
-        Reset to defaults
-      </Button>
-
+      <FormResetButton onReset={onReset} />
       <Accordion
         multiple
         defaultValue={["you", "goals", "assumptions"]}

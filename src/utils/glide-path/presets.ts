@@ -33,12 +33,12 @@ export const DEFAULT_ALLOC_CURVE: AllocAnchor[] = [
  */
 export const DEFAULTS = {
   // ── About you ─────────────────────────────────────────────
-  currentAge: 35,
+  startAge: 35,
   retirementAge: 65,
   planningAge: 95,
   /** Pre-retirement gross income — the base for the pension %. */
   preRetirementIncome: 100000,
-  currentSavings: 200000,
+  startSavings: 200000,
   annualContribution: 20000,
 
   // ── Retirement income ─────────────────────────────────────

@@ -46,9 +46,9 @@ export default function GlidePathChart({
   input: GlidePathInput;
   result: GlidePathResult;
 }) {
-  const retireAge = input.currentAge + result.params.accumYears;
+  const retireAge = input.startAge + result.params.accumYears;
   const data: ChartPoint[] = result.equityByYear.map((w, i) => {
-    const age = input.currentAge + i;
+    const age = input.startAge + i;
     return {
       age,
       equity: Math.round(w * 1000) / 10,

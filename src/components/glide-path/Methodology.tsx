@@ -44,16 +44,6 @@ export default function Methodology() {
           only a small CE margin — but the right level is decidedly not always
           100%.
         </Point>
-        <Point heading="Leverage is modest.">
-          Borrowing to hold &gt;100% equity helps only where the risk-adjusted
-          gain beats the borrowing drag — usually a small early-accumulation
-          tilt under a low γ.
-        </Point>
-        <Point heading="One γ by design.">
-          The declining glide emerges from the savings horizon, not a changing
-          risk aversion, so there is no separate accumulation γ and no γ(age)
-          gradient.
-        </Point>
         <Text size="xs" c="dimmed">
           Background:{" "}
           <Anchor

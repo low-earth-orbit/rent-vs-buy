@@ -2,6 +2,7 @@
 
 import {
   Accordion,
+  Box,
   Button,
   Group,
   SimpleGrid,
@@ -9,7 +10,6 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { IconRotate } from "@tabler/icons-react";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
 import { GAMMA_PRESETS } from "@/utils/glide-path/presets";
 import { FIELD_CONSTRAINTS } from "@/utils/glide-path/validation";
@@ -19,6 +19,7 @@ import type {
   GlidePathInputKey,
 } from "@/utils/glide-path/types";
 import type { FieldValue } from "@/types";
+import FormResetButton from "../shared/FormResetButton";
 
 interface InputFormProps {
   input: GlidePathInput;
@@ -58,16 +59,7 @@ export default function InputForm({
 
   return (
     <>
-      <Button
-        variant="subtle"
-        size="xs"
-        color="red"
-        leftSection={<IconRotate size={14} />}
-        onClick={onReset}
-        my="md"
-      >
-        Reset to defaults
-      </Button>
+      <FormResetButton onReset={onReset} />
 
       <Accordion
         multiple
@@ -75,41 +67,41 @@ export default function InputForm({
         variant="contained"
       >
         <Accordion.Item value="you">
-          <Accordion.Control>About you</Accordion.Control>
+          <Accordion.Control>About You</Accordion.Control>
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
-                {...num("currentAge")}
-                label="Current age"
+                {...num("startAge")}
+                label="Start Age"
                 suffix=" yrs"
               />
               <UserInputFormItem
                 {...num("retirementAge")}
-                label="Retirement age"
+                label="Retirement Age"
                 suffix=" yrs"
               />
               <UserInputFormItem
                 {...num("planningAge")}
-                label="Plan until age"
+                label="Plan Until Age"
                 labelHelperText="The age your money should last to (life expectancy). 95 is a common horizon."
                 suffix=" yrs"
               />
               <UserInputFormItem
+                {...num("startSavings")}
+                label="Start Savings"
+                prefix="$"
+                thousandSeparator
+              />
+              <UserInputFormItem
                 {...num("preRetirementIncome")}
-                label="Pre-retirement income"
+                label="Income"
                 labelHelperText="Gross income today — the base for the pension %."
                 prefix="$"
                 thousandSeparator
               />
               <UserInputFormItem
-                {...num("currentSavings")}
-                label="Current savings"
-                prefix="$"
-                thousandSeparator
-              />
-              <UserInputFormItem
                 {...num("annualContribution")}
-                label="Annual savings"
+                label="Annual Savings"
                 labelHelperText="Real $ added to the portfolio each year while working."
                 prefix="$"
                 thousandSeparator
@@ -119,13 +111,13 @@ export default function InputForm({
         </Accordion.Item>
 
         <Accordion.Item value="income">
-          <Accordion.Control>Retirement income</Accordion.Control>
+          <Accordion.Control>Retirement Income</Accordion.Control>
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 {...num("targetIncome")}
-                label="Target spending"
-                labelHelperText="Real annual spending you want in retirement (gross)."
+                label="Target Income"
+                labelHelperText="Gross retirement income including pensions."
                 prefix="$"
                 thousandSeparator
               />
@@ -137,7 +129,7 @@ export default function InputForm({
               />
               <UserInputFormItem
                 {...num("pensionStartAge")}
-                label="Pension start age"
+                label="Pension Start Age"
                 labelHelperText="If later than retirement, your portfolio bridges the gap until it starts."
                 suffix=" yrs"
               />
@@ -146,51 +138,52 @@ export default function InputForm({
         </Accordion.Item>
 
         <Accordion.Item value="prefs">
-          <Accordion.Control>Spending &amp; risk</Accordion.Control>
+          <Accordion.Control>Spending &amp; Risk</Accordion.Control>
           <Accordion.Panel>
             <Stack gap="lg">
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
-                  Spending flexibility
+                  Spending Flexibility
                 </Text>
                 <Text size="xs" c="dimmed">
                   0 = fixed real $ every year (rigid). 1 = fully proportional —
-                  a 20% portfolio drop means a ~20% spending cut. Flexible
-                  spending pushes the optimum toward flat, high equity.
+                  a 50% portfolio drop means a 50% spending cut.
                 </Text>
-                <Slider
-                  my="xs"
-                  value={flex}
-                  onChange={(v) => onChange("flexibility", v)}
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  marks={[
-                    { value: 0, label: "Constant $" },
-                    { value: 0.5, label: "Half" },
-                    { value: 1, label: "Flexible" },
-                  ]}
-                  label={(v) => v.toFixed(2)}
-                />
+                <Box w="85%" mx="auto">
+                  <Slider
+                    my="xs"
+                    value={flex}
+                    onChange={(v) => onChange("flexibility", v)}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    marks={[
+                      { value: 0, label: "Constant $" },
+                      { value: 0.5, label: "Half" },
+                      { value: 1, label: "Flexible" },
+                    ]}
+                    styles={{ markLabel: { fontSize: 11 } }}
+                    label={(v) => v.toFixed(2)}
+                  />
+                </Box>
               </Stack>
 
               {flex > 0 && (
                 <UserInputFormItem
                   {...num("withdrawalRate")}
-                  label="Flexible draw rate"
-                  labelHelperText="When spending flexibly, the % of the live balance drawn each year (like the 4% rule)."
+                  label="Flexible Draw Rate"
+                  labelHelperText="When spending flexibly, the % of the current portfolio balance drawn each year. This scales with portfolio performance."
                   suffix="%"
                 />
               )}
 
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
-                  Risk aversion (γ)
+                  Risk Aversion (γ)
                 </Text>
                 <Text size="xs" c="dimmed">
-                  CRRA risk aversion: 1 = log, 3 = cautious base, 8 = very
-                  cautious. One value drives the whole glide — the declining
-                  shape emerges from the savings horizon, not a changing γ.
+                  CRRA risk aversion: 1 = risk-seeker, 3 = moderate, 8 = very
+                  cautious.
                 </Text>
                 <Group gap="xs" my="xs" role="group" aria-label="Risk aversion">
                   {GAMMA_PRESETS.map((g) => (
@@ -206,23 +199,19 @@ export default function InputForm({
                     </Button>
                   ))}
                 </Group>
-                <UserInputFormItem
-                  {...num("gamma")}
-                  label={undefined}
-                  additionalText="Custom γ"
-                />
+                <UserInputFormItem {...num("gamma")} label={undefined} />
               </Stack>
 
               <UserInputFormItem
                 {...num("bequestYears")}
-                label="Estate goal"
-                labelHelperText="Target estate in YEARS of retirement spending (0 = spend it all). Calibrating a target makes the run slower."
+                label="Estate Goal"
+                labelHelperText="Target estate in YEARS of retirement spending (0 = spend it all)."
                 suffix=" yrs"
               />
               <UserInputFormItem
                 {...num("beta")}
                 label="Time-discount β"
-                labelHelperText="Patience: 0.99 = very patient, 0.97 = discounts the future more."
+                labelHelperText="Patience: 0.99 = long-horizon planner, 0.97 = standard retirement saver, 0.95 = average household, 0.90 = present-oriented."
                 step={0.005}
               />
             </Stack>
@@ -243,21 +232,16 @@ export default function InputForm({
                 <UserInputFormItem
                   {...num("borrowCost")}
                   label="Real cost of borrowing"
-                  labelHelperText="Your real (after-inflation) borrowing rate. Higher cost ⇒ less leverage used."
+                  labelHelperText="Your real (after-inflation) borrowing rate."
                   suffix="%"
                 />
               )}
-              <Text size="xs" c="dimmed">
-                The optimizer leverages only where the risk-adjusted gain beats
-                the borrowing drag — typically early in accumulation under a low
-                γ.
-              </Text>
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
 
         <Accordion.Item value="engine">
-          <Accordion.Control>Engine (for nerds)</Accordion.Control>
+          <Accordion.Control>Engine</Accordion.Control>
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem

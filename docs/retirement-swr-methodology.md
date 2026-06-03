@@ -32,7 +32,7 @@ Validation prototype: [`analysis/jst_swr_bootstrap.py`](../analysis/jst_swr_boot
 
 A two-phase, real-dollar (inflation-adjusted) Monte Carlo:
 
-- **Accumulation** (`accumulationBalances`): deterministic, grows current savings at the
+- **Accumulation** (`accumulationBalances`): deterministic, grows start savings at the
   accumulation mean real return plus annual contributions.
 - **Drawdown** (`simulate`): stochastic. Starting from the balance at a candidate retirement
   age, each year draws a real return `r = mean + deviation`, withdraws the income gap

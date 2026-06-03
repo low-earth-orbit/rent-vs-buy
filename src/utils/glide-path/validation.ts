@@ -13,7 +13,7 @@ interface Constraint {
 }
 
 export const FIELD_CONSTRAINTS: Record<GlidePathInputKey, Constraint> = {
-  currentAge: { min: 18, max: 90, step: 1, label: "Current age" },
+  startAge: { min: 18, max: 90, step: 1, label: "Start age" },
   retirementAge: { min: 30, max: 90, step: 1, label: "Retirement age" },
   planningAge: { min: 60, max: 110, step: 1, label: "Plan until age" },
   preRetirementIncome: {
@@ -22,11 +22,11 @@ export const FIELD_CONSTRAINTS: Record<GlidePathInputKey, Constraint> = {
     step: 10000,
     label: "Pre-retirement income",
   },
-  currentSavings: {
+  startSavings: {
     min: 0,
     max: 100_000_000,
     step: 10000,
-    label: "Current savings",
+    label: "Start savings",
   },
   annualContribution: {
     min: 0,
@@ -82,10 +82,10 @@ export function validateGlidePathInput(input: GlidePathInput): GlidePathErrors {
   // Cross-field: phases must have positive length.
   if (
     !errors.retirementAge &&
-    !errors.currentAge &&
-    input.retirementAge <= input.currentAge
+    !errors.startAge &&
+    input.retirementAge <= input.startAge
   ) {
-    errors.retirementAge = "Retirement age must be after your current age.";
+    errors.retirementAge = "Retirement age must be after your start age.";
   }
   if (
     !errors.planningAge &&
