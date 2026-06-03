@@ -7,7 +7,7 @@ import type {
 
 interface Constraint {
   min: number;
-  max: number;
+  max: number | undefined; // undefined means no upper limit
   step: number;
   label: string;
 }
@@ -15,7 +15,7 @@ interface Constraint {
 // Labels match the on-screen field labels so validation errors name the field
 // the user is looking at.
 export const FIELD_CONSTRAINTS: Record<RetirementInputKey, Constraint> = {
-  currentAge: { min: 18, max: 90, step: 1, label: "Current age" },
+  currentAge: { min: 18, max: 70, step: 1, label: "Current age" },
   planningAge: { min: 80, max: 110, step: 5, label: "Planning age" },
   currentSavings: {
     min: 0,
@@ -30,8 +30,13 @@ export const FIELD_CONSTRAINTS: Record<RetirementInputKey, Constraint> = {
     label: "Current annual income",
   },
   contributionPct: { min: 0, max: 100, step: 5, label: "Annual savings" },
-  targetIncomePct: { min: 1, max: 150, step: 5, label: "Target income" },
-  guaranteedIncomePct: { min: 0, max: 100, step: 5, label: "Pension amount" },
+  targetIncomePct: { min: 1, max: undefined, step: 5, label: "Target income" },
+  guaranteedIncomePct: {
+    min: 0,
+    max: undefined,
+    step: 5,
+    label: "Pension amount",
+  },
   pensionStartAge: { min: 60, max: 70, step: 5, label: "Pension start age" },
   accumReturn: { min: 0, max: 10, step: 0.1, label: "Return while working" },
   retireReturn: { min: 0, max: 10, step: 0.1, label: "Return in retirement" },
@@ -65,8 +70,16 @@ export function validateRetirementInput(
       errors[key] = `${label} is required.`;
       continue;
     }
-    if (value < min || value > max) {
-      errors[key] = `${label} must be between ${min} and ${max}.`;
+    const hasMin = min != null;
+    const hasMax = max != null;
+    if ((hasMin && value < min) || (hasMax && value > max)) {
+      if (hasMin && hasMax) {
+        errors[key] = `Must be between ${min} and ${max}`;
+      } else if (hasMin) {
+        errors[key] = `Must be at least ${min}`;
+      } else {
+        errors[key] = `Must be at most ${max}`;
+      }
     }
   }
 

@@ -44,6 +44,14 @@ const TOOLS: Tool[] = [
     href: "/retirement",
     status: "Beta",
   },
+  {
+    emoji: "🛤️",
+    title: "Glide Path Recommender",
+    description:
+      "Monte-Carlo-optimize your stock/bond mix at every age — before and after retirement — to maximize lifetime welfare. For nerds.",
+    href: "/glide-path",
+    status: "For Nerds",
+  },
 ];
 
 function ToolCardBody({ tool }: { tool: Tool }) {

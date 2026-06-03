@@ -9,6 +9,10 @@ test("hub landing page lists the available tools", async ({ page }) => {
 
   // The rent-vs-buy tool is linked from the hub.
   await expect(page.getByRole("link", { name: /rent vs buy/i })).toBeVisible();
+  // The glide-path recommender is linked too.
+  await expect(
+    page.getByRole("link", { name: /glide path recommender/i }),
+  ).toBeVisible();
 });
 
 test("loads the calculator and renders the net worth chart", async ({
@@ -41,4 +45,19 @@ test("retirement planner shows an earliest retirement age and chart", async ({
   await expect(
     page.getByRole("img", { name: /retirement portfolio projection chart/i }),
   ).toBeVisible();
+});
+
+test("glide-path recommender renders a recommended glide chart", async ({
+  page,
+}) => {
+  await page.goto("/glide-path");
+
+  await expect(
+    page.getByRole("heading", { name: "Glide Path Recommender" }),
+  ).toBeVisible();
+
+  // The chart is rendered client-side after the optimization worker responds.
+  await expect(
+    page.getByRole("img", { name: /recommended equity weight by age/i }),
+  ).toBeVisible({ timeout: 20000 });
 });

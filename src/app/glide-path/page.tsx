@@ -1,0 +1,28 @@
+import type { Metadata } from "next";
+import Header from "@/components/shared/Header";
+import Footer from "@/components/shared/Footer";
+import GlidePathApp from "@/components/glide-path/GlidePathApp";
+import Methodology from "@/components/glide-path/Methodology";
+
+export const metadata: Metadata = {
+  title: "Glide Path Recommender (For Nerds)",
+  description:
+    "Monte-Carlo-optimize the equity weight at every age — before and after retirement — to maximize lifetime welfare, with a pension bridge, bequest target, and optional leverage.",
+};
+
+export default function GlidePathPage() {
+  return (
+    <>
+      <Header
+        title="Glide Path Recommender"
+        subtitle="Monte-Carlo-optimize your stock/bond mix at every age — before and after retirement. (For nerds.)"
+        showHomeLink
+      />
+      <main>
+        <GlidePathApp />
+      </main>
+      <Methodology />
+      <Footer />
+    </>
+  );
+}
