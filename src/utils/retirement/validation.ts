@@ -16,7 +16,7 @@ interface Constraint {
 // the user is looking at.
 export const FIELD_CONSTRAINTS: Record<RetirementInputKey, Constraint> = {
   currentAge: { min: 18, max: 90, step: 1, label: "Current age" },
-  planningAge: { min: 60, max: 110, step: 5, label: "Planning age" },
+  planningAge: { min: 80, max: 110, step: 5, label: "Planning age" },
   currentSavings: {
     min: 0,
     max: 100_000_000,

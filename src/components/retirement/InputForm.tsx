@@ -271,8 +271,8 @@ export default function InputForm({
                     />
                     <Text size="xs" c="yellow.8">
                       Cutting more than 20% is a big lifestyle reduction — make
-                      sure you could really live on the reduced floor for years
-                      if markets stay weak.
+                      sure you could really live on the reduced floor for many
+                      years if markets stay weak.
                     </Text>
                   </Group>
                 )}
@@ -375,9 +375,8 @@ export default function InputForm({
                     style={{ marginTop: 2, flexShrink: 0 }}
                   />
                   <Text size="xs" c="yellow.8">
-                    Using custom return assumptions — these aren&apos;t checked
-                    with accepted planning assumptions, and optimistic figures
-                    can make any plan look feasible.
+                    Using custom return assumptions — make sure they&apos;re
+                    reasonable.
                   </Text>
                 </Group>
               )}
@@ -397,10 +396,8 @@ export default function InputForm({
                 <Text size="xs" c="yellow.8">
                   Most planners use 2–2.5% inflation assumptions.
                   {input.inflationRate > 2.5
-                    ? " Higher rates can make your plan look more conservative "
-                    : " Lower rates can make your plan look more feasible "}
-                  — just make sure you have a good reason for using a different
-                  figure.
+                    ? " Higher rates can make your plan look more conservative."
+                    : " Lower rates can make your plan look more feasible."}
                 </Text>
               </Group>
             )}

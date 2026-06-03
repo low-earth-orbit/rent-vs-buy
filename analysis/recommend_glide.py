@@ -65,11 +65,16 @@ def print_rec(rec):
     spend = {0.0: "constant $", 0.5: "semi-flex 50%", 1.0: "flexible 100%"}.get(
         p["flexibility"], f"flex {p['flexibility']:.2f}")
     by_age = "age_start" in rec["schedule"][0]
+    bridge = f" | bridge {p['pension_delay_years']}y" if p.get("pension_delay_years") else ""
     print("Recommended equity glide path")
     print(f"  {p['accum_years']}y accumulation + {p['retire_years']}y retirement | {spend} | "
-          f"pension {p['pension_level']*100:.0f}% | γ {p['gamma']:.0f} | bequest {p['bequest']:.0f} | "
+          f"pension {p['pension_level']*100:.0f}% of pre-ret income{bridge} | γ {p['gamma']:g} | "
           f"{p['interval']}y steps")
     print(_fmt(rec))
+    if rec.get("median_estate_years") is not None:
+        warn = (" (target unreachable — most the plan can leave)"
+                if rec.get("bequest_target_reached") is False else "")
+        print(f"  estate ≈ {rec['median_estate_years']} yrs of spending{warn}")
     print(f"\n  {'age' if by_age else 'year':>5}  equity%  phase")
     for e in rec["schedule"]:
         x = e["age_start"] if by_age else e["year_start"]
@@ -86,15 +91,21 @@ def main(argv=None):
     ap.add_argument("--accum", type=int, default=30, help="accumulation years")
     ap.add_argument("--retire", type=int, default=30, help="retirement (planning-horizon) years")
     ap.add_argument("--flex", type=float, default=0.0, help="spending flexibility 0..1 (0=constant $, 1=flexible)")
-    ap.add_argument("--pension", type=float, default=0.2, help="pension as a fraction of target income 0..1")
+    ap.add_argument("--pension", type=float, default=0.2, help="pension as a fraction of PRE-RETIREMENT income 0..1")
+    ap.add_argument("--pension-delay", type=int, default=0,
+                    help="years into retirement before the pension starts (a bridge; 0=at retirement)")
     ap.add_argument("--interval", type=int, default=1, help="years per glide step (1=per-age, 5=every 5y)")
-    ap.add_argument("--gamma", type=float, default=4.0, help="CRRA risk aversion (1 log, 4 base, 8 cautious)")
-    ap.add_argument("--bequest", type=float, default=0.0, help="estate motive weight (0 none, ~1-100, saturates ~100)")
+    ap.add_argument("--gamma", type=float, default=3.0, help="CRRA risk aversion (1 log, 3 base, 8 cautious)")
+    ap.add_argument("--bequest", type=float, default=0.0, help="raw estate-motive weight (advanced; prefer --bequest-years)")
+    ap.add_argument("--bequest-years", type=float, default=None,
+                    help="target estate in YEARS of retirement spending (calibrated; overrides --bequest)")
     ap.add_argument("--start-age", type=int, default=None, help="label the schedule by age instead of year")
     # household scale (real dollars)
     ap.add_argument("--savings", type=float, default=200_000.0, help="current savings ($)")
     ap.add_argument("--contrib", type=float, default=20_000.0, help="annual contribution ($/yr, accumulation)")
     ap.add_argument("--target-income", type=float, default=60_000.0, help="target real retirement income ($/yr)")
+    ap.add_argument("--pre-income", type=float, default=100_000.0,
+                    help="pre-retirement gross income ($/yr); the base for --pension")
     ap.add_argument("--withdrawal-rate", type=float, default=0.04, help="rate for the flexible spending part")
     ap.add_argument("--inflation", type=float, default=2.1, help="inflation %% used to deflate the curve to real")
     # capital-market curve + outputs
@@ -113,7 +124,9 @@ def main(argv=None):
     curve = load_curve(args.curve) if args.curve else PWL_CURVE
     rec = recommend_glide_path(
         args.accum, args.retire, flexibility=args.flex, pension_level=args.pension,
-        alloc_curve=curve, interval=args.interval, gamma=args.gamma, bequest=args.bequest,
+        alloc_curve=curve, interval=args.interval, gamma=args.gamma,
+        bequest=args.bequest, bequest_years=args.bequest_years,
+        pension_delay_years=args.pension_delay, pre_retirement_income=args.pre_income,
         start_age=args.start_age, current_savings=args.savings, annual_contribution=args.contrib,
         target_income=args.target_income, withdrawal_rate=args.withdrawal_rate, inflation=args.inflation,
     )
