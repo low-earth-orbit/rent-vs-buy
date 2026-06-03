@@ -42,15 +42,14 @@ const TOOLS: Tool[] = [
     description:
       "A quick reality check on the earliest age you could retire, based on your savings and target income.",
     href: "/retirement",
-    status: "Beta",
+    status: "New",
   },
   {
     emoji: "🛤️",
     title: "Glide Path Recommender",
     description:
-      "Monte-Carlo-optimize your stock/bond mix at every age — before and after retirement — to maximize lifetime welfare. For nerds.",
-    href: "/glide-path",
-    status: "For Nerds",
+      "Monte-Carlo-optimize your stock/bond mix — before and after retirement — to maximize lifetime welfare. FOR NERDS.",
+    // href: "/glide-path",
   },
 ];
 
@@ -60,16 +59,14 @@ function ToolCardBody({ tool }: { tool: Tool }) {
     <Stack gap="xs">
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Text fz={32}>{tool.emoji}</Text>
-        {!available && (
-          <Badge variant="light" color="gray">
-            Coming soon
-          </Badge>
-        )}
-        {tool.status && (
-          <Badge variant="light" color="gray">
-            {tool.status}
-          </Badge>
-        )}
+        <Group gap="xs" wrap="nowrap">
+          {!available && (
+            <Badge variant="light" color="gray">
+              Coming soon
+            </Badge>
+          )}
+          {tool.status && <Badge>{tool.status}</Badge>}
+        </Group>
       </Group>
       <Title order={2} fz="xl">
         {tool.title}
