@@ -42,6 +42,17 @@ KEY INPUTS
   inflation                 : annual inflation rate used to convert nominal returns to real.
                               Must match the units of `alloc_curve` (default: percent, i.e. 2.1).
   returns_in_percent        : if True (default), `alloc_curve` means/vols are in % per year.
+  max_leverage              : cap on the equity weight. 1.0 = no leverage (default); 1.5 = the
+                              optimizer may borrow to hold up to 150% equity. A weight w>1 borrows
+                              (w−1) at `borrow_cost` to hold w in the all-equity portfolio, so its
+                              real return is w·eq − (w−1)·borrow and its vol scales as w·eq_vol. A
+                              leveraged wipeout is treated as ruin (balance floored at 0).
+  borrow_cost               : the REAL annual cost of borrowing (same units as the curve, e.g.
+                              2.0 = 2% real). Only matters when `max_leverage` > 1. Higher cost ⇒
+                              the optimizer leverages less. The optimizer leverages only where the
+                              risk-adjusted gain beats the borrowing drag — typically early
+                              accumulation under a low γ ("lifecycle investing"); it avoids leverage
+                              in retirement where sequence risk dominates.
   interval                  : years per glide step (1 = per-age, 5 = change allocation every 5y…).
                               Equity weight is held constant within each interval block.
   gamma                     : CRRA risk aversion — a SINGLE value for the whole life. Higher = more
@@ -113,8 +124,12 @@ def _ce_from_util(util_per_period, gamma):
     return float(((1.0 - gamma) * util_per_period) ** (1.0 / (1.0 - gamma)))
 
 
-def _build_alloc(alloc_curve, inflation, returns_in_percent):
-    """Return alloc(w)->(real_mean, vol) interpolating the curve. Accepts any-shape w."""
+def _build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost=0.0):
+    """Return alloc(w)->(real_mean, vol) interpolating the curve. Accepts any-shape w.
+
+    For w > 1 (leverage), borrow (w-1) at the REAL `borrow_cost` to hold w in the all-equity
+    portfolio: real_mean = w·eq_mean − (w−1)·borrow, vol = w·eq_vol. `borrow_cost` is already
+    real (the user's real cost of borrowing); only its unit is scaled to a fraction."""
     arr = sorted(((float(w), float(m), float(v)) for w, m, v in alloc_curve), key=lambda t: t[0])
     cw = np.array([t[0] for t in arr])
     cm = np.array([t[1] for t in arr])
@@ -123,11 +138,19 @@ def _build_alloc(alloc_curve, inflation, returns_in_percent):
     infl = inflation / scale
     real_mean = (1.0 + cm / scale) / (1.0 + infl) - 1.0   # deflate nominal mean to real
     vol = cv / scale
+    borrow_real = borrow_cost / scale
+    eq_mean = float(np.interp(1.0, cw, real_mean))        # 100%-equity anchor (what we lever)
+    eq_vol = float(np.interp(1.0, cw, vol))
 
     def alloc(w):
         w = np.asarray(w, dtype=float)
-        m = np.interp(w.ravel(), cw, real_mean).reshape(w.shape)
-        s = np.interp(w.ravel(), cw, vol).reshape(w.shape)
+        wc = np.minimum(w, 1.0)                            # curve portion (interpolated)
+        m = np.interp(wc.ravel(), cw, real_mean).reshape(w.shape)
+        s = np.interp(wc.ravel(), cw, vol).reshape(w.shape)
+        over = w > 1.0                                     # leveraged region
+        if np.any(over):
+            m = np.where(over, w * eq_mean - (w - 1.0) * borrow_real, m)
+            s = np.where(over, w * eq_vol, s)
         return m, s
 
     return alloc
@@ -154,7 +177,9 @@ def _eu(W, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
     bal = np.full((G, n), start_savings)
     for i in range(accum_years):
         r = means[i][:, None] + vols[i][:, None] * Z[i][None, :]
-        bal = bal * (1 + r) + contrib * (1 + r / 2)
+        # Floor at 0 before contributing: a leveraged wipeout (margin call) is ruin, not debt.
+        # A no-op without leverage, where annual returns never approach −100%.
+        bal = np.maximum(bal * (1 + r), 0.0) + contrib * (1 + r / 2)
     disc = beta ** np.arange(retire_years)
     eu = np.zeros((G, n))
     for t in range(retire_years):
@@ -181,7 +206,7 @@ def _stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_
     bal = np.full(Z.shape[1], start_savings)
     for i in range(accum_years):
         r = means[i] + vols[i] * Z[i]
-        bal = bal * (1 + r) + contrib * (1 + r / 2)
+        bal = np.maximum(bal * (1 + r), 0.0) + contrib * (1 + r / 2)  # floor: leverage ruin
     disc = beta ** np.arange(retire_years)
     C = np.empty((retire_years, Z.shape[1]))
     cons_eu = np.zeros(Z.shape[1])
@@ -216,6 +241,9 @@ def recommend_glide_path(
     # capital-market input units
     inflation: float = 2.1,
     returns_in_percent: bool = True,
+    # leverage (borrowing to invest); 1.0 = none
+    max_leverage: float = 1.0,                  # cap on equity weight (1.5 = up to 150%)
+    borrow_cost: float = 2.0,                   # REAL cost of borrowing (used only when leveraged)
     # household scale (real dollars) — affects the constant-$ floor/gap economics
     current_savings: float = 200_000.0,
     annual_contribution: float = 20_000.0,
@@ -261,8 +289,10 @@ def recommend_glide_path(
     pension_delay = max(0, int(pension_delay_years))
     if pension_delay >= retire_years and pension_level > 0:
         raise ValueError("pension_delay_years must be < retire_years (else the pension never pays)")
+    if not (grid_step <= max_leverage <= 3.0):
+        raise ValueError("max_leverage must be in [grid_step, 3.0] (1.0 = no leverage)")
 
-    alloc = _build_alloc(alloc_curve, inflation, returns_in_percent)
+    alloc = _build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost)
     # Pension is a fraction of PRE-RETIREMENT income (matches the web app's currentIncome base).
     guaranteed = pension_level * pre_retirement_income
     # Per-retirement-year arrays for the bridge: before the pension starts the portfolio funds
@@ -276,7 +306,8 @@ def recommend_glide_path(
                   contrib=annual_contribution, start_savings=current_savings,
                   beta=beta, bequest_floor=bequest_floor)
 
-    grid = np.round(np.arange(0.0, 1.0 + 1e-9, grid_step), 6)
+    # Candidate equity weights 0..max_leverage. Weights > 1 are leveraged (borrowed) positions.
+    grid = np.round(np.arange(0.0, max_leverage + 1e-9, grid_step), 6)
     G = len(grid)
 
     # Map each year to its interval block; equity weight is constant within a block.
@@ -419,13 +450,14 @@ def recommend_glide_path(
             "post_pension_gap": float(target_income - guaranteed), "interval": interval,
             "gamma": gamma,
             "bequest": round(float(bequest_w), 3), "bequest_years": bequest_years,
+            "max_leverage": max_leverage, "borrow_cost": borrow_cost,
             "n_paths": n_paths, "grid_step": grid_step,
         },
     }
 
 
 # ── plotting ──────────────────────────────────────────────────────────────────
-def plot_glide_path(recs, *, start_age=None, path=None, title=None, show=False, smooth=True):
+def plot_glide_path(recs, *, start_age=None, path=None, title=None, show=False):
     """Plot one or more recommended glide paths.
 
     recs      : a single result dict from recommend_glide_path, or a {label: result}
@@ -433,9 +465,6 @@ def plot_glide_path(recs, *, start_age=None, path=None, title=None, show=False, 
     start_age : if given, the x-axis is labelled as age; otherwise years-from-start.
     path      : if given, save the figure there (PNG).
     show      : if True, display interactively.
-    smooth    : if True (default), draw a cubic-spline curve through the per-year weights
-                (requires scipy). Falls back to a linear per-year line if scipy is absent.
-                If False, draws the original staircase (equity flat within each interval block).
     Returns the saved path (or None).
     """
     import matplotlib
@@ -454,11 +483,9 @@ def plot_glide_path(recs, *, start_age=None, path=None, title=None, show=False, 
 
     # Try to import scipy spline once; degrade gracefully if unavailable.
     _spline = None
-    if smooth:
-        try:
-            from scipy.interpolate import make_interp_spline as _spline
-        except ImportError:
-            pass  # will fall back to linear per-year plot
+
+    # Upper y-limit: 100% normally, higher when any path uses leverage (equity > 100%).
+    lev_cap = max((rec["params"].get("max_leverage", 1.0) for _, rec in items), default=1.0) * 100
 
     fig, ax = plt.subplots(figsize=(9, 5.2))
     boundaries = set()
@@ -467,35 +494,23 @@ def plot_glide_path(recs, *, start_age=None, path=None, title=None, show=False, 
         n_years = accum + rec["params"]["retire_years"]
         boundaries.add(x0 + accum)
 
-        if smooth:
-            # equity_by_year has one value per year (fractions); convert to %.
-            xs_yr = np.arange(n_years) + x0
-            ys_yr = np.array(rec["equity_by_year"]) * 100
-
-            if _spline is not None and n_years >= 4:
-                # Cubic spline through the per-year points, clamped to [0, 100].
-                xs_dense = np.linspace(xs_yr[0], xs_yr[-1], n_years * 8)
-                ys_dense = np.clip(_spline(xs_yr, ys_yr, k=3)(xs_dense), 0, 100)
-                ax.plot(xs_dense, ys_dense, lw=2.3, label=label)
-            else:
-                # scipy absent: linear interpolation through per-year points is still
-                # smoother than the staircase and needs no extra dependency.
-                ax.plot(xs_yr, ys_yr, lw=2.3, label=label)
-        else:
-            # Original staircase: equity is constant within each interval block.
-            xs = [x0 + e["year_start"] for e in rec["schedule"]] + [x0 + n_years]
-            ys = [e["equity_pct"] for e in rec["schedule"]]
-            ys = ys + [ys[-1]]  # extend the last block to the horizon end
-            ax.step(xs, ys, where="post", lw=2.3, label=label)
+        # Original staircase: equity is constant within each interval block.
+        xs = [x0 + e["year_start"] for e in rec["schedule"]] + [x0 + n_years]
+        ys = [e["equity_pct"] for e in rec["schedule"]]
+        ys = ys + [ys[-1]]  # extend the last block to the horizon end
+        ax.step(xs, ys, where="post", lw=2.3, label=label)
 
     for b in boundaries:
         ax.axvline(b, color="k", alpha=0.3, ls="--")
     if len(boundaries) == 1:
         ax.text(next(iter(boundaries)) + 0.4, 4, "retirement", alpha=0.6)
+    if lev_cap > 100:  # mark the unleveraged ceiling when leverage is in play
+        ax.axhline(100, color="gray", alpha=0.4, ls=":")
+        ax.text(x0 + 0.4, 101.5, "100% (unleveraged)", alpha=0.6, fontsize=9)
 
     ax.set_xlabel(xlabel)
     ax.set_ylabel("recommended equity weight (%)")
-    ax.set_ylim(0, 105)
+    ax.set_ylim(0, max(105, lev_cap + 5))
     ax.grid(alpha=0.3)
     ax.set_title(title or "Recommended equity glide path (Monte-Carlo optimized)")
     if any(lbl for lbl, _ in items):
@@ -665,6 +680,16 @@ def _run_interactive():
     print("  leave more than you ask — flexible/constant spending often under-draws.)")
     bequest_years = _ask("Target estate (years of spending)", 0.0, float, "0 = none, 10 = moderate")
 
+    print("\n  Leverage: allow borrowing to invest more than 100% in equity?")
+    print("  Enter the max equity % (100 = no leverage, 150 = up to 1.5×).")
+    max_equity_pct = _ask("Max equity %", 100.0, float, "100 = none, 150 = lifecycle leverage")
+    max_leverage = max(max_equity_pct / 100.0, 0.05)
+    if max_leverage > 1.0:
+        borrow_cost = _ask("  Real cost of borrowing (% per year)", 2.0, float,
+                           "2 = margin/HELOC real rate")
+    else:
+        borrow_cost = 2.0  # unused when not leveraging
+
     # ── Optimizer ─────────────────────────────────────────────────────────────
     _section("Optimizer settings")
     interval = _ask(
@@ -676,8 +701,9 @@ def _run_interactive():
 
     # ── Run ───────────────────────────────────────────────────────────────────
     note = "  (calibrating the bequest target may take a little longer)" if bequest_years > 0 else ""
+    lev_note = f", leverage≤{max_leverage:g}× @{borrow_cost:g}% real" if max_leverage > 1 else ""
     print(f"\n  Running optimiser ({int(n_paths):,} paths, {interval}y steps, "
-          f"γ={gamma}, β={beta})…{note}")
+          f"γ={gamma}, β={beta}{lev_note})…{note}")
     rec = recommend_glide_path(
         accum_years=accum_years,
         retire_years=retire_years,
@@ -693,6 +719,8 @@ def _run_interactive():
         gamma=gamma,
         beta=beta,
         bequest_years=(bequest_years if bequest_years > 0 else None),
+        max_leverage=max_leverage,
+        borrow_cost=borrow_cost,
         n_paths=int(n_paths),
         start_age=current_age,
         alloc_curve=PWL_CURVE,
@@ -728,9 +756,10 @@ def _run_interactive():
     if save:
         if not save.endswith(".png"):
             save += ".png"
+        lev_t = f", lev≤{max_leverage:g}×" if max_leverage > 1 else ""
         out = plot_glide_path(rec, start_age=current_age, path=save,
                               title=f"Recommended glide path  (γ={gamma}, "
-                                    f"β={beta}, pension={pension_pct:.0f}%, flex={flexibility})")
+                                    f"β={beta}, pension={pension_pct:.0f}%, flex={flexibility}{lev_t})")
         print(f"  Chart saved to: {out}")
 
 

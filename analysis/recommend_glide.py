@@ -3,22 +3,29 @@
 Command-line front end for the glide-path recommender.
 
 Optimizes (by Monte Carlo, not a lookup table) the equity weight per step for YOUR inputs and
-prints the schedule + outcome stats. Thin wrapper around
-`glide_path_recommender.recommend_glide_path` so the engine file stays import-only.
+prints the schedule + outcome stats. Flag-driven wrapper around
+`glide_path_recommender.recommend_glide_path` (the engine, which also has its own interactive
+prompt mode: `python3 analysis/glide_path_recommender.py`).
 
 EXAMPLES
 --------
   # constant-$ spending, 30y accumulation + 30y retirement, per-age, labelled by age
   python3 analysis/recommend_glide.py --accum 30 --retire 30 --flex 0 --pension 0.2 --start-age 35
 
-  # semi-flexible, 5-year steps, more risk-averse, with an estate motive, and save a plot
+  # semi-flexible, 5-year steps, more risk-averse, with an estate target, and save a plot
   python3 analysis/recommend_glide.py --accum 25 --retire 35 --flex 0.5 --pension 0.3 \\
-      --interval 5 --gamma 6 --bequest 10 --start-age 40 --plot myglide.png
+      --interval 5 --gamma 6 --bequest-years 10 --start-age 40 --plot myglide.png
+
+  # early retirement with a 10y CPP/OAS bridge (pension starts 10y into retirement)
+  python3 analysis/recommend_glide.py --accum 20 --retire 40 --pension 0.3 --pension-delay 10 --start-age 40
+
+  # allow lifecycle leverage: up to 1.5x equity, borrowing at 1.5% real
+  python3 analysis/recommend_glide.py --accum 30 --retire 30 --gamma 2 --max-leverage 1.5 --borrow-cost 1.5
 
   # use your own capital-market curve (CSV rows: equity_weight,mean,vol  — nominal %, deflated by --inflation)
   python3 analysis/recommend_glide.py --curve mycurve.csv --flex 1 --pension 0.4
 
-  # the built-in 4-figure showcase
+  # the built-in showcase (3 spending rules × 3 levers + overview)
   python3 analysis/recommend_glide.py --demo
 
 Run with -h to see every flag and its default.
@@ -66,9 +73,11 @@ def print_rec(rec):
         p["flexibility"], f"flex {p['flexibility']:.2f}")
     by_age = "age_start" in rec["schedule"][0]
     bridge = f" | bridge {p['pension_delay_years']}y" if p.get("pension_delay_years") else ""
+    lev = (f" | leverage≤{p['max_leverage']:g}× @{p['borrow_cost']:g}% real"
+           if p.get("max_leverage", 1.0) > 1 else "")
     print("Recommended equity glide path")
     print(f"  {p['accum_years']}y accumulation + {p['retire_years']}y retirement | {spend} | "
-          f"pension {p['pension_level']*100:.0f}% of pre-ret income{bridge} | γ {p['gamma']:g} | "
+          f"pension {p['pension_level']*100:.0f}% of pre-ret income{bridge} | γ {p['gamma']:g}{lev} | "
           f"{p['interval']}y steps")
     print(_fmt(rec))
     if rec.get("median_estate_years") is not None:
@@ -86,7 +95,7 @@ def main(argv=None):
         description="Recommend a Monte-Carlo-optimized equity glide path for your inputs.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    ap.add_argument("--demo", action="store_true", help="run the built-in showcase (writes 4 figures) and exit")
+    ap.add_argument("--demo", action="store_true", help="run the built-in showcase (writes figures) and exit")
     # core inputs
     ap.add_argument("--accum", type=int, default=30, help="accumulation years")
     ap.add_argument("--retire", type=int, default=30, help="retirement (planning-horizon) years")
@@ -108,6 +117,11 @@ def main(argv=None):
                     help="pre-retirement gross income ($/yr); the base for --pension")
     ap.add_argument("--withdrawal-rate", type=float, default=0.04, help="rate for the flexible spending part")
     ap.add_argument("--inflation", type=float, default=2.1, help="inflation %% used to deflate the curve to real")
+    # leverage
+    ap.add_argument("--max-leverage", type=float, default=1.0,
+                    help="cap on equity weight (1.0=none, 1.5=up to 150%% via borrowing)")
+    ap.add_argument("--borrow-cost", type=float, default=2.0,
+                    help="real cost of borrowing %%/yr (used only when --max-leverage > 1)")
     # capital-market curve + outputs
     ap.add_argument("--curve", type=str, default=None,
                     help="CSV file of 'equity_weight,mean,vol' rows (default: built-in PWL curve)")
@@ -127,6 +141,7 @@ def main(argv=None):
         alloc_curve=curve, interval=args.interval, gamma=args.gamma,
         bequest=args.bequest, bequest_years=args.bequest_years,
         pension_delay_years=args.pension_delay, pre_retirement_income=args.pre_income,
+        max_leverage=args.max_leverage, borrow_cost=args.borrow_cost,
         start_age=args.start_age, current_savings=args.savings, annual_contribution=args.contrib,
         target_income=args.target_income, withdrawal_rate=args.withdrawal_rate, inflation=args.inflation,
     )

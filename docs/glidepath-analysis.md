@@ -20,61 +20,28 @@ Simulation: [`analysis/glidepath_utility_mc.py`](../analysis/glidepath_utility_m
 (`python3 analysis/glidepath_utility_mc.py`; needs numpy + matplotlib). Figures it writes are in
 [`analysis/glidepath_figures/`](../analysis/glidepath_figures/).
 
-> **What changed vs the earlier version of this note.** The first pass searched a _3-knot
-> linear_ glide (equity at start / at retirement / at end, straight lines between). That cannot
-> represent "flat ~100% through accumulation, then a dip concentrated at retirement" — a single
-> line from age 35 to 65 forces any pre-retirement decline to begin at 35. So this version
-> optimizes the equity weight at **every age independently** (coordinate ascent under common
-> random numbers), letting the true shape — flat, tent, monotone — emerge. The headline
-> conclusions are unchanged; the accumulation story is now told honestly (see §2e).
-
 ---
 
 ## TL;DR
 
 1. **The spending rule decides the shape.**
-   - **Constant real-dollar withdrawal** → the optimum **derisks into retirement** to a low at/just
-     after the retirement date (a **bond tent**), then drifts equity back up. This appears under
-     **pure iid**, so it is a genuine **sequence-of-returns** effect, not a valuation/mean-reversion
-     artifact.
-   - **Flexible withdrawal** (income allowed to move with the market) → optimum is **flat, high
-     equity (~100%)** essentially throughout — exactly **ACO's** prescription.
-2. **The glide _shape_ is worth very little; the _level_ is what matters.** Tested out-of-sample,
-   the full per-age glide beats the best single **flat** weight by only **~$300/yr of
-   certainty-equivalent (CE) income (~0.5%)**, and ≈ $0 when spending is flexible. But for
-   constant-$ the right _level_ is **~60–80% equity, not 100%** — holding 100% (in accumulation or
-   retirement) is genuinely dominated, by **$650–$2,000/yr**.
-3. **Where the constant-$ tent sits — and why it differs from ACO.** Our constant-$ tent bottoms
-   **at/just after retirement** (age 65–69), matching ACO's location, but our optimal accumulation
-   path **falls** rather than staying flat ~100%. That difference is real and traces to assumptions,
-   not method: under a **rigid spending floor with no bequest**, equity _upside is wasted_ (you
-   can't spend above the fixed target and nothing is left to anyone) while _downside is catastrophic_
-   (depletion) — so you derisk. ACO's flat-100% accumulation relies on a **higher historical equity
-   premium + mean reversion** (so 100%'s higher mean wealth is worth the tail risk) and a utility
-   that **still values terminal wealth**. Dial in a bequest motive or a higher premium and our
-   accumulation path rises back toward ACO's.
-4. **Both studies are right in their own world.** ACO's flat-100% is optimal _when spending is
-   flexible (or wealth is valued)_; ERN/Kitces–Pfau's rising retirement glide is optimal _when
-   spending is rigid_ — and the sequence-risk rationale survives iid even though ERN's
-   CAPE-conditional SWR _boost_ cannot.
+   - **Constant real-dollar withdrawal** → the optimum **derisks into retirement** to a low at/just after the retirement date (a **bond tent**), then drifts equity back up. This appears under **pure iid**, so it is a genuine **sequence-of-returns** effect, not a valuation/mean-reversion artifact.
+   - **Flexible withdrawal** (income allowed to move with the market) → optimum is **flat, high equity (~100%)** essentially throughout — exactly **ACO's** prescription.
+2. **The glide _shape_ is worth very little; the _level_ is what matters.** Tested out-of-sample, the full per-age glide beats the best single **flat** weight by only **~$300/yr of certainty-equivalent (CE) income (~0.5%)**, and ≈ $0 when spending is flexible. But for constant-$ the right _level_ is **~60–80% equity, not 100%** — holding 100% (in accumulation or retirement) is genuinely dominated, by **$650–$2,000/yr**.
+
+3. **Where the constant-$ tent sits — and why it differs from ACO.** Our constant-$ tent bottoms at/just after retirement** (age 65–69), matching ACO's location, but our optimal accumulation path **falls** rather than staying flat ~100%. That difference is real and traces to assumptions, not method: under a **rigid spending floor with no bequest**, equity *upside is wasted* (you can't spend above the fixed target and nothing is left to anyone) while *downside is catastrophic* (depletion) — so you derisk. ACO's flat-100% accumulation relies on a **higher historical equity premium + mean reversion** (so 100%'s higher mean wealth is worth the tail risk) and a utility that **still values terminal wealth\*\*. Dial in a bequest motive or a higher premium and our accumulation path rises back toward ACO's.
+
+4. **Both studies are right in their own world.** ACO's flat-100% is optimal _when spending is flexible (or wealth is valued)_; ERN/Kitces–Pfau's rising retirement glide is optimal _when spending is rigid_ — and the sequence-risk rationale survives iid even though ERN's CAPE-conditional SWR _boost_ cannot.
 
 ---
 
 ## 1. Method
 
-Real (today's) dollars throughout. iid normal returns, drawn each year — **no** serial
-correlation, **no** valuation signal — so anything the optimizer likes here is robust to the
-absence of mean reversion, by construction.
+Real (today's) dollars throughout. iid normal returns, drawn each year — **no** serial correlation, **no** valuation signal — so anything the optimizer likes here is robust to the absence of mean reversion, by construction.
 
 ### Returns — our own assumptions, no history
 
-The app's allocation curve ([`presets.ts`](../src/utils/retirement/presets.ts) `ALLOCATIONS`,
-PWL Capital-based, inflation 2.1%) is interpolated so **any** equity weight `w∈[0,1]` maps to a
-real arithmetic `(mean, vol)`. Endpoints: **100% equity → 4.67% real / 12.6% vol**; **0% equity →
-1.42% real / 5.4% vol** ⇒ an equity premium of **~3.3pp** (vs the ~5pp the US-tilted history ACO
-and ERN lean on — see [`retirement-swr-methodology.md`](./retirement-swr-methodology.md) §2). Each
-year's return is `mean(wₜ) + vol(wₜ)·Z`, matching `monteCarlo.ts` (arithmetic normal, mid-year
-cash flow earns half a year, a depleted portfolio absorbs at 0).
+The app's allocation curve ([`presets.ts`](../src/utils/retirement/presets.ts) `ALLOCATIONS`, PWL Capital-based, inflation 2.1%) is interpolated so **any** equity weight `w∈[0,1]` maps to a real arithmetic `(mean, vol)`. Endpoints: **100% equity → 4.67% real / 12.6% vol**; **0% equity → 1.42% real / 5.4% vol** ⇒ an equity premium of **~3.3pp** (vs the ~5pp the US-tilted history ACO and ERN lean on — see [`retirement-swr-methodology.md`](./retirement-swr-methodology.md) §2). Each year's return is `mean(wₜ) + vol(wₜ)·Z`, matching `monteCarlo.ts` (arithmetic normal, mid-year cash flow earns half a year, a depleted portfolio absorbs at 0).
 
 ### Household & phases
 
@@ -162,9 +129,6 @@ approach into the tent.
 | flexible 100% | 40y          | 100   | 99       | 90      | 90   | 90 (@65)   | 0   | Flat    | Flat   | $66,123   | 0.0%    |
 | flexible 100% | 50y          | 100   | 99       | 90      | 90   | 90 (@65)   | 0   | Flat    | Flat   | $64,139   | 0.0%    |
 
-Figures: `optimal_glidepath_by_spending.png` (the three full age→equity curves overlaid) and
-`retire_equity_vs_horizon.png` (the constant-$ tent as the horizon grows).
-
 **Reading it:**
 
 - **Constant $ → derisk into a tent, then drift up.** Equity falls through accumulation to a low
@@ -251,7 +215,7 @@ Two readings, both important:
 | **ERN / Kitces–Pfau:** rising equity glide in retirement | **Validated as a shape, for constant-$ spending — and shown to be sequence-risk, not valuation.** The derisk-then-rise glide emerges under pure iid, so it needs no CAPE>20. _But_ ERN's specific claim — that the glide _raises the SWR_ — does **not** reproduce (§2a): under iid it only ties the best flat weight. That boost is the valuation-conditional slice an iid model cannot contain. |
 | Both: beat the conventional **declining** (TDF) glide    | **Direction agreed, magnitude tiny.** A monotone-declining retirement glide is dominated in every cell — but the glide _shape_ is worth ≤ ~0.5% of CE. The spending rule and the equity _level_ dwarf it.                                                                                                                                                                                         |
 
-### 3a. Reconciling our constant-$ profile with ACO's Figure 3
+### 3a. Reconciling our constant-$ profile with ACO's
 
 ACO's constant-spending optimum stays **flat ~100% through accumulation** and dips only **at
 retirement**; ours **falls through accumulation** to a tent at retirement. Same tent _location_,
@@ -296,7 +260,7 @@ retirement**; the precise curve is worth ~0.5%.
 
 ---
 
-## 5. Recommender (productized)
+## 5. Recommender script
 
 The same model is exposed as a one-call recommender —
 [`analysis/glide_path_recommender.py`](../analysis/glide_path_recommender.py),
@@ -304,7 +268,7 @@ The same model is exposed as a one-call recommender —
 chosen step (`interval` = 1y, 5y, …) given your horizons, spending flexibility, pension level,
 risk aversion, bequest motive, and an arbitrary return/vol curve passed in as a variable. It
 returns the per-step schedule plus out-of-sample CE income, depletion, income CV, and the median
-estate, and ships a `plot_glide_path()` step-plot helper. Running it sweeps **each lever across all
+estate, and ships a `plot_glide_path()` helper. `python3 analysis/glide_path_recommender.py --demo` sweeps **each lever across all
 three spending rules** — a 3×3 matrix, holding every other input at its default — and writes
 `glide_<spending>_by_<lever>.png` (spending ∈ {`constant`, `semiflex`, `flexible`}; lever ∈
 {`pension`, `bequest`, `gamma`}) plus a `glide_by_spending.png` overview to
@@ -321,12 +285,37 @@ effect itself depends on the spending rule:
 The pension and bequest panels are the concrete, dial-able form of the §3a reconciliation: for
 constant-$ they move the path between our "derisk" result and ACO's "flat ~100%."
 
+**Additional dials** (beyond the demo matrix), all exposed on both the interactive prompt flow and
+the `recommend_glide.py` flag CLI:
+
+- **Pension base & timing.** `pension_level` is a fraction of **pre-retirement income**
+  (`pre_retirement_income`), matching the web app's `currentIncome` base — not of the spending
+  target. `pension_delay_years` adds a **bridge**: before the pension starts the portfolio funds the
+  _full_ target income, only the gap afterward (so an age-55 retiree with CPP/OAS at 65 carries a
+  10-year bridge).
+- **Bequest in years of spending.** `bequest_years` targets a median estate of
+  `bequest_years × target_income` and back-calibrates the raw warm-glow weight to hit it. The motive
+  can only _raise_ the estate (via more equity), so a target at/below what the spending plan already
+  leaves needs no motive, and very large targets saturate (`bequest_target_reached` flags this); the
+  result also reports `median_estate_years`.
+- **Leverage.** `max_leverage` (1.0 = none; 1.5 = up to 150% equity) lets the optimizer borrow at a
+  **real** `borrow_cost` to hold w>1 in the all-equity portfolio (real return `w·eq − (w−1)·borrow`,
+  vol `w·eq_vol`; a wipeout is treated as ruin). It leverages only where the risk-adjusted gain beats
+  the borrowing drag — typically early accumulation under a low γ ("lifecycle investing") — and the
+  effect is modest because the drag roughly offsets the equity premium for a CRRA agent.
+- **Single γ, by design.** Risk aversion is one value for the whole life: the _declining_ glide
+  already emerges from the contribution stream + horizon (human capital), and consumption-phase γ
+  pins down the accumulation glide through how wealth becomes spending. A separate accumulation γ has
+  almost no leverage, and a γ(age) gradient would double-count the age–risk relationship the
+  optimizer already produces — so neither is offered.
+
 ## 6. Reproduce
 
 ```bash
-python3 analysis/glidepath_utility_mc.py     # the analysis (tables + figures), ≈ 5 min
-python3 analysis/glide_path_recommender.py   # recommender demo: 3×3 lever matrix + overview, ≈ 2 min
-python3 analysis/recommend_glide.py --help   # CLI front end for a single custom recommendation
+python3 analysis/glidepath_utility_mc.py            # the analysis (tables + figures), ≈ 5 min
+python3 analysis/glide_path_recommender.py          # interactive: prompts for your inputs
+python3 analysis/glide_path_recommender.py --demo   # recommender showcase: 3×3 lever matrix + overview, ≈ 2 min
+python3 analysis/recommend_glide.py --help          # scriptable flag CLI for a single custom recommendation
 ```
 
 Tweak `glidepath_utility_mc.py`'s CONFIG block: `SPENDING_REGIMES` (FLEX levels), `RETIRE_HORIZONS`,
