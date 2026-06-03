@@ -39,6 +39,19 @@ interface ChartPoint {
   p90?: number;
 }
 
+// Generate ticker values at regular intervals (e.g. every 5 years) based on the data range
+const generateTicks = (min: number, max: number, step = 5) => {
+  const ticks = [];
+  // Round min down and max up to the nearest multiple of 5
+  const start = Math.floor(min / step) * step;
+  const end = Math.ceil(max / step) * step;
+
+  for (let i = start; i <= end; i += step) {
+    ticks.push(i);
+  }
+  return ticks;
+};
+
 /** Coarse, tiered read on how often the plan survives the simulated markets. */
 function SuccessSummary({
   successRate,
@@ -125,6 +138,9 @@ export default function ProjectionChart({
   const data = [...byAge.values()].sort((a, b) => a.age - b.age);
   const lastAge = data[data.length - 1]?.age ?? retireAge;
 
+  const ageTicks = generateTicks(input.currentAge, input.planningAge, 5);
+
+  console.log("ageTicks :", ageTicks);
   return (
     <Card withBorder radius="md" padding="md">
       <Text fw={600} mb="md">
@@ -163,9 +179,11 @@ export default function ProjectionChart({
               dataKey="age"
               type="number"
               domain={["dataMin", "dataMax"]}
+              ticks={ageTicks}
               tickMargin={8}
               label={{ value: "Age", position: "bottom", fontSize: 12 }}
               tick={{ fontSize: 12 }}
+              interval={0}
             />
             <YAxis
               width={50}
@@ -211,7 +229,18 @@ export default function ProjectionChart({
               connectNulls={false}
               isAnimationActive={false}
             />
-            <ReferenceLine x={retireAge} stroke={TEAL} strokeDasharray="4 4" />
+            <ReferenceLine
+              x={retireAge}
+              stroke={TEAL}
+              strokeDasharray="4 4"
+              label={{
+                value: `Age ${retireAge}`,
+                position: "insideTopLeft",
+                fontSize: 12,
+                fontWeight: 600,
+                fill: "var(--mantine-color-teal-7)",
+              }}
+            />
             {result.portfolioAtRetirement != null && (
               <ReferenceDot
                 x={retireAge}
@@ -220,13 +249,6 @@ export default function ProjectionChart({
                 fill={TEAL}
                 stroke="white"
                 strokeWidth={2}
-                label={{
-                  value: `Age ${retireAge}`,
-                  position: "top",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  fill: "var(--mantine-color-teal-7)",
-                }}
               />
             )}
           </ComposedChart>
