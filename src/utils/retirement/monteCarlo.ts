@@ -60,6 +60,19 @@ const INNOVATION_SCALE = Math.sqrt(
   1 - RETURN_AUTOCORRELATION * RETURN_AUTOCORRELATION,
 );
 
+/**
+ * Withdrawal-rate guardrail trigger. Spending stays at the full target until a weak
+ * sequence lifts the current withdrawal rate above the rate at retirement by this
+ * factor (+20%); then the retiree trims spending to the floor (target less
+ * `spendingFlexibilityPct`). The "cut when the rate runs high" trigger is the idea
+ * behind guardrail methods like Guyton–Klinger, but this is a deliberately simplified
+ * version: a single binary cut to the floor (not GK's sticky, incremental 10% steps),
+ * downside-only (no upside "prosperity" raises), and memoryless (re-evaluated fresh
+ * each year against the fixed initial rate, so spending can return to full when the
+ * portfolio recovers). Hardcoded so the UI exposes only the cut depth, not the trigger.
+ */
+const GUARDRAIL_TRIGGER = 1.2;
+
 /** Deterministic PRNG (mulberry32) for reproducible simulations. */
 function mulberry32(seed: number): () => number {
   let s = seed >>> 0;
@@ -110,6 +123,13 @@ function simulate(
   const mean = realMean(input.retireReturn, input.inflationRate);
   const sigma = phaseSigma(input, "retire");
   const years = input.planningAge - retireAge;
+  const flex = input.spendingFlexibilityPct / 100;
+  // Guardrail reference: the withdrawal rate at retirement. A weak sequence that
+  // lifts the current rate above this (by GUARDRAIL_TRIGGER) trims spending.
+  const initialRate =
+    startBalance > 0
+      ? withdrawalAtAge(input, breakdown, retireAge) / startBalance
+      : 0;
 
   const balancesByAge = collectBands
     ? Array.from({ length: years + 1 }, () => [] as number[])
@@ -125,18 +145,24 @@ function simulate(
 
     for (let i = 0; i < years; i++) {
       const age = retireAge + i;
-      const withdrawal = withdrawalAtAge(input, breakdown, age);
+      const full = withdrawalAtAge(input, breakdown, age);
       deviation =
         RETURN_AUTOCORRELATION * deviation +
         INNOVATION_SCALE * sigma * standardNormalFrom(rand);
       const r = mean + deviation;
 
       if (!depleted) {
-        // Mid-year withdrawal earns a half-year of return (rent-vs-buy convention).
+        // Guardrail flexibility: spend the full target most years, but if a weak
+        // sequence has lifted the withdrawal rate above its starting level by the
+        // trigger margin, trim spending to the floor (target less the flexibility
+        // %). At 0% flex the floor equals the target, so this reduces exactly to
+        // the fixed-withdrawal model. Mid-year draw earns a half-year of return.
+        const behind = full > balance * initialRate * GUARDRAIL_TRIGGER;
+        const withdrawal = behind ? full * (1 - flex) : full;
         balance = balance * (1 + r) - withdrawal * (1 + r / 2);
         if (balance <= 0) {
           balance = 0;
-          depleted = true; // absorbing: a depleted portfolio stays at zero.
+          depleted = true; // absorbing: even the floor can't be met.
         }
       }
       if (balancesByAge) balancesByAge[i + 1].push(balance);

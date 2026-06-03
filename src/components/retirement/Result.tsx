@@ -21,12 +21,21 @@ interface ResultProps {
 const TEAL = "var(--mantine-color-teal-6)";
 const INDIGO = "var(--mantine-color-indigo-5)";
 
+// Diagonal hatch over a light indigo fill — marks the portion of portfolio
+// spending that's trimmed in weak markets (the flexible cut), vs. solid = firm.
+const INDIGO_HATCH = {
+  backgroundColor: "var(--mantine-color-indigo-1)",
+  backgroundImage: `repeating-linear-gradient(45deg, ${INDIGO} 0, ${INDIGO} 2px, transparent 2px, transparent 5px)`,
+};
+
 function LegendItem({
   color,
+  hatch,
   label,
   value,
 }: {
-  color: string;
+  color?: string;
+  hatch?: boolean;
   label: string;
   value?: string;
 }) {
@@ -36,7 +45,11 @@ function LegendItem({
         <Box
           w={10}
           h={10}
-          style={{ borderRadius: 2, backgroundColor: color }}
+          style={
+            hatch
+              ? { borderRadius: 2, ...INDIGO_HATCH }
+              : { borderRadius: 2, backgroundColor: color }
+          }
         />
         <Text size="xs" c="dimmed">
           {label}
@@ -55,14 +68,20 @@ function IncomeBar({
   guaranteed,
   portfolio,
   total,
+  flexPct,
 }: {
   guaranteed: number;
   portfolio: number;
   total: number;
+  flexPct: number;
 }) {
   const denom = Math.max(total, 1);
+  // The cut (up to flexPct of total spending) comes entirely from the portfolio,
+  // since guaranteed income is never trimmed. Show it as the hatched top slice.
+  const cut = Math.min(portfolio, (total * flexPct) / 100);
   const guaranteedPct = (Math.min(guaranteed, denom) / denom) * 100;
-  const portfolioPct = (portfolio / denom) * 100;
+  const firmPortfolioPct = ((portfolio - cut) / denom) * 100;
+  const cutPct = (cut / denom) * 100;
   return (
     <Box
       style={{
@@ -74,7 +93,8 @@ function IncomeBar({
       }}
     >
       <Box style={{ width: `${guaranteedPct}%`, backgroundColor: TEAL }} />
-      <Box style={{ width: `${portfolioPct}%`, backgroundColor: INDIGO }} />
+      <Box style={{ width: `${firmPortfolioPct}%`, backgroundColor: INDIGO }} />
+      {cutPct > 0 && <Box style={{ width: `${cutPct}%`, ...INDIGO_HATCH }} />}
     </Box>
   );
 }
@@ -85,12 +105,14 @@ function PhaseRow({
   guaranteed,
   portfolio,
   total,
+  flexPct,
 }: {
   label: string;
   note: string;
   guaranteed: number;
   portfolio: number;
   total: number;
+  flexPct: number;
 }) {
   return (
     <Stack gap={4}>
@@ -102,7 +124,12 @@ function PhaseRow({
           {note}
         </Text>
       </Group>
-      <IncomeBar guaranteed={guaranteed} portfolio={portfolio} total={total} />
+      <IncomeBar
+        guaranteed={guaranteed}
+        portfolio={portfolio}
+        total={total}
+        flexPct={flexPct}
+      />
     </Stack>
   );
 }
@@ -123,6 +150,12 @@ function IncomeSummary({
       ? `age ${retireAge}`
       : `age ${retireAge}–${pensionAge - 1}`;
 
+  const flexPct = input.spendingFlexibilityPct;
+  const isFlexible = flexPct > 0;
+  // In weak markets the guardrail trims spending by up to flexPct; guaranteed
+  // income is unaffected, so the floor sits this far below the full target.
+  const floorIncome = targetGrossIncome * (1 - flexPct / 100);
+
   return (
     <Card withBorder radius="md" padding="md">
       <Text size="sm" fw={600} mb="sm">
@@ -137,6 +170,7 @@ function IncomeSummary({
             guaranteed={0}
             portfolio={targetGrossIncome}
             total={targetGrossIncome}
+            flexPct={flexPct}
           />
           <PhaseRow
             label={`From age ${pensionAge}`}
@@ -146,10 +180,17 @@ function IncomeSummary({
             guaranteed={guaranteedIncome}
             portfolio={portfolioWithdrawal}
             total={targetGrossIncome}
+            flexPct={flexPct}
           />
           <Group gap="xl">
             <LegendItem color={TEAL} label="Guaranteed (CPP/OAS/pension)" />
             <LegendItem color={INDIGO} label="From your savings" />
+            {isFlexible && (
+              <LegendItem
+                hatch
+                label={`Trimmed in weak markets (−${flexPct}%)`}
+              />
+            )}
           </Group>
         </Stack>
       ) : (
@@ -158,6 +199,7 @@ function IncomeSummary({
             guaranteed={guaranteedIncome}
             portfolio={portfolioWithdrawal}
             total={targetGrossIncome}
+            flexPct={flexPct}
           />
           <Group mt="sm" gap="xl">
             <LegendItem
@@ -170,8 +212,22 @@ function IncomeSummary({
               label="From your portfolio"
               value={formatCAD(portfolioWithdrawal)}
             />
+            {isFlexible && (
+              <LegendItem
+                hatch
+                label={`Trimmed in weak markets (−${flexPct}%)`}
+              />
+            )}
           </Group>
         </>
+      )}
+
+      {isFlexible && (
+        <Text size="xs" c="dimmed" mt="md">
+          Flexible spending: in weak markets you&apos;d trim up to {flexPct}% to{" "}
+          {formatCAD(floorIncome)} /yr. The full target is your normal-market
+          spend; confidence is measured against the lower floor.
+        </Text>
       )}
     </Card>
   );

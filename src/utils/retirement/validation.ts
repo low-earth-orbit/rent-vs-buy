@@ -37,10 +37,16 @@ export const FIELD_CONSTRAINTS: Record<RetirementInputKey, Constraint> = {
   retireReturn: { min: 0, max: 10, step: 0.1, label: "Return in retirement" },
   inflationRate: { min: 1.5, max: 3, step: 0.1, label: "Inflation" },
   targetSuccessRate: {
-    min: 60,
+    min: 80,
     max: 100,
     step: 5,
     label: "Success target",
+  },
+  spendingFlexibilityPct: {
+    min: 0,
+    max: 50,
+    step: 5,
+    label: "Spending flexibility",
   },
 };
 

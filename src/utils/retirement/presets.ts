@@ -140,6 +140,8 @@ export const DEFAULTS = {
    * target means retiring later.
    */
   targetSuccessRate: 90,
+  /** How much the withdrawal can be reduced (%) before a simulation is considered failed. */
+  spendingFlexibilityPct: 0,
 } as const;
 
 export type ReturnPreset = (typeof RETURN_PRESETS)[number];

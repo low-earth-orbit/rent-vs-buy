@@ -17,8 +17,7 @@ const Assumptions = () => {
         capture sequence-of-returns risk; accumulation uses the expected return.
       </Text>
       <Text size="sm" pb="xs" c="dimmed">
-        Acknowledgement: Return and volatility assumptions are partially adopted
-        from{" "}
+        Acknowledgement: Return and volatility assumptions are adopted from{" "}
         <Anchor
           href="https://pwlcapital.com/financial-planning-assumptions-market-capitalization-weighted-portfolio/"
           target="_blank"
@@ -26,7 +25,7 @@ const Assumptions = () => {
         >
           PWL Capital
         </Anchor>
-        , sanity-checked against RBC and FP Canada assumptions.
+        .
       </Text>
     </Container>
   );

@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { Alert, Box, Card, Group, Paper, Text } from "@mantine/core";
 import {
   Area,
@@ -14,11 +13,6 @@ import {
   YAxis,
   ReferenceDot,
 } from "recharts";
-import {
-  IconAlertTriangle,
-  IconThumbUp,
-  IconThumbDown,
-} from "@tabler/icons-react";
 import { formatCAD, formatCADCompact } from "@/utils/format";
 import { NUM_SIMULATIONS } from "@/utils/retirement/monteCarlo";
 import type {
@@ -50,39 +44,22 @@ function SuccessSummary({
   successRate,
   target,
   planningAge,
+  flexPct,
 }: {
   successRate: number;
   target: number;
   planningAge: number;
+  flexPct: number;
 }) {
   const pct = Math.round(successRate * 100);
 
-  let title: string;
-  let color: string;
-  let icon: ReactNode;
-  if (pct >= 95) {
-    title = "Very likely to last";
-    color = "teal";
-    icon = <IconThumbUp size={16} />;
-  } else if (pct >= 90) {
-    title = "Likely to last";
-    color = "teal";
-    icon = <IconThumbUp size={16} />;
-  } else if (pct >= 80) {
-    title = "Modest safety margin";
-    color = "yellow";
-    icon = <IconAlertTriangle size={16} />;
-  } else {
-    title = "Plan may fall short";
-    color = "red";
-    icon = <IconThumbDown size={16} />;
-  }
-
   return (
-    <Alert icon={icon} color={color} title={title} variant="light" radius="md">
+    <Alert variant="default" radius="md">
       <Text size="sm">
         Your savings last to age {planningAge} in about {pct}% of simulated
         markets — within your {target}% confidence target.
+        {flexPct > 0 &&
+          ` Assumes you trim spending by up to ${flexPct}% in weak markets.`}
       </Text>
     </Alert>
   );
@@ -157,6 +134,7 @@ export default function ProjectionChart({
         successRate={result.successRate}
         target={input.targetSuccessRate}
         planningAge={input.planningAge}
+        flexPct={input.spendingFlexibilityPct}
       />
       <div
         role="img"

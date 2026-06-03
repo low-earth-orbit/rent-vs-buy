@@ -97,13 +97,12 @@ export default function Headline({ input, result, planSWR }: HeadlineProps) {
           </Group>
           <Text size="xs" c="dimmed">
             {retireNow
-              ? `Your savings already support your target income, projected to last to age ${input.planningAge}.`
-              : `Projected to last to age ${input.planningAge}.`}
+              ? `Your savings already support your target income.`
+              : ``}
             {!retireNow && retirementAgeRange && (
               <>
-                {" "}
-                There&apos;s a ~50% chance you retire between ages{" "}
-                {retirementAgeRange.p25} and {retirementAgeRange.p75}.
+                50% chance you retire between ages {retirementAgeRange.p25} and{" "}
+                {retirementAgeRange.p75}.
               </>
             )}
           </Text>

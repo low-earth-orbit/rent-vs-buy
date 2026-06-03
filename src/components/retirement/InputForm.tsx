@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import {
   Accordion,
   Button,
   Group,
+  Popover,
   SimpleGrid,
   Stack,
   Text,
 } from "@mantine/core";
-import { IconRotate } from "@tabler/icons-react";
+import { IconAlertTriangle, IconRotate } from "@tabler/icons-react";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
 import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
 import {
@@ -38,8 +38,6 @@ export default function InputForm({
   onChange,
   onReset,
 }: InputFormProps) {
-  const [customizeReturns, setCustomizeReturns] = useState(false);
-
   const bind = (key: RetirementInputKey) => (value: FieldValue) =>
     onChange(key, value);
 
@@ -51,11 +49,11 @@ export default function InputForm({
       isSameRate(input.accumReturn, preset.accumReturn) &&
       isSameRate(input.retireReturn, preset.retireReturn),
   );
-  const showReturnInputs = customizeReturns || !activeReturnPreset;
-  const returnStatus = activeReturnPreset ? "Preset" : "Custom";
+  const isCustomConfidence = !SUCCESS_RATE_PRESETS.some((rate) =>
+    isSameRate(input.targetSuccessRate, rate),
+  );
 
   const applyReturnPreset = (preset: ReturnPreset) => {
-    setCustomizeReturns(false);
     onChange("accumReturn", preset.accumReturn);
     onChange("retireReturn", preset.retireReturn);
   };
@@ -98,26 +96,26 @@ export default function InputForm({
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <UserInputFormItem
                   {...num("currentAge")}
-                  label="Current age"
+                  label="Current Age"
                   suffix=" yrs"
                 />
                 <UserInputFormItem
                   {...num("currentIncome")}
-                  label="Current annual income"
+                  label="Annual Income"
                   labelHelperText="Gross income today. Used as the base for your savings rate and guaranteed-income percentages."
                   prefix="$"
                   thousandSeparator
                 />
                 <UserInputFormItem
                   {...num("currentSavings")}
-                  label="Current savings"
+                  label="Current Savings"
                   labelHelperText="Total invested across RRSP, TFSA, and non-registered accounts today."
                   prefix="$"
                   thousandSeparator
                 />
                 <CurrencyPercentItem
                   id="contributionPct"
-                  label="Annual savings"
+                  label="Annual Savings"
                   helperText="How much you add to investments each year. Toggle between a dollar amount and a % of your income."
                   unitAriaLabel="Annual savings input unit"
                   rate={input.contributionPct}
@@ -140,7 +138,7 @@ export default function InputForm({
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <CurrencyPercentItem
                   id="targetIncomePct"
-                  label="Target income"
+                  label="Target Income"
                   helperText="The gross income you want in retirement — as a % of your current income (a replacement ratio of 60–70% is typical) or a dollar amount. Your guaranteed income below counts toward this."
                   unitAriaLabel="Target retirement income input unit"
                   rate={input.targetIncomePct}
@@ -153,7 +151,7 @@ export default function InputForm({
                 />
                 <CurrencyPercentItem
                   id="guaranteedIncomePct"
-                  label="Pension amount"
+                  label="Pension Amount"
                   helperText="Estimated CPP + OAS + workplace (DB) pension income, starting at retirement. Toggle between a dollar amount and a % of your income."
                   unitAriaLabel="Guaranteed income input unit"
                   rate={input.guaranteedIncomePct}
@@ -166,13 +164,13 @@ export default function InputForm({
                 />
                 <UserInputFormItem
                   {...num("pensionStartAge")}
-                  label="Pension start age"
+                  label="Pension Start Age"
                   labelHelperText="When your CPP/OAS/pension income begins — usually 65. If you retire before this, your portfolio funds the full target until then (a 'bridge')."
                   suffix=" yrs"
                 />
                 <UserInputFormItem
                   {...num("planningAge")}
-                  label="Plan until age"
+                  label="Plan Until"
                   labelHelperText="The age your savings should last to (life expectancy). 95 is a common planning horizon."
                   suffix=" yrs"
                 />
@@ -180,13 +178,11 @@ export default function InputForm({
 
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
-                  Plan confidence
+                  Plan Success Rate
                 </Text>
                 <Text size="xs" c="dimmed">
                   The share of simulated markets your savings must outlast to
-                  your planning age. I run the simulation and return the
-                  earliest age that clears this target — higher confidence means
-                  retiring later.
+                  your planning age.
                 </Text>
                 <Group
                   gap="xs"
@@ -210,12 +206,75 @@ export default function InputForm({
                       {rate}%
                     </Button>
                   ))}
+                  <Popover
+                    width={220}
+                    position="bottom-start"
+                    withArrow
+                    shadow="md"
+                  >
+                    <Popover.Target>
+                      <Button
+                        variant={isCustomConfidence ? "filled" : "light"}
+                        size="xs"
+                        radius="lg"
+                        aria-pressed={isCustomConfidence}
+                      >
+                        Custom
+                      </Button>
+                    </Popover.Target>
+                    <Popover.Dropdown>
+                      <UserInputFormItem
+                        {...num("targetSuccessRate")}
+                        label="Confidence target"
+                        suffix="%"
+                      />
+                    </Popover.Dropdown>
+                  </Popover>
                 </Group>
+                {input.targetSuccessRate < 90 && (
+                  <Group gap={6} wrap="nowrap" align="flex-start">
+                    <IconAlertTriangle
+                      size={14}
+                      color="var(--mantine-color-yellow-7)"
+                      style={{ marginTop: 2, flexShrink: 0 }}
+                    />
+                    <Text size="xs" c="yellow.8">
+                      Below 90% leans optimistic — it accepts more
+                      sequence-of-returns risk. 90% or higher is recommended.
+                    </Text>
+                  </Group>
+                )}
+              </Stack>
+
+              <Stack gap={4}>
+                <Text size="sm" fw={600}>
+                  Flexible Spending
+                </Text>
+                <Text size="xs" c="dimmed">
+                  How much you&apos;d trim spending in a weak market instead of
+                  risking running out. Optimistic by nature: it assumes
+                  you&apos;ll actually make the cut, and your confidence is
+                  measured against the reduced floor.
+                </Text>
                 <UserInputFormItem
-                  {...num("targetSuccessRate")}
+                  {...num("spendingFlexibilityPct")}
                   label={undefined}
                   suffix="%"
                 />
+                {input.spendingFlexibilityPct > 20 && (
+                  <Group gap={6} wrap="nowrap" align="flex-start">
+                    <IconAlertTriangle
+                      size={14}
+                      color="var(--mantine-color-yellow-7)"
+                      style={{ marginTop: 2, flexShrink: 0 }}
+                    />
+                    <Text size="xs" c="yellow.8">
+                      Cutting more than 20% is a big lifestyle reduction — make
+                      sure you could really live on the reduced floor for years
+                      if markets stay weak.
+                    </Text>
+                  </Group>
+                )}
               </Stack>
             </Stack>
           </Accordion.Panel>
@@ -225,14 +284,9 @@ export default function InputForm({
           <Accordion.Control>Market assumptions</Accordion.Control>
           <Accordion.Panel>
             <Stack gap="xs" mb="xs">
-              <Group justify="space-between" align="center" gap="xs">
-                <Text size="sm" fw={600}>
-                  Expected return
-                </Text>
-                <Text size="xs" c="dimmed">
-                  {returnStatus}
-                </Text>
-              </Group>
+              <Text size="sm" fw={600}>
+                Expected Return
+              </Text>
               <Text size="xs" c="dimmed">
                 Based on stock / bond mix — e.g. 80/20 is 80% stocks — before
                 and after retirement. For simplicity, two distinct allocations
@@ -269,32 +323,67 @@ export default function InputForm({
                     </Stack>
                   </Button>
                 ))}
+                <Popover width={300} position="bottom" withArrow shadow="md">
+                  <Popover.Target>
+                    <Button
+                      variant={activeReturnPreset ? "light" : "filled"}
+                      size="xs"
+                      radius="lg"
+                      h={44}
+                      aria-pressed={!activeReturnPreset}
+                    >
+                      <Stack gap={0} align="center">
+                        <Text span size="xs" fw={600}>
+                          Custom
+                        </Text>
+                        <Text span size="10px">
+                          {activeReturnPreset
+                            ? ""
+                            : `${input.accumReturn}% / ${input.retireReturn}%`}
+                        </Text>
+                      </Stack>
+                    </Button>
+                  </Popover.Target>
+                  <Popover.Dropdown>
+                    <Stack gap="sm">
+                      <Text size="xs" c="dimmed">
+                        Custom returns are easy to overstate. The presets use
+                        long-run historical stock/bond data; higher figures make
+                        any plan look feasible. Use nominal (pre-inflation)
+                        returns.
+                      </Text>
+                      <UserInputFormItem
+                        {...num("accumReturn")}
+                        label="While Working"
+                        suffix="%"
+                      />
+                      <UserInputFormItem
+                        {...num("retireReturn")}
+                        label="In Retirement"
+                        suffix="%"
+                      />
+                    </Stack>
+                  </Popover.Dropdown>
+                </Popover>
               </SimpleGrid>
-              {!showReturnInputs && (
-                <Group>
-                  <Button
-                    variant="subtle"
-                    size="compact-xs"
-                    color="gray"
-                    onClick={() => setCustomizeReturns(true)}
-                  >
-                    Customize
-                  </Button>
+              <Text size="xs" c="dimmed">
+                The specific glide path matters less than your overall equity
+                level and withdrawal strategy — those two factors drive most of
+                the outcome variance.
+              </Text>
+              {!activeReturnPreset && (
+                <Group gap={6} wrap="nowrap" align="flex-start">
+                  <IconAlertTriangle
+                    size={14}
+                    color="var(--mantine-color-yellow-7)"
+                    style={{ marginTop: 2, flexShrink: 0 }}
+                  />
+                  <Text size="xs" c="yellow.8">
+                    Using custom return assumptions — these aren&apos;t checked
+                    with accepted planning assumptions, and optimistic figures
+                    can make any plan look feasible.
+                  </Text>
                 </Group>
-              )}
-              {showReturnInputs && (
-                <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                  <UserInputFormItem
-                    {...num("accumReturn")}
-                    label="Return while working"
-                    suffix="%"
-                  />
-                  <UserInputFormItem
-                    {...num("retireReturn")}
-                    label="Return in retirement"
-                    suffix="%"
-                  />
-                </SimpleGrid>
               )}
             </Stack>
             <UserInputFormItem
