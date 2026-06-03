@@ -140,7 +140,6 @@ export default function ProjectionChart({
 
   const ageTicks = generateTicks(input.currentAge, input.planningAge, 5);
 
-  console.log("ageTicks :", ageTicks);
   return (
     <Card withBorder radius="md" padding="md">
       <Text fw={600} mb="md">

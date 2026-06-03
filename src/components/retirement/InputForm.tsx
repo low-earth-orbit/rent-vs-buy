@@ -367,11 +367,6 @@ export default function InputForm({
                   </Popover.Dropdown>
                 </Popover>
               </SimpleGrid>
-              <Text size="xs" c="dimmed">
-                The specific glide path matters less than your overall equity
-                level and withdrawal strategy — those two factors drive most of
-                the outcome variance.
-              </Text>
               {!activeReturnPreset && (
                 <Group gap={6} wrap="nowrap" align="flex-start">
                   <IconAlertTriangle
