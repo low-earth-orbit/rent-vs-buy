@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Container, Grid } from "@mantine/core";
 import InputForm from "./InputForm";
 import Result from "./Result";
@@ -32,29 +32,42 @@ export default function Main() {
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
 
-  useEffect(() => {
-    workerRef.current = new Worker(
+  function terminateWorker() {
+    workerRef.current?.terminate();
+    workerRef.current = null;
+  }
+
+  useEffect(() => terminateWorker, []);
+
+  function handleGenerate() {
+    if (hasErrors) return;
+    requestIdRef.current += 1;
+    const requestId = requestIdRef.current;
+    terminateWorker();
+
+    const worker = new Worker(
       new URL("../../workers/glidePathWorker.ts", import.meta.url),
     );
-    workerRef.current.onmessage = (event: MessageEvent<GlidePathResponse>) => {
-      const { requestId, result } = event.data;
-      if (requestId === requestIdRef.current) {
+    workerRef.current = worker;
+    worker.onmessage = (event: MessageEvent<GlidePathResponse>) => {
+      const { requestId: responseId, result } = event.data;
+      if (responseId === requestIdRef.current) {
         setComputed({ data: result, input: event.data.input });
         setComputing(false);
       }
+      if (workerRef.current === worker) terminateWorker();
     };
-    return () => workerRef.current?.terminate();
-  }, []);
+    worker.onerror = () => {
+      if (requestId === requestIdRef.current) setComputing(false);
+      if (workerRef.current === worker) terminateWorker();
+    };
 
-  const handleGenerate = useCallback(() => {
-    if (!workerRef.current || hasErrors) return;
-    requestIdRef.current += 1;
     setComputing(true);
-    workerRef.current.postMessage({
+    worker.postMessage({
       input,
-      requestId: requestIdRef.current,
+      requestId,
     });
-  }, [input, hasErrors]);
+  }
 
   function handleChange(key: GlidePathInputKey, value: FieldValue) {
     setInput((prev) => {
@@ -68,6 +81,7 @@ export default function Main() {
     // Clear stale results whenever inputs change so the panel stays honest.
     setComputed(null);
     setComputing(false);
+    terminateWorker();
     requestIdRef.current += 1; // invalidate any in-flight worker response
   }
 
@@ -77,6 +91,7 @@ export default function Main() {
     saveInput(fresh);
     setComputed(null);
     setComputing(false);
+    terminateWorker();
     requestIdRef.current += 1;
   }
 

@@ -26,6 +26,11 @@ const SEED = 0x9e3779b9;
 const STATS_SEED = 0x85ebca6b;
 const CAL_SEED = 0xc2b2ae35;
 const CAL_EVAL_SEED = 0x27d4eb2f;
+const MIN_OPT_PATHS = 200;
+const MAX_OPT_PATHS = 10000;
+const MAX_STATS_PATHS = 8000;
+const MAX_CAL_PATHS = 1500;
+const MAX_CAL_EVAL_PATHS = 6000;
 
 // ── small numeric helpers ─────────────────────────────────────────────────────
 function realMean(nominalPct: number, inflationPct: number): number {
@@ -335,6 +340,11 @@ function classify(d: number): SlopeDir {
   return d > FLAT_BAND ? "Rising" : d < -FLAT_BAND ? "Falling" : "Flat";
 }
 
+function clampPathCount(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
 // ── public entry point ────────────────────────────────────────────────────────
 /**
  * Recommend the welfare-maximizing equity glide path for the given inputs. Pure and
@@ -414,7 +424,7 @@ export function recommendGlidePath(
     bequestFloor: 10000,
   };
 
-  const nOpt = Math.max(200, Math.round(input.numPaths));
+  const nOpt = clampPathCount(input.numPaths, MIN_OPT_PATHS, MAX_OPT_PATHS);
   const passes = 6;
   const Z = fillNormals(SEED, nYears * nOpt);
 
@@ -423,8 +433,8 @@ export function recommendGlidePath(
   let bequestTargetReached: boolean | null = null;
   if (input.bequestYears > 0) {
     const targetEstate = input.bequestYears * input.targetIncome;
-    const nCal = Math.min(nOpt, 1500);
-    const nCalEval = Math.max(nCal, 6000);
+    const nCal = Math.min(nOpt, MAX_CAL_PATHS);
+    const nCalEval = Math.max(nCal, MAX_CAL_EVAL_PATHS);
     const Zc = fillNormals(CAL_SEED, nYears * nCal);
     const Zce = fillNormals(CAL_EVAL_SEED, nYears * nCalEval);
     const medEstate = (bw: number): number => {
@@ -494,7 +504,7 @@ export function recommendGlidePath(
 
   // Stats paths are capped independently — no reason to run more than 8k out-of-sample
   // paths just because the user cranked up numPaths for the optimizer.
-  const nStats = 8000;
+  const nStats = MAX_STATS_PATHS;
   const Zf = fillNormals(STATS_SEED, nYears * nStats);
   const st = computeStats(yearIdx, ctx, Zf, nStats, gamma);
 

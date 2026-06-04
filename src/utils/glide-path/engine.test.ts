@@ -59,6 +59,15 @@ describe("recommendGlidePath", () => {
     expect(a.ceIncome).toBe(b.ceIncome);
   });
 
+  it("falls back to a bounded path count for invalid direct engine calls", () => {
+    const bounded = recommendGlidePath(
+      base({ numPaths: Number.POSITIVE_INFINITY }),
+    );
+    const minimum = recommendGlidePath(base({ numPaths: 200 }));
+    expect(bounded.equityByYear).toEqual(minimum.equityByYear);
+    expect(bounded.ceIncome).toBe(minimum.ceIncome);
+  });
+
   it("derives the bridge from a later pension start age", () => {
     const r = recommendGlidePath(
       base({ retirementAge: 55, pensionStartAge: 65, planningAge: 95 }),

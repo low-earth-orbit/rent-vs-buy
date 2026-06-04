@@ -10,7 +10,6 @@ import {
   Loader,
   SimpleGrid,
   Stack,
-  Table,
   Text,
   ThemeIcon,
   Title,
@@ -405,68 +404,11 @@ export default function Result({
         </SimpleGrid>
       </Card>
 
-      <Alert variant="light" color="teal" icon={<IconInfoCircle />}>
-        <Text size="sm">
-          This allocation is tailored to your inputs — not a rule of thumb like
-          “100 minus age.” It maximizes your expected{" "}
-          <Text span fw={600}>
-            lifetime utility
-          </Text>
-          : a measure that rewards steady income and penalizes running out far
-          more than it rewards windfalls (CRRA utility, set by your γ). See{" "}
-          <Text span fw={600}>
-            How this works
-          </Text>{" "}
-          below for the full method.
-        </Text>
-      </Alert>
-
       <GlidePathChart
         input={input}
         result={result}
         showConstant={!flatDegenerate}
       />
-
-      <Card withBorder radius="md" padding="md">
-        <Title order={3} fz="md" mb="sm">
-          Schedule
-        </Title>
-        <Table
-          striped
-          highlightOnHover
-          horizontalSpacing="md"
-          verticalSpacing={6}
-          fz="sm"
-        >
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th>Age</Table.Th>
-              <Table.Th ta="right">Equity</Table.Th>
-              <Table.Th>Phase</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {result.schedule.map((b) => (
-              <Table.Tr key={b.step}>
-                <Table.Td>
-                  {b.ageStart}
-                  {b.yearEnd > b.yearStart
-                    ? `–${input.startAge + b.yearEnd}`
-                    : ""}
-                </Table.Td>
-                <Table.Td ta="right" fw={600}>
-                  {b.equityPct.toFixed(0)}%
-                </Table.Td>
-                <Table.Td>
-                  <Text size="xs" c="dimmed">
-                    {b.phase === "accum" ? "Accumulation" : "Retirement"}
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </Card>
     </Stack>
   );
 }
