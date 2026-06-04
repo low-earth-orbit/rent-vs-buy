@@ -1,0 +1,120 @@
+import { describe, expect, it } from "vitest";
+import { renderWithMantine, screen } from "@/test-utils";
+import Result from "./Result";
+import { DEFAULTS } from "@/utils/glide-path/presets";
+import type { GlidePathResult } from "@/utils/glide-path/types";
+
+/** A coherent default result; override fields (and individual params) per test. */
+type ResultOverrides = Partial<Omit<GlidePathResult, "params">> & {
+  params?: Partial<GlidePathResult["params"]>;
+};
+function makeResult(o: ResultOverrides = {}): GlidePathResult {
+  const params = {
+    accumYears: 30,
+    retireYears: 30,
+    pensionDelayYears: 0,
+    guaranteed: 20000,
+    maxLeverage: 1,
+    borrowCost: 2,
+    bequestWeight: 0,
+    gamma: 3,
+    interval: 5,
+    ...o.params,
+  };
+  return {
+    schedule: [
+      {
+        step: 0,
+        yearStart: 0,
+        yearEnd: 29,
+        ageStart: 35,
+        phase: "accum",
+        equityPct: 80,
+      },
+      {
+        step: 1,
+        yearStart: 30,
+        yearEnd: 59,
+        ageStart: 65,
+        phase: "retire",
+        equityPct: 50,
+      },
+    ],
+    equityByYear: Array.from({ length: 60 }, (_, i) => (i < 30 ? 0.8 : 0.5)),
+    accumDir: "Falling",
+    retireDir: "Rising",
+    tentPct: 50,
+    tentAge: 66,
+    ceIncome: 50000,
+    flatEquityPct: 60,
+    flatCeIncome: 49000,
+    depletion: 0.05,
+    incomeCv: 0.2,
+    medianBequest: 100000,
+    medianEstateYears: 2,
+    bequestTargetReached: null,
+    ...o,
+    params,
+  };
+}
+
+function renderResult(result: GlidePathResult | null, extra = {}) {
+  return renderWithMantine(
+    <Result
+      input={{ ...DEFAULTS }}
+      result={result}
+      computing={false}
+      hasErrors={false}
+      {...extra}
+    />,
+  );
+}
+
+describe("glide-path Result", () => {
+  it("leads with the constant allocation when the glide edge is small (<5%)", () => {
+    // 50000 vs 49000 ≈ 2% edge → recommend the constant weight.
+    renderResult(makeResult());
+    expect(screen.getByText(/hold a constant 60% equity/i)).toBeInTheDocument();
+    expect(screen.getByText(/Simplest/i)).toBeInTheDocument();
+  });
+
+  it("leads with the glide path when its edge is meaningful (>=5%)", () => {
+    // 55000 vs 49000 ≈ 12% edge → recommend the glide path.
+    renderResult(makeResult({ ceIncome: 55000, flatCeIncome: 49000 }));
+    expect(screen.getByText(/Recommended glide path/i)).toBeInTheDocument();
+    expect(screen.getByText(/vs constant/i)).toBeInTheDocument();
+  });
+
+  it("warns and explains the pension bridge when depletion is high", () => {
+    renderResult(
+      makeResult({
+        depletion: 0.3,
+        params: { pensionDelayYears: 10 },
+      }),
+    );
+    expect(screen.getByText(/High chance of running out/i)).toBeInTheDocument();
+    expect(screen.getByText(/10-year bridge/i)).toBeInTheDocument();
+  });
+
+  it("does not warn when depletion is low", () => {
+    renderResult(makeResult({ depletion: 0.05 }));
+    // The warning title says "running out of money"; the metric label ("Chance of
+    // running out") is always present, so match the warning-specific phrasing.
+    expect(screen.queryByText(/running out of money/i)).toBeNull();
+  });
+
+  it("shows the empty state before generating", () => {
+    renderResult(null);
+    expect(screen.getByText(/Ready to optimize/i)).toBeInTheDocument();
+  });
+
+  it("shows the loading state while computing", () => {
+    renderResult(null, { computing: true });
+    expect(screen.getByText(/Optimizing your glide path/i)).toBeInTheDocument();
+  });
+
+  it("shows the incomplete-inputs alert when there are errors", () => {
+    renderResult(makeResult(), { hasErrors: true });
+    expect(screen.getByText(/Incomplete inputs/i)).toBeInTheDocument();
+  });
+});

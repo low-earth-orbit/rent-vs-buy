@@ -273,6 +273,8 @@ def recommend_glide_path(
       accum_dir/retire_dir : 'Rising' | 'Flat' | 'Falling' slope of each phase
       tent_pct, tent_year/tent_age : lowest equity within 15y of retirement (the tent bottom)
       ce_income, depletion, income_cv : out-of-sample outcome stats for the recommended path
+      flat_equity_pct, flat_ce_income : the best single CONSTANT equity weight and its CE income
+                                        (the simpler alternative; the glide's edge is usually tiny)
       median_bequest, median_estate_years : median terminal estate ($ and in years of spending)
       bequest_target_reached : None (no target) | True | False (target above what's achievable)
       params        : echo of the resolved inputs (incl. the calibrated bequest weight)
@@ -395,6 +397,16 @@ def recommend_glide_path(
     st = _stats(weights, Zf, accum_years, retire_years, alloc,
                 gamma=gamma, bequest=bequest_w, **common)
 
+    # Best single CONSTANT (flat) equity weight — the simpler alternative to the glide path.
+    # Picked by the same in-sample utility objective, then scored out-of-sample on Zf for a
+    # fair CE-income comparison. The glide path's edge over it is usually tiny (see §2e of the
+    # analysis note), so the web tool leads with this when the gap is small.
+    flat_eu = _eu(np.tile(grid, (n_years, 1)), Z, accum_years, retire_years, alloc,
+                  gamma=gamma, bequest=bequest_w, **common)
+    best_flat_w = float(grid[int(np.argmax(flat_eu))])
+    flat_st = _stats(np.full(n_years, best_flat_w), Zf, accum_years, retire_years, alloc,
+                     gamma=gamma, bequest=bequest_w, **common)
+
     # Shape descriptors.
     def classify(d):
         return "Rising" if d > flat_band else ("Falling" if d < -flat_band else "Flat")
@@ -435,6 +447,9 @@ def recommend_glide_path(
         "tent_pct": round(float(ret[tent_i]) * 100, 1) if retire_years else None,
         tent_label: tent_value,
         "ce_income": round(st["ce_income"], 0),
+        # Best single constant equity weight + its CE income (the simpler alternative).
+        "flat_equity_pct": round(best_flat_w * 100, 1),
+        "flat_ce_income": round(flat_st["ce_income"], 0),
         "median_bequest": round(st["median_bequest"], 0),
         # Estate expressed in years of retirement spending (the friendlier bequest unit).
         "median_estate_years": (round(st["median_bequest"] / target_income, 1)
@@ -737,6 +752,8 @@ def _run_interactive():
     print()
     print(f"  Outcome stats (out-of-sample):")
     print(f"    CE income     : ${rec['ce_income']:>10,.0f} /yr  (certainty-equivalent spending)")
+    print(f"    Best constant : {rec['flat_equity_pct']:>9.0f} %   "
+          f"(CE ${rec['flat_ce_income']:,.0f}/yr — the glide's edge over a flat weight is usually tiny)")
     print(f"    Depletion rate: {rec['depletion']*100:>8.1f} %")
     print(f"    Income CV     : {rec['income_cv']*100:>8.1f} %  (spending variability; lower = steadier)")
     print(f"    Median estate : ${rec['median_bequest']:>10,.0f}  "

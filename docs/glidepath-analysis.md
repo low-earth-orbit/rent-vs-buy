@@ -267,8 +267,10 @@ The same model is exposed as a one-call recommender —
 `recommend_glide_path(...)` — that **optimizes** (does not look up) the equity weight per
 chosen step (`interval` = 1y, 5y, …) given your horizons, spending flexibility, pension level,
 risk aversion, bequest motive, and an arbitrary return/vol curve passed in as a variable. It
-returns the per-step schedule plus out-of-sample CE income, depletion, income CV, and the median
-estate, and ships a `plot_glide_path()` helper. `python3 analysis/glide_path_recommender.py --demo` sweeps **each lever across all
+returns the per-step schedule plus out-of-sample CE income, depletion, income CV, the median
+estate, and the **best single constant equity weight** (`flat_equity_pct` / `flat_ce_income`) — the
+simpler alternative whose CE the glide path usually beats by only a hair (§2e) — and ships a
+`plot_glide_path()` helper. `python3 analysis/glide_path_recommender.py --demo` sweeps **each lever across all
 three spending rules** — a 3×3 matrix, holding every other input at its default — and writes
 `glide_<spending>_by_<lever>.png` (spending ∈ {`constant`, `semiflex`, `flexible`}; lever ∈
 {`pension`, `bequest`, `gamma`}) plus a `glide_by_spending.png` overview to

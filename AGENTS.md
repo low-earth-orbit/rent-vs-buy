@@ -14,6 +14,11 @@ npm test             # Vitest unit + React Testing Library component tests
 npm run test:e2e     # Playwright end-to-end tests (auto-starts the dev server)
 ```
 
+`dev` and `build` set `NODE_OPTIONS=--max-old-space-size=8192`. A one-shot build only needs
+~700 MB, but the long-lived Turbopack dev server (HMR + React Compiler) grows over a session and
+will OOM at Node's ~4 GB default — hence the 8 GB ceiling. If the dev server still climbs to the
+limit after hours of editing, restart it. Always invoke via `npm run …` so the flag applies.
+
 The codebase is **TypeScript** (`.ts`/`.tsx`); shared domain types live in `src/types.ts`.
 
 ## CI / CD

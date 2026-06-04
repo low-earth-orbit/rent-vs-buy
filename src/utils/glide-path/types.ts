@@ -40,6 +40,10 @@ export interface GlidePathResult {
   // ── out-of-sample outcome stats ───────────────────────────
   /** Certainty-equivalent retirement income ($/yr). */
   ceIncome: number;
+  /** The best single constant equity weight (%) — the behaviorally simpler alternative. */
+  flatEquityPct: number;
+  /** CE income of holding `flatEquityPct` equity at all ages ($/yr). */
+  flatCeIncome: number;
   /** Fraction of paths whose portfolio is depleted before the planning age. */
   depletion: number;
   /** Mean coefficient-of-variation of retirement income (spending steadiness). */
@@ -76,5 +80,6 @@ export interface GlidePathRequest {
 /** Message returned from the glide-path Web Worker. */
 export interface GlidePathResponse {
   requestId: number;
+  input: GlidePathInput;
   result: GlidePathResult;
 }

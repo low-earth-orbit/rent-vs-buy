@@ -80,6 +80,10 @@ def print_rec(rec):
           f"pension {p['pension_level']*100:.0f}% of pre-ret income{bridge} | γ {p['gamma']:g}{lev} | "
           f"{p['interval']}y steps")
     print(_fmt(rec))
+    if rec.get("flat_equity_pct") is not None:
+        edge = rec["ce_income"] - rec["flat_ce_income"]
+        print(f"  best constant {rec['flat_equity_pct']:.0f}% equity → CE "
+              f"${rec['flat_ce_income']:,.0f}/yr (glide +${edge:,.0f}/yr)")
     if rec.get("median_estate_years") is not None:
         warn = (" (target unreachable — most the plan can leave)"
                 if rec.get("bequest_target_reached") is False else "")

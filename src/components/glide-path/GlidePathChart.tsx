@@ -14,6 +14,7 @@ import {
 import type { GlidePathInput, GlidePathResult } from "@/utils/glide-path/types";
 
 const TEAL = "var(--mantine-color-teal-6)";
+const INDIGO = "var(--mantine-color-indigo-5)";
 
 interface ChartPoint {
   age: number;
@@ -58,6 +59,17 @@ export default function GlidePathChart({
   const lastAge = data.length ? data[data.length - 1].age : retireAge;
   const levCap = result.params.maxLeverage * 100;
   const yMax = Math.max(105, Math.ceil((levCap + 5) / 10) * 10);
+
+  // With no estate goal the optimizer derisks the final block (a fixed-horizon
+  // artifact, not advice). Detect a notable drop in the last retirement step to footnote it.
+  const lastBlock = result.schedule.at(-1);
+  const prevBlock = result.schedule.at(-2);
+  const terminalDerisk =
+    result.params.bequestWeight === 0 &&
+    lastBlock != null &&
+    prevBlock != null &&
+    lastBlock.phase === "retire" &&
+    prevBlock.equityPct - lastBlock.equityPct >= 15;
 
   return (
     <Card withBorder radius="md" padding="md">
@@ -116,8 +128,20 @@ export default function GlidePathChart({
               />
             )}
             <ReferenceLine x={retireAge} stroke={TEAL} strokeDasharray="4 4" />
+            <ReferenceLine
+              y={result.flatEquityPct}
+              stroke={INDIGO}
+              strokeWidth={2}
+              strokeDasharray="5 4"
+              label={{
+                value: `Constant ${result.flatEquityPct.toFixed(0)}%`,
+                position: "insideTopLeft",
+                fill: "var(--mantine-color-indigo-6)",
+                fontSize: 11,
+              }}
+            />
             <Line
-              type="monotone"
+              type="stepAfter"
               dataKey="equity"
               stroke={TEAL}
               strokeWidth={2.5}
@@ -131,13 +155,37 @@ export default function GlidePathChart({
         <Group gap={6} wrap="nowrap">
           <Box w={18} h={2} style={{ backgroundColor: TEAL }} aria-hidden />
           <Text size="xs" c="dimmed">
-            Recommended equity %
+            Optimal glide path
+          </Text>
+        </Group>
+        <Group gap={6} wrap="nowrap">
+          <Box
+            w={18}
+            h={0}
+            style={{ borderTop: `2px dashed ${INDIGO}` }}
+            aria-hidden
+          />
+          <Text size="xs" c="dimmed">
+            Best constant {result.flatEquityPct.toFixed(0)}% equity
           </Text>
         </Group>
         <Text size="xs" c="dimmed">
-          Dashed line marks retirement. Curve smoothed across interval steps.
+          Vertical line marks retirement. Equity is held flat within each{" "}
+          {result.params.interval}-year step.
         </Text>
       </Group>
+      {terminalDerisk && (
+        <Text size="xs" c="dimmed" mt="xs">
+          <Text span fw={600}>
+            Note:
+          </Text>{" "}
+          the dip in the final years is a fixed-horizon artifact, not advice.
+          With no estate goal, holding stocks in the last years only adds risk
+          with no upside (you can&apos;t spend a final-year windfall and leave
+          nothing behind), so the optimizer derisks. Set an estate goal to
+          remove it.
+        </Text>
+      )}
     </Card>
   );
 }

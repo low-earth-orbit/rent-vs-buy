@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Container, Grid } from "@mantine/core";
-import { useDebouncedValue } from "@mantine/hooks";
 import InputForm from "./InputForm";
 import Result from "./Result";
 import { DEFAULTS } from "@/utils/glide-path/presets";
@@ -25,16 +24,13 @@ interface Computed {
 export default function Main() {
   const [input, setInput] = useState<GlidePathInput>(() => loadInput());
   const [computed, setComputed] = useState<Computed | null>(null);
+  const [computing, setComputing] = useState(false);
 
   const errors = validateGlidePathInput(input);
   const hasErrors = Object.keys(errors).length > 0;
 
-  // The optimization is seconds of CPU, so debounce generously and run it in a worker.
-  const [debouncedInput] = useDebouncedValue(input, 400);
-
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
-  const requestInputRef = useRef<GlidePathInput | null>(null);
 
   useEffect(() => {
     workerRef.current = new Worker(
@@ -42,29 +38,23 @@ export default function Main() {
     );
     workerRef.current.onmessage = (event: MessageEvent<GlidePathResponse>) => {
       const { requestId, result } = event.data;
-      // Drop stale responses; tag the result with the input it was computed for.
-      if (requestId === requestIdRef.current && requestInputRef.current) {
-        setComputed({ data: result, input: requestInputRef.current });
+      if (requestId === requestIdRef.current) {
+        setComputed({ data: result, input: event.data.input });
+        setComputing(false);
       }
     };
     return () => workerRef.current?.terminate();
   }, []);
 
-  useEffect(() => {
-    if (!workerRef.current) return;
-    // Invalid input: skip the run (Result shows the error alert instead).
-    if (Object.keys(validateGlidePathInput(debouncedInput)).length > 0) return;
+  const handleGenerate = useCallback(() => {
+    if (!workerRef.current || hasErrors) return;
     requestIdRef.current += 1;
-    requestInputRef.current = debouncedInput; // ref write (not setState) — safe in an effect
+    setComputing(true);
     workerRef.current.postMessage({
-      input: debouncedInput,
+      input,
       requestId: requestIdRef.current,
     });
-  }, [debouncedInput]);
-
-  // Derived (no effect setState): a fresh run is in flight whenever the current
-  // result wasn't computed for the latest debounced input.
-  const computing = !hasErrors && computed?.input !== debouncedInput;
+  }, [input, hasErrors]);
 
   function handleChange(key: GlidePathInputKey, value: FieldValue) {
     setInput((prev) => {
@@ -75,12 +65,19 @@ export default function Main() {
       saveInput(next);
       return next;
     });
+    // Clear stale results whenever inputs change so the panel stays honest.
+    setComputed(null);
+    setComputing(false);
+    requestIdRef.current += 1; // invalidate any in-flight worker response
   }
 
   function handleReset() {
     const fresh: GlidePathInput = { ...DEFAULTS };
     setInput(fresh);
     saveInput(fresh);
+    setComputed(null);
+    setComputing(false);
+    requestIdRef.current += 1;
   }
 
   return (
@@ -92,6 +89,8 @@ export default function Main() {
             errors={errors}
             onChange={handleChange}
             onReset={handleReset}
+            onGenerate={handleGenerate}
+            generating={computing}
           />
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 6 }} order={{ base: 1, lg: 2 }}>

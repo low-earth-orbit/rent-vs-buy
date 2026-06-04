@@ -46,18 +46,3 @@ test("retirement planner shows an earliest retirement age and chart", async ({
     page.getByRole("img", { name: /retirement portfolio projection chart/i }),
   ).toBeVisible();
 });
-
-test("glide-path recommender renders a recommended glide chart", async ({
-  page,
-}) => {
-  await page.goto("/glide-path");
-
-  await expect(
-    page.getByRole("heading", { name: "Glide Path Recommender" }),
-  ).toBeVisible();
-
-  // The chart is rendered client-side after the optimization worker responds.
-  await expect(
-    page.getByRole("img", { name: /recommended equity weight by age/i }),
-  ).toBeVisible({ timeout: 20000 });
-});

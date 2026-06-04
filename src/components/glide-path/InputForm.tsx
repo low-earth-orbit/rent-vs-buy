@@ -10,6 +10,7 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
+import { IconChartLine } from "@tabler/icons-react";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
 import { GAMMA_PRESETS } from "@/utils/glide-path/presets";
 import { FIELD_CONSTRAINTS } from "@/utils/glide-path/validation";
@@ -26,6 +27,8 @@ interface InputFormProps {
   errors: GlidePathErrors;
   onChange: (key: GlidePathInputKey, value: FieldValue) => void;
   onReset: () => void;
+  onGenerate: () => void;
+  generating: boolean;
 }
 
 export default function InputForm({
@@ -33,6 +36,8 @@ export default function InputForm({
   errors,
   onChange,
   onReset,
+  onGenerate,
+  generating,
 }: InputFormProps) {
   const bind = (key: GlidePathInputKey) => (value: FieldValue) =>
     onChange(key, value);
@@ -182,8 +187,8 @@ export default function InputForm({
                   Risk Aversion (γ)
                 </Text>
                 <Text size="xs" c="dimmed">
-                  CRRA risk aversion: 1 = risk-seeker, 3 = moderate, 8 = very
-                  cautious.
+                  How much steady income matters vs. chasing growth: 1 =
+                  aggressive, 3 = moderate, 8 = very cautious.
                 </Text>
                 <Group gap="xs" my="xs" role="group" aria-label="Risk aversion">
                   {GAMMA_PRESETS.map((g) => (
@@ -224,14 +229,14 @@ export default function InputForm({
             <Stack gap="md">
               <UserInputFormItem
                 {...num("maxEquityPct")}
-                label="Max equity"
+                label="Max Equity"
                 labelHelperText="100% = no leverage. 150% lets the optimizer borrow to hold up to 1.5× equity."
                 suffix="%"
               />
               {leveraged && (
                 <UserInputFormItem
                   {...num("borrowCost")}
-                  label="Real cost of borrowing"
+                  label="Real Cost of Borrowing"
                   labelHelperText="Your real (after-inflation) borrowing rate."
                   suffix="%"
                 />
@@ -241,18 +246,18 @@ export default function InputForm({
         </Accordion.Item>
 
         <Accordion.Item value="engine">
-          <Accordion.Control>Engine</Accordion.Control>
+          <Accordion.Control>Simulation</Accordion.Control>
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 {...num("interval")}
-                label="Glide step"
+                label="Glide Step"
                 labelHelperText="Years the equity weight is held constant. 1 = per-age (much slower); 5 = every 5 years."
                 suffix=" yrs"
               />
               <UserInputFormItem
                 {...num("numPaths")}
-                label="Monte Carlo paths"
+                label="Monte Carlo Paths"
                 labelHelperText="More paths = steadier result, slower. 2000 is a good balance."
                 thousandSeparator
               />
@@ -266,6 +271,18 @@ export default function InputForm({
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion>
+
+      <Button
+        fullWidth
+        size="md"
+        leftSection={<IconChartLine size={18} />}
+        onClick={onGenerate}
+        loading={generating}
+        disabled={Object.keys(errors).length > 0}
+        mt="sm"
+      >
+        Generate glide path
+      </Button>
     </>
   );
 }

@@ -492,9 +492,30 @@ export function recommendGlidePath(
   const weights: number[] = [];
   for (let i = 0; i < nYears; i++) weights.push(grid[yearIdx[i]]);
 
-  const nStats = Math.max(nOpt, 8000);
+  // Stats paths are capped independently — no reason to run more than 8k out-of-sample
+  // paths just because the user cranked up numPaths for the optimizer.
+  const nStats = 8000;
   const Zf = fillNormals(STATS_SEED, nYears * nStats);
   const st = computeStats(yearIdx, ctx, Zf, nStats, gamma);
+
+  // ── best single constant (flat) equity weight ────────────────────────────────
+  // The glide path's edge over the best *constant* allocation is typically tiny, so we
+  // report that simpler alternative for the UI to quantify the gap and recommend the
+  // behaviorally-stickier flat weight. Chosen by the same in-sample utility objective,
+  // then scored on Zf for an apples-to-apples CE-income comparison with the glide path.
+  const flatIdx = new Int32Array(nYears);
+  let bestFlatG = 0;
+  let bestFlatU = -Infinity;
+  for (let g = 0; g < G; g++) {
+    flatIdx.fill(g);
+    const u = meanUtility(flatIdx, ctx, Z, nOpt);
+    if (u > bestFlatU) {
+      bestFlatU = u;
+      bestFlatG = g;
+    }
+  }
+  flatIdx.fill(bestFlatG);
+  const flatStats = computeStats(flatIdx, ctx, Zf, nStats, gamma);
 
   // ── schedule + shape descriptors ─────────────────────────────────────────────
   const schedule: ScheduleBlock[] = [];
@@ -529,6 +550,8 @@ export function recommendGlidePath(
     tentPct: retireYears ? Math.round(ret[tentI] * 1000) / 10 : null,
     tentAge: retireYears ? input.startAge + accumYears + tentI : null,
     ceIncome: Math.round(st.ceIncome),
+    flatEquityPct: Math.round(grid[bestFlatG] * 1000) / 10,
+    flatCeIncome: Math.round(flatStats.ceIncome),
     depletion: Math.round(st.depletion * 1e4) / 1e4,
     incomeCv: Math.round(st.incomeCv * 1e4) / 1e4,
     medianBequest: Math.round(st.medianBequest),

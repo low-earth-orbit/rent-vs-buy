@@ -39,6 +39,19 @@ describe("recommendGlidePath", () => {
     expect(r.bequestTargetReached).toBeNull(); // no target by default
   });
 
+  it("reports a best constant allocation the glide path barely beats", () => {
+    const r = recommendGlidePath(base());
+    // Flat weight is on the grid, within [0, maxLeverage].
+    expect(r.flatEquityPct).toBeGreaterThanOrEqual(0);
+    expect(r.flatEquityPct).toBeLessThanOrEqual(
+      r.params.maxLeverage * 100 + 1e-9,
+    );
+    expect(r.flatCeIncome).toBeGreaterThan(0);
+    // The glide path is optimized over a superset of constant paths, so its
+    // in-sample edge is real but small — within a few % of the flat CE income.
+    expect(r.ceIncome).toBeGreaterThanOrEqual(r.flatCeIncome * 0.98);
+  });
+
   it("is deterministic for identical inputs (seeded)", () => {
     const a = recommendGlidePath(base());
     const b = recommendGlidePath(base());
