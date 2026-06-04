@@ -58,9 +58,9 @@ export default function Methodology() {
           — not the highest expected return, and not the least volatile, but the
           point in between that maximizes your welfare given your preferences.
           Note this maximizes welfare, not success rate: where derisking
-          can&apos;t close a gap (e.g. an unfunded bridge before your pension), it
-          may stay aggressive — lowering the failure rate there comes from your
-          inputs (retire later, spend less, save more), not the allocation.
+          can&apos;t close a gap (e.g. an unfunded bridge before your pension),
+          it may stay aggressive — lowering the failure rate there comes from
+          your inputs (retire later, spend less, save more), not the allocation.
         </Text>
 
         <Title order={3} fz="md">

@@ -118,6 +118,16 @@ function GlideShape({
 const RECOMMEND_FLAT_BELOW_PCT = 5;
 
 /**
+ * A CE income this far below the target is the FLOOR=1 / CRRA artifact (the certainty-equivalent
+ * collapses toward zero when consumption hits the floor in a meaningful share of paths), not a
+ * real planning figure. We use it to suppress percentage comparisons against a degenerate
+ * denominator and to surface the failure warning even when the depletion rate looks modest.
+ */
+function ceIsDegenerate(income: number, targetIncome: number): boolean {
+  return income < Math.max(1000, 0.05 * targetIncome);
+}
+
+/**
  * Adaptive headline. When the glide path beats the best constant allocation by less than
  * RECOMMEND_FLAT_BELOW_PCT, lead with the simpler constant weight (the glide is a marginal
  * refinement); otherwise lead with the glide path. Both are always shown together.
@@ -130,9 +140,59 @@ function Recommendation({
   result: GlidePathResult;
 }) {
   const edge = result.ceIncome - result.flatCeIncome;
+  const flatPct = result.flatEquityPct.toFixed(0);
+  const glideBad = ceIsDegenerate(result.ceIncome, input.targetIncome);
+  const flatBad = ceIsDegenerate(result.flatCeIncome, input.targetIncome);
+
+  // No allocation reliably funds the plan — the income figure is the floor artifact, not a
+  // real number. Don't pick a "winner" or show a percentage; defer to the failure warning.
+  if (glideBad) {
+    return (
+      <Card withBorder radius="md" padding="lg">
+        <Stack gap="sm">
+          <Title order={3} fz="md">
+            No allocation reliably funds this plan
+          </Title>
+          <Text size="sm" c="dimmed">
+            In a meaningful share of simulated markets the portfolio can&apos;t
+            cover your target income, so no stock/bond mix produces a dependable
+            result (see the warning below). The optimizer&apos;s best effort is
+            shown for reference.
+          </Text>
+          <Divider my={4} label="Best-effort glide path" labelPosition="left" />
+          <GlideShape input={input} result={result} />
+        </Stack>
+      </Card>
+    );
+  }
+
+  // The glide funds the plan but the best constant weight is degenerate — recommend the glide
+  // without a meaningless percentage against a near-zero denominator.
+  if (flatBad) {
+    return (
+      <Card withBorder radius="md" padding="lg">
+        <Stack gap="sm">
+          <Group gap="xs">
+            <Title order={3} fz="md">
+              Recommended glide path
+            </Title>
+            <Badge color="teal" variant="filled">
+              Materially better
+            </Badge>
+          </Group>
+          <GlideShape input={input} result={result} />
+          <Text size="xs" c="dimmed">
+            A single constant allocation can&apos;t reliably fund this plan (it
+            runs out in too many markets), so the glide path&apos;s ability to
+            shift risk over time matters here — there is no simpler equivalent.
+          </Text>
+        </Stack>
+      </Card>
+    );
+  }
+
   const edgePct =
     result.flatCeIncome > 0 ? (edge / result.flatCeIncome) * 100 : 0;
-  const flatPct = result.flatEquityPct.toFixed(0);
 
   if (edgePct < RECOMMEND_FLAT_BELOW_PCT) {
     return (
@@ -194,9 +254,12 @@ function FailureWarning({
   result: GlidePathResult;
 }) {
   const dep = result.depletion;
-  if (dep < 0.1) return null;
+  // A degenerate CE income means consumption hits the floor often enough to make the plan a
+  // failure even when the headline depletion rate looks modest — warn in that case too.
+  const glideBad = ceIsDegenerate(result.ceIncome, input.targetIncome);
+  if (dep < 0.1 && !glideBad) return null;
 
-  const severe = dep >= 0.25;
+  const severe = dep >= 0.25 || glideBad;
   const retireAge = input.startAge + result.params.accumYears;
   const delay = result.params.pensionDelayYears;
 
@@ -298,6 +361,12 @@ export default function Result({
       ? `~${result.medianEstateYears} yrs (target not reachable)`
       : `~${result.medianEstateYears} yrs of spending`;
 
+  const incomeDegenerate = ceIsDegenerate(result.ceIncome, input.targetIncome);
+  const flatDegenerate = ceIsDegenerate(
+    result.flatCeIncome,
+    input.targetIncome,
+  );
+
   return (
     <Stack gap="lg" pos="relative">
       <Recommendation input={input} result={result} />
@@ -311,8 +380,12 @@ export default function Result({
         <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
           <Metric
             label="Income"
-            value={`${formatCAD(result.ceIncome)}/yr`}
-            note="risk-adjusted, today's $"
+            value={incomeDegenerate ? "—" : `${formatCAD(result.ceIncome)}/yr`}
+            note={
+              incomeDegenerate
+                ? "unreliable — plan fails (see warning)"
+                : "risk-adjusted, today's $"
+            }
           />
           <Metric
             label="Chance of running out"
@@ -348,7 +421,11 @@ export default function Result({
         </Text>
       </Alert>
 
-      <GlidePathChart input={input} result={result} />
+      <GlidePathChart
+        input={input}
+        result={result}
+        showConstant={!flatDegenerate}
+      />
 
       <Card withBorder radius="md" padding="md">
         <Title order={3} fz="md" mb="sm">

@@ -103,6 +103,30 @@ describe("glide-path Result", () => {
     expect(screen.queryByText(/running out of money/i)).toBeNull();
   });
 
+  it("flags a failing plan and suppresses the income figure when the CE is degenerate", () => {
+    // Both CEs collapsed to the floor artifact; depletion is low (5%) but the plan fails.
+    renderResult(
+      makeResult({ ceIncome: 95, flatCeIncome: 99, depletion: 0.05 }),
+    );
+    expect(
+      screen.getByText(/No allocation reliably funds this plan/i),
+    ).toBeInTheDocument();
+    // Warning fires despite sub-threshold depletion, and the income figure is hidden.
+    expect(screen.getByText(/running out of money/i)).toBeInTheDocument();
+    expect(screen.getByText(/unreliable/i)).toBeInTheDocument();
+  });
+
+  it("recommends the glide path without a bogus % when the best constant is degenerate", () => {
+    // Glide funds the plan ($93k) but the best constant collapsed ($444) → no 20,982% ratio.
+    renderResult(
+      makeResult({ ceIncome: 93608, flatCeIncome: 444, depletion: 0.05 }),
+    );
+    expect(screen.getByText(/Recommended glide path/i)).toBeInTheDocument();
+    expect(screen.getByText(/Materially better/i)).toBeInTheDocument();
+    expect(screen.queryByText(/vs constant/i)).toBeNull();
+    expect(screen.queryByText(/20982/)).toBeNull();
+  });
+
   it("shows the empty state before generating", () => {
     renderResult(null);
     expect(screen.getByText(/Ready to optimize/i)).toBeInTheDocument();

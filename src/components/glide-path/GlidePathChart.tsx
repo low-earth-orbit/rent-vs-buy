@@ -43,9 +43,12 @@ function ChartTooltip({ payload }: { payload?: { payload: ChartPoint }[] }) {
 export default function GlidePathChart({
   input,
   result,
+  showConstant = true,
 }: {
   input: GlidePathInput;
   result: GlidePathResult;
+  /** Hide the constant-equity reference line when that constant is itself degenerate. */
+  showConstant?: boolean;
 }) {
   const retireAge = input.startAge + result.params.accumYears;
   const data: ChartPoint[] = result.equityByYear.map((w, i) => {
@@ -128,18 +131,20 @@ export default function GlidePathChart({
               />
             )}
             <ReferenceLine x={retireAge} stroke={TEAL} strokeDasharray="4 4" />
-            <ReferenceLine
-              y={result.flatEquityPct}
-              stroke={INDIGO}
-              strokeWidth={2}
-              strokeDasharray="5 4"
-              label={{
-                value: `Constant ${result.flatEquityPct.toFixed(0)}%`,
-                position: "insideTopLeft",
-                fill: "var(--mantine-color-indigo-6)",
-                fontSize: 11,
-              }}
-            />
+            {showConstant && (
+              <ReferenceLine
+                y={result.flatEquityPct}
+                stroke={INDIGO}
+                strokeWidth={2}
+                strokeDasharray="5 4"
+                label={{
+                  value: `Constant ${result.flatEquityPct.toFixed(0)}%`,
+                  position: "insideTopLeft",
+                  fill: "var(--mantine-color-indigo-6)",
+                  fontSize: 11,
+                }}
+              />
+            )}
             <Line
               type="stepAfter"
               dataKey="equity"
@@ -158,17 +163,19 @@ export default function GlidePathChart({
             Optimal glide path
           </Text>
         </Group>
-        <Group gap={6} wrap="nowrap">
-          <Box
-            w={18}
-            h={0}
-            style={{ borderTop: `2px dashed ${INDIGO}` }}
-            aria-hidden
-          />
-          <Text size="xs" c="dimmed">
-            Best constant {result.flatEquityPct.toFixed(0)}% equity
-          </Text>
-        </Group>
+        {showConstant && (
+          <Group gap={6} wrap="nowrap">
+            <Box
+              w={18}
+              h={0}
+              style={{ borderTop: `2px dashed ${INDIGO}` }}
+              aria-hidden
+            />
+            <Text size="xs" c="dimmed">
+              Best constant {result.flatEquityPct.toFixed(0)}% equity
+            </Text>
+          </Group>
+        )}
         <Text size="xs" c="dimmed">
           Vertical line marks retirement. Equity is held flat within each{" "}
           {result.params.interval}-year step.
