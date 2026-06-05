@@ -205,19 +205,6 @@ export default function GlidePathChart({
               tick={{ fontSize: 12 }}
             />
             <Tooltip content={<ChartTooltip view={view} />} />
-            {levCap > 100 && (
-              <ReferenceLine
-                y={100}
-                stroke="var(--mantine-color-gray-5)"
-                strokeDasharray="2 3"
-                label={{
-                  value: "100% (unleveraged)",
-                  position: "insideBottomRight",
-                  fill: "var(--mantine-color-gray-6)",
-                  fontSize: 10,
-                }}
-              />
-            )}
             <ReferenceLine x={retireAge} stroke={TEAL} strokeDasharray="4 4" />
             {showConstant && (
               <ReferenceLine
