@@ -554,9 +554,6 @@ export default function Result({
                 <Text size="sm" fw={600} c="dimmed">
                   Alternative — {secondary.title}
                 </Text>
-                <Badge variant="default" size="sm">
-                  Not preferred
-                </Badge>
               </Group>
               <ShapeSummary
                 kind={secondary.kind}

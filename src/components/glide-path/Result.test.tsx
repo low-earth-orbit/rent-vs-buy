@@ -237,7 +237,6 @@ describe("glide-path Result", () => {
       screen.getByText(/cannot reliably distinguish these allocations/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Recommended allocation/i)).toBeNull();
-    expect(screen.queryByText(/Not preferred/i)).toBeNull();
     expect(screen.getAllByText("Optimized glide path")).not.toHaveLength(0);
     expect(screen.getAllByText("Constant 60% equity")).not.toHaveLength(0);
   });
