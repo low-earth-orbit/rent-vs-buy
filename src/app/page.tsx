@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  Badge,
   Card,
   Container,
   Group,
@@ -14,6 +13,7 @@ import {
 import Header from "@/components/shared/Header";
 import Footer from "@/components/shared/Footer";
 import DisclaimerModal from "@/components/shared/DisclaimerModal";
+import StatusBadge, { type AppStatus } from "@/components/shared/StatusBadge";
 import {
   loadDisclaimerAccepted,
   saveDisclaimerAccepted,
@@ -25,7 +25,7 @@ type Tool = {
   title: string;
   description: string;
   href?: string;
-  status?: string;
+  status?: AppStatus;
 };
 
 const TOOLS: Tool[] = [
@@ -35,14 +35,15 @@ const TOOLS: Tool[] = [
     description:
       "Compare the long-run net worth of renting versus owning a home.",
     href: "/rent-vs-buy",
+    status: "updated",
   },
   {
-    emoji: "🌴",
+    emoji: "🔥",
     title: "When can I retire?",
     description:
       "A quick reality check on the earliest age you could retire, based on your savings and target income.",
     href: "/retirement",
-    status: "New",
+    status: "new",
   },
   {
     emoji: "🛤️",
@@ -50,7 +51,7 @@ const TOOLS: Tool[] = [
     description:
       "Find your optimal stock allocation across your lifetime. FOR NERDS.",
     href: "/glide-path",
-    status: "Preview",
+    status: "preview",
   },
 ];
 
@@ -61,12 +62,8 @@ function ToolCardBody({ tool }: { tool: Tool }) {
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Text fz={32}>{tool.emoji}</Text>
         <Group gap="xs" wrap="nowrap">
-          {!available && (
-            <Badge variant="light" color="gray">
-              Coming soon
-            </Badge>
-          )}
-          {tool.status && <Badge>{tool.status}</Badge>}
+          {!available && <StatusBadge status="coming-soon" />}
+          {tool.status && <StatusBadge status={tool.status} />}
         </Group>
       </Group>
       <Title order={2} fz="xl">
