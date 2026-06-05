@@ -77,11 +77,11 @@ export default function GlidePathChart({
   return (
     <Card withBorder radius="md" padding="md">
       <Text fw={600} mb="md">
-        Recommended equity glide path
+        Optimal equity allocation by age
       </Text>
       <div
         role="img"
-        aria-label="Recommended equity weight by age"
+        aria-label="Optimal equity weight by age"
         style={{ width: "100%", minWidth: 0 }}
       >
         <ResponsiveContainer width="100%" height={340}>
@@ -160,7 +160,7 @@ export default function GlidePathChart({
         <Group gap={6} wrap="nowrap">
           <Box w={18} h={2} style={{ backgroundColor: TEAL }} aria-hidden />
           <Text size="xs" c="dimmed">
-            Optimal glide path
+            Optimized glide path
           </Text>
         </Group>
         {showConstant && (

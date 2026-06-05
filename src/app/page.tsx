@@ -48,7 +48,7 @@ const TOOLS: Tool[] = [
     emoji: "🛤️",
     title: "Lifetime Allocation Optimizer",
     description:
-      "Compare an optimized equity path with the best constant allocation for your circumstances. FOR NERDS.",
+      "Find your optimal stock allocation across your lifetime. FOR NERDS.",
     // href: "/glide-path",
   },
 ];

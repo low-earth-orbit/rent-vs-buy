@@ -6,8 +6,7 @@ import Methodology from "@/components/glide-path/Methodology";
 
 export const metadata: Metadata = {
   title: "Lifetime Allocation Optimizer",
-  description:
-    "Compare an optimized equity path with the best constant allocation for your circumstances.",
+  description: "Find your optimal stock allocation across your lifetime.",
 };
 
 export default function GlidePathPage() {
@@ -15,7 +14,7 @@ export default function GlidePathPage() {
     <>
       <Header
         title="Lifetime Allocation Optimizer"
-        subtitle="Compare an optimized equity path with the best constant allocation for your circumstances."
+        subtitle="Find your optimal stock allocation across your lifetime."
         showHomeLink
       />
       <main>

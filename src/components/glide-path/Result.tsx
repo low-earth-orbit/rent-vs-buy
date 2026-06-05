@@ -322,7 +322,7 @@ export default function Result({
             <Text size="sm" c="dimmed" ta="center" maw={300}>
               Fill in your details, then click{" "}
               <Text span fw={600}>
-                Compare allocation paths
+                Generate allocation paths
               </Text>{" "}
               to find your personalized equity allocation.
             </Text>
