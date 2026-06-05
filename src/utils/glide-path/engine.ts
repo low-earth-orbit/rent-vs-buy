@@ -425,12 +425,14 @@ export function buildEquityGrid(maxLeverage: number): Float64Array {
 // ── public entry point ────────────────────────────────────────────────────────
 /**
  * Recommend the welfare-maximizing equity glide path for the given inputs. Pure and
- * deterministic (seeded). Runs the optimizer and the out-of-sample stats.
- * Intended to be called from the Web Worker.
+ * deterministic for a given `seed`. `seed = 0` is the canonical draw; bumping it reseeds the
+ * Monte Carlo to a different-but-reproducible draw (the opt-in "re-roll"). Runs the optimizer
+ * and the out-of-sample stats. Intended to be called from the Web Worker.
  */
 export function recommendGlidePath(
   input: GlidePathInput,
   curve: AllocAnchor[] = DEFAULT_ALLOC_CURVE,
+  seed = 0,
 ): GlidePathResult {
   const accumYears = Math.max(
     1,
@@ -494,7 +496,10 @@ export function recommendGlidePath(
 
   const nOpt = clampPathCount(input.numPaths, MIN_OPT_PATHS, MAX_OPT_PATHS);
   const passes = 6;
-  const Z = fillNormals(SEED, nYears * nOpt);
+  // Offset both seeds by the re-roll nonce so a new draw is independent yet reproducible.
+  // seed = 0 leaves SEED/STATS_SEED untouched (the canonical draw).
+  const optSeed = (SEED + Math.imul(seed, 0x9e3779b9)) >>> 0;
+  const Z = fillNormals(optSeed, nYears * nOpt);
 
   // ── optimization + out-of-sample stats ───────────────────────────────────────
   const blockIdx = optimize(
@@ -514,7 +519,8 @@ export function recommendGlidePath(
   // Stats paths are capped independently — no reason to run more than 8k out-of-sample
   // paths just because the user cranked up numPaths for the optimizer.
   const nStats = MAX_STATS_PATHS;
-  const Zf = fillNormals(STATS_SEED, nYears * nStats);
+  const statsSeed = (STATS_SEED + Math.imul(seed, 0x85ebca6b)) >>> 0;
+  const Zf = fillNormals(statsSeed, nYears * nStats);
   const st = computeStats(yearIdx, ctx, Zf, nStats, gamma);
   const drawdownSt = computeDrawdownStats(yearIdx, ctx, Zf, nStats, gamma);
 

@@ -3,8 +3,10 @@
 import {
   Alert,
   Badge,
+  Button,
   Card,
   Center,
+  Divider,
   Group,
   Loader,
   SimpleGrid,
@@ -19,8 +21,11 @@ import {
   IconTrendingDown,
   IconTrendingUp,
   IconAlertTriangle,
+  IconCheck,
+  IconArrowsShuffle,
 } from "@tabler/icons-react";
 import GlidePathChart from "./GlidePathChart";
+import FieldLabel from "@/components/shared/FieldLabel";
 import { formatCAD } from "@/utils/format";
 import type {
   GlidePathInput,
@@ -32,167 +37,53 @@ interface ResultProps {
   input: GlidePathInput;
   result: GlidePathResult | null;
   computing: boolean;
+  /** A re-roll is in flight: keep the current result visible, just spin the re-roll button. */
+  rerolling?: boolean;
   error?: boolean;
   hasErrors: boolean;
-}
-
-function Metric({
-  label,
-  value,
-  note,
-  flagged = false,
-}: {
-  label: string;
-  value: string;
-  note?: string;
-  flagged?: boolean;
-}) {
-  return (
-    <Stack gap={2}>
-      <Text size="sm">{label}</Text>
-      <Group gap={6}>
-        <Text fw={600} fz="md">
-          {value}
-        </Text>
-        {flagged && (
-          <IconAlertTriangle size={16} color="var(--mantine-color-yellow-6)" />
-        )}
-      </Group>
-      {note && (
-        <Text size="xs" c="dimmed">
-          {note}
-        </Text>
-      )}
-    </Stack>
-  );
-}
-
-function OutcomeCard({
-  title,
-  ceIncome,
-  ceDegenerate,
-  drawdownDepletion,
-  fullPathShortfall,
-}: {
-  title: string;
-  ceIncome: number;
-  ceDegenerate: boolean;
-  drawdownDepletion: number;
-  fullPathShortfall: number;
-}) {
-  return (
-    <Card withBorder radius="sm" padding="md">
-      <Stack gap="md">
-        <Text fw={600}>{title}</Text>
-        <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-          <Metric
-            label="CE income"
-            value={
-              ceDegenerate ? "Tail-dominated" : `${formatCAD(ceIncome)}/yr`
-            }
-            note={
-              ceDegenerate
-                ? "bad tails overwhelm the score"
-                : "risk-adjusted lifetime income"
-            }
-            flagged={ceDegenerate}
-          />
-          <Metric
-            label="Drawdown shortfall"
-            value={`${(drawdownDepletion * 100).toFixed(1)}%`}
-            note="from expected retirement savings"
-            flagged={drawdownDepletion >= RISK_HIGHLIGHT_THRESHOLD}
-          />
-          <Metric
-            label="Full-path shortfall"
-            value={`${(fullPathShortfall * 100).toFixed(1)}%`}
-            note="includes pre-retirement markets"
-            flagged={fullPathShortfall >= RISK_HIGHLIGHT_THRESHOLD}
-          />
-        </SimpleGrid>
-      </Stack>
-    </Card>
-  );
-}
-
-const DIR_COLOR: Record<SlopeDir, string> = {
-  Rising: "teal",
-  Falling: "indigo",
-  Flat: "gray",
-  "n/a": "gray",
-};
-
-/** The accumulation/retirement slope badges + tent description for the glide path. */
-function GlideShape({
-  input,
-  result,
-}: {
-  input: GlidePathInput;
-  result: GlidePathResult;
-}) {
-  const retireAge = input.startAge + result.params.accumYears;
-  return (
-    <>
-      <Group gap="xs" wrap="wrap">
-        <Badge
-          variant="light"
-          color={DIR_COLOR[result.accumDir]}
-          leftSection={<IconTrendingDown size={12} />}
-          size="lg"
-        >
-          Accumulation: {result.accumDir}
-        </Badge>
-        <Badge
-          variant="light"
-          color={DIR_COLOR[result.retireDir]}
-          leftSection={<IconTrendingUp size={12} />}
-          size="lg"
-        >
-          Retirement: {result.retireDir}
-        </Badge>
-      </Group>
-      <Text size="sm" c="dimmed">
-        {result.tentPct != null && result.tentAge != null ? (
-          <>
-            The equity weight bottoms at{" "}
-            <Text span fw={600} c="bright">
-              {result.tentPct}%
-            </Text>{" "}
-            around age {result.tentAge}, near retirement (age {retireAge}).
-          </>
-        ) : (
-          <>Equity weight is set per {result.params.interval}-year step.</>
-        )}
-      </Text>
-    </>
-  );
+  /** Re-roll nonce currently shown (0 = canonical/default draw). */
+  seed?: number;
+  /** Opt-in: recompute with a fresh Monte Carlo seed, inputs unchanged. */
+  onReroll?: () => void;
 }
 
 const SIMPLICITY_THRESHOLD_PCT = 5;
 const RISK_HIGHLIGHT_THRESHOLD = 0.1;
 
+const METRIC_HELP = {
+  ce: "Certainty-equivalent income — the steady, guaranteed yearly income that would feel as good as this uncertain plan once the bad years are penalised. It sits below the simple average because shortfalls hurt more than surpluses help.",
+  drawdown:
+    "Share of simulated retirements with at least one year the portfolio can't fully fund your target spending — measured from the expected balance at retirement.",
+  fullPath:
+    "The same shortfall measure taken over the whole path from today, so it also reflects the luck of markets in the years before you retire.",
+} as const;
+
 /**
  * A CE income this far below the target is the FLOOR=1 / CRRA artifact (the certainty-equivalent
  * collapses toward zero when consumption hits the floor in a meaningful share of paths), not a
  * real planning figure. We use it to suppress percentage comparisons against a degenerate
- * denominator; depletion rate is the pass/fail signal.
+ * denominator; the shortfall rate is the pass/fail signal.
  */
 function ceIsDegenerate(income: number, targetIncome: number): boolean {
   return income < Math.max(1000, 0.05 * targetIncome);
 }
 
+interface Recommendation {
+  preferConstant: boolean;
+  reasons: string[];
+  glideBad: boolean;
+  flatBad: boolean;
+}
+
 /**
- * Prefer the simpler constant allocation when it wins all comparable outcomes or comes within
- * the simplicity threshold on CE income, drawdown depletion, or full-path shortfall.
+ * Decide which allocation to recommend. Bias toward the simpler constant weight when it wins all
+ * comparable outcomes or comes within the simplicity threshold on CE income, drawdown shortfall,
+ * or full-path shortfall — but never recommend a constant whose own CE score is tail-dominated.
  */
-function Recommendation({
-  input,
-  result,
-}: {
-  input: GlidePathInput;
-  result: GlidePathResult;
-}) {
-  const flatPct = result.flatEquityPct.toFixed(0);
+function pickRecommendation(
+  input: GlidePathInput,
+  result: GlidePathResult,
+): Recommendation {
   const glideBad = ceIsDegenerate(result.ceIncome, input.targetIncome);
   const flatBad = ceIsDegenerate(result.flatCeIncome, input.targetIncome);
   const ceWithin =
@@ -223,63 +114,222 @@ function Recommendation({
       ]
     : constantWinsAll
       ? ["it wins all three comparable outcomes"]
-      : [
+      : ([
           ceWithin ? "its CE income is no more than 5% lower" : null,
           drawdownWithin ? "drawdown shortfall is within 5 points" : null,
           fullPathWithin ? "full-path shortfall is within 5 points" : null,
-        ].filter(Boolean);
+        ].filter(Boolean) as string[]);
+
+  return { preferConstant, reasons, glideBad, flatBad };
+}
+
+const DIR_COLOR: Record<SlopeDir, string> = {
+  Rising: "teal",
+  Falling: "indigo",
+  Flat: "gray",
+  "n/a": "gray",
+};
+
+/** Accumulation/retirement slope badges (+ tent sentence unless compact) for the glide path. */
+function GlideShape({
+  input,
+  result,
+  compact = false,
+}: {
+  input: GlidePathInput;
+  result: GlidePathResult;
+  compact?: boolean;
+}) {
+  const retireAge = input.startAge + result.params.accumYears;
+  return (
+    <Stack gap={compact ? 4 : "xs"}>
+      <Group gap="xs" wrap="wrap">
+        <Badge
+          variant="light"
+          color={DIR_COLOR[result.accumDir]}
+          leftSection={<IconTrendingDown size={12} />}
+          size={compact ? "sm" : "lg"}
+        >
+          Accumulation: {result.accumDir}
+        </Badge>
+        <Badge
+          variant="light"
+          color={DIR_COLOR[result.retireDir]}
+          leftSection={<IconTrendingUp size={12} />}
+          size={compact ? "sm" : "lg"}
+        >
+          Retirement: {result.retireDir}
+        </Badge>
+      </Group>
+      {!compact && result.tentPct != null && result.tentAge != null && (
+        <Text size="sm" c="dimmed">
+          The equity weight bottoms at{" "}
+          <Text span fw={600} c="bright">
+            {result.tentPct}%
+          </Text>{" "}
+          around age {result.tentAge}, near retirement (age {retireAge}).
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
+/** One-line description of an allocation's shape: glide-path badges or the flat-weight sentence. */
+function ShapeSummary({
+  kind,
+  input,
+  result,
+  flatPct,
+  compact = false,
+}: {
+  kind: "glide" | "constant";
+  input: GlidePathInput;
+  result: GlidePathResult;
+  flatPct: number;
+  compact?: boolean;
+}) {
+  if (kind === "glide") {
+    return <GlideShape input={input} result={result} compact={compact} />;
+  }
+  const bonds = 100 - flatPct;
+  const mix =
+    bonds >= 0 ? `${flatPct}% stocks / ${bonds}% bonds` : `${flatPct}% equity`;
+  return (
+    <Text size="sm" c="dimmed">
+      Hold {mix} at every age
+      {compact
+        ? "."
+        : " — the simplest plan to implement and to hold through market swings."}
+    </Text>
+  );
+}
+
+/** One full-size metric: label with an info popover, the value, an optional note, a risk flag. */
+function MetricItem({
+  label,
+  help,
+  value,
+  note,
+  flagged = false,
+}: {
+  label: string;
+  help: string;
+  value: string;
+  note?: string;
+  flagged?: boolean;
+}) {
+  return (
+    <Stack gap={2}>
+      <Text size="sm" component="div">
+        <FieldLabel label={label} helperText={help} />
+      </Text>
+      <Group gap={6} wrap="nowrap">
+        <Text fw={700} fz="lg">
+          {value}
+        </Text>
+        {flagged && (
+          <IconAlertTriangle size={15} color="var(--mantine-color-yellow-6)" />
+        )}
+      </Group>
+      {note && (
+        <Text size="xs" c="dimmed">
+          {note}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
+/** One compact metric ("Label value") for the secondary option row. */
+function CompactStat({
+  label,
+  value,
+  flagged = false,
+}: {
+  label: string;
+  value: string;
+  flagged?: boolean;
+}) {
+  return (
+    <Group gap={4} wrap="nowrap">
+      <Text size="sm" c="dimmed">
+        {label}
+      </Text>
+      <Text size="sm" fw={600}>
+        {value}
+      </Text>
+      {flagged && (
+        <IconAlertTriangle size={13} color="var(--mantine-color-yellow-6)" />
+      )}
+    </Group>
+  );
+}
+
+interface OptionStats {
+  ceIncome: number;
+  ceDegenerate: boolean;
+  drawdownDepletion: number;
+  fullPathShortfall: number;
+}
+
+/** The three outcome metrics for one option, as a full grid or a compact inline row. */
+function OutcomeMetrics({
+  stats,
+  compact = false,
+}: {
+  stats: OptionStats;
+  compact?: boolean;
+}) {
+  const ceValue = stats.ceDegenerate
+    ? "Tail-dominated"
+    : `${formatCAD(stats.ceIncome)}/yr`;
+  const drawValue = `${(stats.drawdownDepletion * 100).toFixed(1)}%`;
+  const fullValue = `${(stats.fullPathShortfall * 100).toFixed(1)}%`;
+  const drawFlag = stats.drawdownDepletion >= RISK_HIGHLIGHT_THRESHOLD;
+  const fullFlag = stats.fullPathShortfall >= RISK_HIGHLIGHT_THRESHOLD;
+
+  if (compact) {
+    return (
+      <Group gap="lg" wrap="wrap">
+        <CompactStat
+          label="CE income"
+          value={ceValue}
+          flagged={stats.ceDegenerate}
+        />
+        <CompactStat label="Drawdown" value={drawValue} flagged={drawFlag} />
+        <CompactStat label="Full-path" value={fullValue} flagged={fullFlag} />
+      </Group>
+    );
+  }
 
   return (
-    <Card withBorder radius="md" padding="lg">
-      <Stack gap="md">
-        <Group justify="space-between" align="flex-start">
-          <Stack gap={2}>
-            <Title order={3} fz="md">
-              Allocation options
-            </Title>
-            <Text size="sm" c="dimmed">
-              Both are viable comparisons; the preferred option applies a
-              simplicity bias toward the constant allocation.
-            </Text>
-          </Stack>
-          <Badge color="teal" variant="filled">
-            Preferred: {preferConstant ? `constant ${flatPct}%` : "glide path"}
-          </Badge>
-        </Group>
-
-        <SimpleGrid cols={{ base: 1, sm: 2 }}>
-          <Card withBorder radius="sm" padding="md">
-            <Stack gap="xs">
-              <Group justify="space-between">
-                <Text fw={600}>Optimized glide path</Text>
-                {!preferConstant && <Badge variant="light">Preferred</Badge>}
-              </Group>
-              <GlideShape input={input} result={result} />
-            </Stack>
-          </Card>
-          <Card withBorder radius="sm" padding="md">
-            <Stack gap="xs">
-              <Group justify="space-between">
-                <Text fw={600}>Constant {flatPct}% equity</Text>
-                {preferConstant && <Badge variant="light">Preferred</Badge>}
-              </Group>
-              <Text size="sm" c="dimmed">
-                Hold the same stock/bond allocation at every age. Simpler to
-                implement and maintain.
-              </Text>
-            </Stack>
-          </Card>
-        </SimpleGrid>
-
-        <Text size="xs" c="dimmed">
-          {preferConstant
-            ? `The constant allocation is preferred because ${reasons.join(" and ")}.`
-            : flatBad
-              ? "The glide path is preferred because the constant allocation's risk-adjusted (CE) income is unreliable — at a single fixed weight it stays exposed to the bad-luck sequences the glide path trims."
-              : "The glide path is preferred because the constant allocation trails it by more than the simplicity threshold on every comparable outcome."}
-        </Text>
-      </Stack>
-    </Card>
+    <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+      <MetricItem
+        label="CE income"
+        help={METRIC_HELP.ce}
+        value={ceValue}
+        note={
+          stats.ceDegenerate
+            ? "bad tails overwhelm the score"
+            : "risk-adjusted lifetime income"
+        }
+        flagged={stats.ceDegenerate}
+      />
+      <MetricItem
+        label="Drawdown shortfall"
+        help={METRIC_HELP.drawdown}
+        value={drawValue}
+        note="from expected retirement savings"
+        flagged={drawFlag}
+      />
+      <MetricItem
+        label="Full-path shortfall"
+        help={METRIC_HELP.fullPath}
+        value={fullValue}
+        note="includes pre-retirement markets"
+        flagged={fullFlag}
+      />
+    </SimpleGrid>
   );
 }
 
@@ -287,8 +337,11 @@ export default function Result({
   input,
   result,
   computing,
+  rerolling = false,
   error = false,
   hasErrors,
+  seed = 0,
+  onReroll,
 }: ResultProps) {
   if (hasErrors) {
     return (
@@ -354,36 +407,107 @@ export default function Result({
     );
   }
 
+  const reco = pickRecommendation(input, result);
+  const flatPct = Math.round(result.flatEquityPct);
   const incomeDegenerate = ceIsDegenerate(result.ceIncome, input.targetIncome);
   const flatDegenerate = ceIsDegenerate(
     result.flatCeIncome,
     input.targetIncome,
   );
 
+  const glide = {
+    kind: "glide" as const,
+    title: "Optimized glide path",
+    stats: {
+      ceIncome: result.ceIncome,
+      ceDegenerate: incomeDegenerate,
+      drawdownDepletion: result.drawdownDepletion,
+      fullPathShortfall: result.depletion,
+    },
+  };
+  const constant = {
+    kind: "constant" as const,
+    title: `Constant ${flatPct}% equity`,
+    stats: {
+      ceIncome: result.flatCeIncome,
+      ceDegenerate: flatDegenerate,
+      drawdownDepletion: result.flatDrawdownDepletion,
+      fullPathShortfall: result.flatDepletion,
+    },
+  };
+  const primary = reco.preferConstant ? constant : glide;
+  const secondary = reco.preferConstant ? glide : constant;
+
+  const reasonText = reco.preferConstant
+    ? `The constant allocation is preferred because the optimized glide path is marginally better.`
+    : reco.flatBad
+      ? "The glide path is preferred because the constant allocation's risk-adjusted (CE) income is unreliable — at a single fixed weight it stays exposed to the bad-luck sequences the glide path trims."
+      : "The glide path is preferred because the constant allocation trails it by more than the simplicity threshold on every comparable outcome.";
+
   return (
     <Stack gap="lg" pos="relative">
-      <Recommendation input={input} result={result} />
+      {/* Primary — the recommended allocation, with its own outcomes inline. */}
+      <Card
+        withBorder
+        radius="md"
+        padding="lg"
+        style={{
+          borderColor: "var(--mantine-color-teal-5)",
+          borderWidth: 2,
+        }}
+      >
+        <Stack gap="md">
+          <Group gap="sm" wrap="nowrap" align="flex-start">
+            <ThemeIcon color="teal" size={38} radius="xl">
+              <IconCheck size={22} />
+            </ThemeIcon>
+            <Stack gap={0}>
+              <Text size="xs" fw={700} c="teal" tt="uppercase">
+                Recommended allocation
+              </Text>
+              <Title order={3} fz="lg">
+                {primary.title}
+              </Title>
+            </Stack>
+          </Group>
 
-      <Card withBorder radius="md" padding="lg">
-        <Title order={3} fz="md" mb="md">
-          Projected outcomes
-        </Title>
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
-          <OutcomeCard
-            title="Optimized glide path"
-            ceIncome={result.ceIncome}
-            ceDegenerate={incomeDegenerate}
-            drawdownDepletion={result.drawdownDepletion}
-            fullPathShortfall={result.depletion}
+          <ShapeSummary
+            kind={primary.kind}
+            input={input}
+            result={result}
+            flatPct={flatPct}
           />
-          <OutcomeCard
-            title={`Constant ${result.flatEquityPct.toFixed(0)}% equity`}
-            ceIncome={result.flatCeIncome}
-            ceDegenerate={flatDegenerate}
-            drawdownDepletion={result.flatDrawdownDepletion}
-            fullPathShortfall={result.flatDepletion}
+
+          <Divider />
+
+          <OutcomeMetrics stats={primary.stats} />
+
+          <Text size="xs" c="dimmed">
+            {reasonText}
+          </Text>
+        </Stack>
+      </Card>
+
+      {/* Secondary — the alternative, compact. */}
+      <Card withBorder radius="md" padding="md">
+        <Stack gap="xs">
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Text size="sm" fw={600} c="dimmed">
+              Alternative — {secondary.title}
+            </Text>
+            <Badge variant="default" size="sm">
+              Not preferred
+            </Badge>
+          </Group>
+          <ShapeSummary
+            kind={secondary.kind}
+            input={input}
+            result={result}
+            flatPct={flatPct}
+            compact
           />
-        </SimpleGrid>
+          <OutcomeMetrics stats={secondary.stats} compact />
+        </Stack>
       </Card>
 
       <GlidePathChart
@@ -391,6 +515,26 @@ export default function Result({
         result={result}
         showConstant={!flatDegenerate}
       />
+
+      {onReroll && (
+        <Stack gap={4} align="center" mt="xs">
+          <Button
+            variant="subtle"
+            color="gray"
+            size="xs"
+            leftSection={<IconArrowsShuffle size={14} />}
+            onClick={onReroll}
+            loading={rerolling}
+          >
+            Try a different random draw
+          </Button>
+          <Text size="xs" c="dimmed" ta="center" maw={440}>
+            {seed > 0
+              ? `Showing alternative draw #${seed}.`
+              : "Re-runs the Monte Carlo with a new random seed, so you can see how much the result depends on simulation luck."}
+          </Text>
+        </Stack>
+      )}
     </Stack>
   );
 }

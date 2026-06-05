@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { renderWithMantine, screen } from "@/test-utils";
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, renderWithMantine, screen } from "@/test-utils";
 import Result from "./Result";
 import { DEFAULTS } from "@/utils/glide-path/presets";
 import type { GlidePathResult } from "@/utils/glide-path/types";
@@ -72,7 +72,7 @@ function renderResult(result: GlidePathResult | null, extra = {}) {
 describe("glide-path Result", () => {
   it("prefers the constant allocation when CE income is within 5%", () => {
     renderResult(makeResult());
-    expect(screen.getByText(/Preferred: constant 60%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
       screen.getByText(/The constant allocation is preferred/i),
     ).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe("glide-path Result", () => {
         flatDepletion: 0.25,
       }),
     );
-    expect(screen.getByText(/Preferred: constant 60%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
       screen.getByText(/The constant allocation is preferred/i),
     ).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe("glide-path Result", () => {
         flatDepletion: 0.15,
       }),
     );
-    expect(screen.getByText(/Preferred: constant 60%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
       screen.getByText(/The constant allocation is preferred/i),
     ).toBeInTheDocument();
@@ -144,7 +144,7 @@ describe("glide-path Result", () => {
         flatDepletion: 0.1,
       }),
     );
-    expect(screen.getByText(/Preferred: constant 60%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
       screen.getByText(/The constant allocation is preferred/i),
     ).toBeInTheDocument();
@@ -161,7 +161,7 @@ describe("glide-path Result", () => {
         flatDepletion: 0.16,
       }),
     );
-    expect(screen.getByText(/Preferred: glide path/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(screen.getByText(/trails it by more than/i)).toBeInTheDocument();
   });
 
@@ -187,7 +187,9 @@ describe("glide-path Result", () => {
     renderResult(
       makeResult({ ceIncome: 93608, flatCeIncome: 444, depletion: 0.05 }),
     );
-    expect(screen.getByText(/Preferred: glide path/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/risk-adjusted \(CE\) income is unreliable/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Tail-dominated/i)).toBeInTheDocument();
   });
 
@@ -203,6 +205,30 @@ describe("glide-path Result", () => {
   it("renders an error state when the worker fails", () => {
     renderResult(null, { error: true });
     expect(screen.getByText(/Couldn't compute/i)).toBeInTheDocument();
+  });
+
+  it("offers an opt-in re-roll control that recomputes with a new seed", () => {
+    const onReroll = vi.fn();
+    renderResult(makeResult(), { onReroll });
+    fireEvent.click(
+      screen.getByRole("button", { name: /different random draw/i }),
+    );
+    expect(onReroll).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByText(/how much the result depends on simulation luck/i),
+    ).toBeInTheDocument();
+  });
+
+  it("labels the alternative draw after re-rolling", () => {
+    renderResult(makeResult(), { onReroll: () => {}, seed: 2 });
+    expect(screen.getByText(/alternative draw #2/i)).toBeInTheDocument();
+  });
+
+  it("omits the re-roll control when no handler is provided", () => {
+    renderResult(makeResult());
+    expect(
+      screen.queryByRole("button", { name: /different random draw/i }),
+    ).toBeNull();
   });
 
   it("shows the empty state before generating", () => {

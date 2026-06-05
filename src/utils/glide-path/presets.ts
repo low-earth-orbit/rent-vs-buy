@@ -71,7 +71,7 @@ export const DEFAULTS = {
   /** Years per glide step (1 = per-age, 5 = every 5y; smaller = slower). */
   interval: 5,
   /** Monte Carlo paths (more = steadier, slower). */
-  numPaths: 2000,
+  numPaths: 10000,
   /** Inflation used to deflate the curve to real. */
   inflation: 2.1,
 } as const;
