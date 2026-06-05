@@ -19,6 +19,7 @@ import type {
   RetirementInput,
   RetirementResult,
 } from "@/utils/retirement/types";
+import { generateTicks } from "@/utils/charts";
 
 const TEAL = "var(--mantine-color-teal-6)";
 
@@ -125,6 +126,8 @@ export default function ProjectionChart({
   const data = [...byAge.values()].sort((a, b) => a.age - b.age);
   const lastAge = data[data.length - 1]?.age ?? retireAge;
 
+  const ageTicks = generateTicks(input.currentAge, input.planningAge, 5);
+
   return (
     <Card withBorder radius="md" padding="md">
       <Text fw={600} mb="md">
@@ -163,9 +166,11 @@ export default function ProjectionChart({
               dataKey="age"
               type="number"
               domain={["dataMin", "dataMax"]}
+              ticks={ageTicks}
               tickMargin={8}
               label={{ value: "Age", position: "bottom", fontSize: 12 }}
               tick={{ fontSize: 12 }}
+              interval={0}
             />
             <YAxis
               width={50}
@@ -211,7 +216,18 @@ export default function ProjectionChart({
               connectNulls={false}
               isAnimationActive={false}
             />
-            <ReferenceLine x={retireAge} stroke={TEAL} strokeDasharray="4 4" />
+            <ReferenceLine
+              x={retireAge}
+              stroke={TEAL}
+              strokeDasharray="4 4"
+              label={{
+                value: `Age ${retireAge}`,
+                position: "insideTopLeft",
+                fontSize: 12,
+                fontWeight: 600,
+                fill: "var(--mantine-color-teal-7)",
+              }}
+            />
             {result.portfolioAtRetirement != null && (
               <ReferenceDot
                 x={retireAge}
@@ -220,13 +236,6 @@ export default function ProjectionChart({
                 fill={TEAL}
                 stroke="white"
                 strokeWidth={2}
-                label={{
-                  value: `Age ${retireAge}`,
-                  position: "top",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  fill: "var(--mantine-color-teal-7)",
-                }}
               />
             )}
           </ComposedChart>

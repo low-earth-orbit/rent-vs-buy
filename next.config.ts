@@ -8,6 +8,7 @@ const isGithubPages =
 const nextConfig: NextConfig = {
   output: "export",
   images: { unoptimized: true },
+  allowedDevOrigins: ["127.0.0.1"],
   reactCompiler: true,
   ...(isGithubPages && {
     basePath: "/personal-finance",

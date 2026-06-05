@@ -9,7 +9,7 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { IconAlertTriangle, IconRotate } from "@tabler/icons-react";
+import { IconAlertTriangle } from "@tabler/icons-react";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
 import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
 import {
@@ -24,6 +24,7 @@ import type {
   RetirementInputKey,
 } from "@/utils/retirement/types";
 import type { FieldValue } from "@/types";
+import FormResetButton from "../shared/FormResetButton";
 
 interface InputFormProps {
   input: RetirementInput;
@@ -73,17 +74,7 @@ export default function InputForm({
 
   return (
     <>
-      <Button
-        variant="subtle"
-        size="xs"
-        color="red"
-        leftSection={<IconRotate size={14} />}
-        onClick={onReset}
-        my="md"
-      >
-        Reset to defaults
-      </Button>
-
+      <FormResetButton onReset={onReset} />
       <Accordion
         multiple
         defaultValue={["you", "goals", "assumptions"]}
@@ -96,26 +87,26 @@ export default function InputForm({
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <UserInputFormItem
                   {...num("currentAge")}
-                  label="Current Age"
+                  label="Current age"
                   suffix=" yrs"
                 />
                 <UserInputFormItem
                   {...num("currentIncome")}
-                  label="Annual Income"
+                  label="Annual income"
                   labelHelperText="Gross income today. Used as the base for your savings rate and guaranteed-income percentages."
                   prefix="$"
                   thousandSeparator
                 />
                 <UserInputFormItem
                   {...num("currentSavings")}
-                  label="Current Savings"
+                  label="Current savings"
                   labelHelperText="Total invested across RRSP, TFSA, and non-registered accounts today."
                   prefix="$"
                   thousandSeparator
                 />
                 <CurrencyPercentItem
                   id="contributionPct"
-                  label="Annual Savings"
+                  label="Annual savings"
                   helperText="How much you add to investments each year. Toggle between a dollar amount and a % of your income."
                   unitAriaLabel="Annual savings input unit"
                   rate={input.contributionPct}
@@ -138,7 +129,7 @@ export default function InputForm({
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <CurrencyPercentItem
                   id="targetIncomePct"
-                  label="Target Income"
+                  label="Target income"
                   helperText="The gross income you want in retirement — as a % of your current income (a replacement ratio of 60–70% is typical) or a dollar amount. Your guaranteed income below counts toward this."
                   unitAriaLabel="Target retirement income input unit"
                   rate={input.targetIncomePct}
@@ -151,7 +142,7 @@ export default function InputForm({
                 />
                 <CurrencyPercentItem
                   id="guaranteedIncomePct"
-                  label="Pension Amount"
+                  label="Pension amount"
                   helperText="Estimated CPP + OAS + workplace (DB) pension income, starting at retirement. Toggle between a dollar amount and a % of your income."
                   unitAriaLabel="Guaranteed income input unit"
                   rate={input.guaranteedIncomePct}
@@ -164,21 +155,21 @@ export default function InputForm({
                 />
                 <UserInputFormItem
                   {...num("pensionStartAge")}
-                  label="Pension Start Age"
+                  label="Pension start age"
                   labelHelperText="When your CPP/OAS/pension income begins — usually 65. If you retire before this, your portfolio funds the full target until then (a 'bridge')."
                   suffix=" yrs"
                 />
                 <UserInputFormItem
                   {...num("planningAge")}
-                  label="Plan Until"
-                  labelHelperText="The age your savings should last to (life expectancy). 95 is a common planning horizon."
+                  label="Plan until"
+                  labelHelperText="The age your savings should last to (life expectancy). 95 is a common planning horizon, longer than the average ~85 to account for longevity risk."
                   suffix=" yrs"
                 />
               </SimpleGrid>
 
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
-                  Plan Success Rate
+                  Plan success rate
                 </Text>
                 <Text size="xs" c="dimmed">
                   The share of simulated markets your savings must outlast to
@@ -248,7 +239,7 @@ export default function InputForm({
 
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
-                  Flexible Spending
+                  Max spending cut
                 </Text>
                 <Text size="xs" c="dimmed">
                   How much you&apos;d trim spending in a weak market instead of
@@ -270,8 +261,8 @@ export default function InputForm({
                     />
                     <Text size="xs" c="yellow.8">
                       Cutting more than 20% is a big lifestyle reduction — make
-                      sure you could really live on the reduced floor for years
-                      if markets stay weak.
+                      sure you could really live on the reduced floor for many
+                      years if markets stay weak.
                     </Text>
                   </Group>
                 )}
@@ -285,7 +276,7 @@ export default function InputForm({
           <Accordion.Panel>
             <Stack gap="xs" mb="xs">
               <Text size="sm" fw={600}>
-                Expected Return
+                Expected return
               </Text>
               <Text size="xs" c="dimmed">
                 Based on stock / bond mix — e.g. 80/20 is 80% stocks — before
@@ -354,23 +345,18 @@ export default function InputForm({
                       </Text>
                       <UserInputFormItem
                         {...num("accumReturn")}
-                        label="While Working"
+                        label="While working"
                         suffix="%"
                       />
                       <UserInputFormItem
                         {...num("retireReturn")}
-                        label="In Retirement"
+                        label="In retirement"
                         suffix="%"
                       />
                     </Stack>
                   </Popover.Dropdown>
                 </Popover>
               </SimpleGrid>
-              <Text size="xs" c="dimmed">
-                The specific glide path matters less than your overall equity
-                level and withdrawal strategy — those two factors drive most of
-                the outcome variance.
-              </Text>
               {!activeReturnPreset && (
                 <Group gap={6} wrap="nowrap" align="flex-start">
                   <IconAlertTriangle
@@ -379,9 +365,8 @@ export default function InputForm({
                     style={{ marginTop: 2, flexShrink: 0 }}
                   />
                   <Text size="xs" c="yellow.8">
-                    Using custom return assumptions — these aren&apos;t checked
-                    with accepted planning assumptions, and optimistic figures
-                    can make any plan look feasible.
+                    Using custom return assumptions — make sure they&apos;re
+                    reasonable.
                   </Text>
                 </Group>
               )}
@@ -391,6 +376,21 @@ export default function InputForm({
               label="Inflation"
               suffix="%"
             />
+            {(input.inflationRate > 2.5 || input.inflationRate < 2) && (
+              <Group gap={6} wrap="nowrap" align="flex-start">
+                <IconAlertTriangle
+                  size={14}
+                  color="var(--mantine-color-yellow-7)"
+                  style={{ marginTop: 2, flexShrink: 0 }}
+                />
+                <Text size="xs" c="yellow.8">
+                  Most planners use 2–2.5% inflation assumptions.
+                  {input.inflationRate > 2.5
+                    ? " Higher rates can make your plan look more conservative."
+                    : " Lower rates can make your plan look more feasible."}
+                </Text>
+              </Group>
+            )}
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion>

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  Badge,
   Card,
   Container,
   Group,
@@ -14,6 +13,7 @@ import {
 import Header from "@/components/shared/Header";
 import Footer from "@/components/shared/Footer";
 import DisclaimerModal from "@/components/shared/DisclaimerModal";
+import StatusBadge, { type AppStatus } from "@/components/shared/StatusBadge";
 import {
   loadDisclaimerAccepted,
   saveDisclaimerAccepted,
@@ -25,7 +25,7 @@ type Tool = {
   title: string;
   description: string;
   href?: string;
-  status?: string;
+  status?: AppStatus;
 };
 
 const TOOLS: Tool[] = [
@@ -33,16 +33,25 @@ const TOOLS: Tool[] = [
     emoji: "🏠",
     title: "Rent vs Buy",
     description:
-      "Compare the long-run net worth of renting versus owning a home, with Monte Carlo confidence bands.",
+      "Compare the long-run net worth of renting versus owning a home.",
     href: "/rent-vs-buy",
+    status: "updated",
   },
   {
-    emoji: "🌴",
+    emoji: "🔥",
     title: "When can I retire?",
     description:
       "A quick reality check on the earliest age you could retire, based on your savings and target income.",
     href: "/retirement",
-    status: "Beta",
+    status: "new",
+  },
+  {
+    emoji: "🛤️",
+    title: "Lifetime Allocation Optimizer",
+    description:
+      "Find your optimal stock allocation across your lifetime. FOR NERDS.",
+    href: "/glide-path",
+    status: "preview",
   },
 ];
 
@@ -52,16 +61,10 @@ function ToolCardBody({ tool }: { tool: Tool }) {
     <Stack gap="xs">
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Text fz={32}>{tool.emoji}</Text>
-        {!available && (
-          <Badge variant="light" color="gray">
-            Coming soon
-          </Badge>
-        )}
-        {tool.status && (
-          <Badge variant="light" color="gray">
-            {tool.status}
-          </Badge>
-        )}
+        <Group gap="xs" wrap="nowrap">
+          {!available && <StatusBadge status="coming-soon" />}
+          {tool.status && <StatusBadge status={tool.status} />}
+        </Group>
       </Group>
       <Title order={2} fz="xl">
         {tool.title}
