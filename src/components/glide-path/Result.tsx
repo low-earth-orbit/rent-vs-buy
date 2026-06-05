@@ -20,6 +20,7 @@ import {
   IconChartLine,
   IconTrendingDown,
   IconTrendingUp,
+  IconMinus,
   IconAlertTriangle,
   IconCheck,
   IconArrowsShuffle,
@@ -130,6 +131,19 @@ const DIR_COLOR: Record<SlopeDir, string> = {
   "n/a": "gray",
 };
 
+function slopeIcon(dir: SlopeDir) {
+  switch (dir) {
+    case "Rising":
+      return <IconTrendingUp size={12} />;
+    case "Falling":
+      return <IconTrendingDown size={12} />;
+    case "Flat":
+      return <IconMinus size={12} />;
+    case "n/a":
+      return undefined;
+  }
+}
+
 /** Accumulation/retirement slope badges (+ tent sentence unless compact) for the glide path. */
 function GlideShape({
   input,
@@ -147,7 +161,7 @@ function GlideShape({
         <Badge
           variant="light"
           color={DIR_COLOR[result.accumDir]}
-          leftSection={<IconTrendingDown size={12} />}
+          leftSection={slopeIcon(result.accumDir)}
           size={compact ? "sm" : "lg"}
         >
           Accumulation: {result.accumDir}
@@ -155,7 +169,7 @@ function GlideShape({
         <Badge
           variant="light"
           color={DIR_COLOR[result.retireDir]}
-          leftSection={<IconTrendingUp size={12} />}
+          leftSection={slopeIcon(result.retireDir)}
           size={compact ? "sm" : "lg"}
         >
           Retirement: {result.retireDir}
