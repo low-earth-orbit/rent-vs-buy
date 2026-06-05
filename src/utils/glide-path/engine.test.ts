@@ -104,6 +104,22 @@ describe("recommendGlidePath", () => {
     expect(r.params.guaranteed).toBeCloseTo(36000, 0);
   });
 
+  it("never reports an estate goal reached when the shown median estate is short", () => {
+    // The reached flag must be derived from the returned path's median estate, so it can't
+    // contradict the median the UI displays (regression: it used to come from a separate
+    // calibration sample and could say "reached" with a median well below target).
+    for (const bequestYears of [2, 30, 80]) {
+      const r = recommendGlidePath(base({ bequestYears }));
+      const target = bequestYears * DEFAULTS.targetIncome;
+      expect(r.bequestTargetReached).not.toBeNull();
+      if (r.bequestTargetReached) {
+        expect(r.medianBequest).toBeGreaterThanOrEqual(target - 1);
+      } else {
+        expect(r.medianBequest).toBeLessThan(target + 1);
+      }
+    }
+  });
+
   it("lowers recommended equity as risk aversion rises", () => {
     // The constant-$ shape is fairly γ-invariant, but the overall equity level should not
     // increase with γ — a more cautious investor never gets a more aggressive recommendation.

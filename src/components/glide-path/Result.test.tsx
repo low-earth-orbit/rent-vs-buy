@@ -195,6 +195,52 @@ describe("glide-path Result", () => {
     expect(screen.getByText(/Tail-dominated/i)).toBeInTheDocument();
   });
 
+  it("explains preferring the glide path when the constant is tail-dominated", () => {
+    renderResult(
+      makeResult({ ceIncome: 93608, flatCeIncome: 444, depletion: 0.05 }),
+    );
+    expect(
+      screen.getByText(/risk-adjusted \(CE\) income is unreliable/i),
+    ).toBeInTheDocument();
+  });
+
+  it("surfaces an on-track estate goal when one is set", () => {
+    renderResult(
+      makeResult({
+        medianEstateYears: 8,
+        medianBequest: 480000,
+        bequestTargetReached: true,
+      }),
+      { input: { ...DEFAULTS, bequestYears: 5 } },
+    );
+    expect(screen.getByText(/Estate goal on track/i)).toBeInTheDocument();
+    expect(screen.getByText(/median estate of/i)).toBeInTheDocument();
+  });
+
+  it("surfaces a missed estate goal", () => {
+    renderResult(
+      makeResult({
+        medianEstateYears: 20,
+        medianBequest: 1200000,
+        bequestTargetReached: false,
+      }),
+      { input: { ...DEFAULTS, bequestYears: 40 } },
+    );
+    expect(screen.getByText(/Estate goal not reached/i)).toBeInTheDocument();
+  });
+
+  it("hides estate feedback when no estate goal is set", () => {
+    renderResult(makeResult());
+    expect(
+      screen.queryByText(/Estate goal (on track|not reached)/i),
+    ).toBeNull();
+  });
+
+  it("renders an error state when the worker fails", () => {
+    renderResult(null, { error: true });
+    expect(screen.getByText(/Couldn't compute/i)).toBeInTheDocument();
+  });
+
   it("shows the empty state before generating", () => {
     renderResult(null);
     expect(screen.getByText(/Ready to optimize/i)).toBeInTheDocument();

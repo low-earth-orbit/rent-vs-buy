@@ -526,8 +526,10 @@ export function recommendGlidePath(
   const Z = fillNormals(SEED, nYears * nOpt);
 
   // ── optional bequest calibration (target estate in years of spending) ────────
+  // Search only sets the warm-glow weight here; whether the target is actually reached is
+  // decided later from the FINAL optimized path's out-of-sample median estate (below), so the
+  // reported flag can never contradict the median estate the UI shows.
   let bequestW = 0;
-  let bequestTargetReached: boolean | null = null;
   if (input.bequestYears > 0) {
     const targetEstate = input.bequestYears * input.targetIncome;
     const nCal = Math.min(nOpt, MAX_CAL_PATHS);
@@ -557,7 +559,6 @@ export function recommendGlidePath(
     const natural = medEstate(0);
     if (targetEstate <= natural) {
       bequestW = 0;
-      bequestTargetReached = true;
     } else {
       const cap = 200;
       let lo = 0;
@@ -570,7 +571,6 @@ export function recommendGlidePath(
       }
       if (estHi < targetEstate) {
         bequestW = hi;
-        bequestTargetReached = false;
       } else {
         for (let it = 0; it < 8; it++) {
           const mid = 0.5 * (lo + hi);
@@ -578,7 +578,6 @@ export function recommendGlidePath(
           else hi = mid;
         }
         bequestW = 0.5 * (lo + hi);
-        bequestTargetReached = true;
       }
     }
   }
@@ -605,6 +604,14 @@ export function recommendGlidePath(
   const Zf = fillNormals(STATS_SEED, nYears * nStats);
   const st = computeStats(yearIdx, ctx, Zf, nStats, gamma);
   const drawdownSt = computeDrawdownStats(yearIdx, ctx, Zf, nStats, gamma);
+
+  // Estate-goal attainment, judged on the returned/charted path's out-of-sample median estate
+  // (not the calibration's separate sample/optimization) so it agrees with the median the UI
+  // shows. null when there is no estate goal.
+  const bequestTargetReached =
+    input.bequestYears > 0
+      ? st.medianBequest >= input.bequestYears * input.targetIncome
+      : null;
 
   // ── best single constant (flat) equity weight ────────────────────────────────
   // The glide path's edge over the best *constant* allocation is typically tiny, so we
@@ -654,15 +661,17 @@ export function recommendGlidePath(
   const twin = Math.min(15, retireYears);
   let tentI = 0;
   for (let i = 1; i < twin; i++) if (ret[i] < ret[tentI]) tentI = i;
-  // Slope of a phase, ignoring its final year: with no bequest the optimizer drives equity toward
-  // 0 in the last retirement year(s) (a fixed-horizon artifact, not advice), which would otherwise
-  // skew the Rising/Falling read. Drop the last year when the phase is long enough to still classify.
-  const phaseDir = (w: number[]): SlopeDir => {
-    const eff = w.length >= 3 ? w.slice(0, -1) : w;
+  // Classify a phase by its first-to-last change. We optionally drop the final year: with no
+  // bequest the optimizer drives equity toward 0 in the last retirement year(s) (a fixed-horizon
+  // artifact, not advice), which would otherwise skew the read. That artifact is retirement-only
+  // and bequest-only, so trim *only* the retirement phase and *only* when there's no estate motive
+  // — accumulation has no such artifact, and a bequest keeps terminal equity meaningful.
+  const slope = (w: number[], trimLast: boolean): SlopeDir => {
+    const eff = trimLast && w.length >= 3 ? w.slice(0, -1) : w;
     return eff.length >= 2 ? classify(eff[eff.length - 1] - eff[0]) : "n/a";
   };
-  const accumDir = phaseDir(acc);
-  const retireDir = phaseDir(ret);
+  const accumDir = slope(acc, false);
+  const retireDir = slope(ret, bequestW === 0);
 
   return {
     schedule,

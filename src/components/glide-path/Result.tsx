@@ -19,6 +19,7 @@ import {
   IconTrendingDown,
   IconTrendingUp,
   IconAlertTriangle,
+  IconCheck,
 } from "@tabler/icons-react";
 import GlidePathChart from "./GlidePathChart";
 import { formatCAD } from "@/utils/format";
@@ -32,6 +33,7 @@ interface ResultProps {
   input: GlidePathInput;
   result: GlidePathResult | null;
   computing: boolean;
+  error?: boolean;
   hasErrors: boolean;
 }
 
@@ -216,13 +218,17 @@ function Recommendation({
       drawdownWithin ||
       fullPathWithin);
 
-  const reasons = constantWinsAll
-    ? ["it wins all three comparable outcomes"]
-    : [
-        ceWithin ? "CE income is within 5%" : null,
-        drawdownWithin ? "drawdown depletion is within 5%" : null,
-        fullPathWithin ? "full-path shortfall is within 5%" : null,
-      ].filter(Boolean);
+  const reasons = glideBad
+    ? [
+        "the glide path's risk-adjusted (CE) income is unreliable in bad-luck tails",
+      ]
+    : constantWinsAll
+      ? ["it wins all three comparable outcomes"]
+      : [
+          ceWithin ? "its CE income is no more than 5% lower" : null,
+          drawdownWithin ? "drawdown depletion is within 5 points" : null,
+          fullPathWithin ? "full-path shortfall is within 5 points" : null,
+        ].filter(Boolean);
 
   return (
     <Card withBorder radius="md" padding="lg">
@@ -269,10 +275,46 @@ function Recommendation({
         <Text size="xs" c="dimmed">
           {preferConstant
             ? `The constant allocation is preferred because ${reasons.join(" and ")}.`
-            : "The glide path is preferred because the constant allocation trails it by more than the simplicity threshold on every comparable outcome."}
+            : flatBad
+              ? "The glide path is preferred because the constant allocation's risk-adjusted (CE) income is unreliable — at a single fixed weight it stays exposed to the bad-luck sequences the glide path trims."
+              : "The glide path is preferred because the constant allocation trails it by more than the simplicity threshold on every comparable outcome."}
         </Text>
       </Stack>
     </Card>
+  );
+}
+
+/**
+ * Estate-goal feedback. Only rendered when the user set a bequest target — the default
+ * (spend it all) view is unchanged. Judges attainment from the returned path's median estate,
+ * so the badge always agrees with the years shown.
+ */
+function EstateGoal({
+  input,
+  result,
+}: {
+  input: GlidePathInput;
+  result: GlidePathResult;
+}) {
+  if (input.bequestYears <= 0 || result.medianEstateYears == null) return null;
+  const reached = result.bequestTargetReached === true;
+  return (
+    <Group gap="sm" mt="md" wrap="nowrap" align="flex-start">
+      <Badge
+        variant="light"
+        color={reached ? "teal" : "orange"}
+        leftSection={
+          reached ? <IconCheck size={12} /> : <IconAlertTriangle size={12} />
+        }
+      >
+        {reached ? "Estate goal on track" : "Estate goal not reached"}
+      </Badge>
+      <Text size="sm" c="dimmed">
+        The optimized path leaves a median estate of ≈{result.medianEstateYears}{" "}
+        years of spending ({formatCAD(result.medianBequest)}), against your{" "}
+        {input.bequestYears}-year goal.
+      </Text>
+    </Group>
   );
 }
 
@@ -280,6 +322,7 @@ export default function Result({
   input,
   result,
   computing,
+  error = false,
   hasErrors,
 }: ResultProps) {
   if (hasErrors) {
@@ -291,6 +334,20 @@ export default function Result({
         title="Incomplete inputs"
       >
         Fix the highlighted fields to compare your allocation options.
+      </Alert>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert
+        variant="light"
+        color="red"
+        icon={<IconAlertTriangle />}
+        title="Couldn't compute"
+      >
+        Something went wrong while optimizing your allocation. Adjust an input
+        and generate again.
       </Alert>
     );
   }
@@ -362,6 +419,7 @@ export default function Result({
             fullPathShortfall={result.flatDepletion}
           />
         </SimpleGrid>
+        <EstateGoal input={input} result={result} />
       </Card>
 
       <GlidePathChart

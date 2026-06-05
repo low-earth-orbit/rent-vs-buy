@@ -25,6 +25,7 @@ export default function Main() {
   const [input, setInput] = useState<GlidePathInput>(() => loadInput());
   const [computed, setComputed] = useState<Computed | null>(null);
   const [computing, setComputing] = useState(false);
+  const [error, setError] = useState(false);
 
   const errors = validateGlidePathInput(input);
   const hasErrors = Object.keys(errors).length > 0;
@@ -41,6 +42,7 @@ export default function Main() {
 
   function handleGenerate() {
     if (hasErrors) return;
+    setError(false);
     requestIdRef.current += 1;
     const requestId = requestIdRef.current;
     terminateWorker();
@@ -58,7 +60,11 @@ export default function Main() {
       if (workerRef.current === worker) terminateWorker();
     };
     worker.onerror = () => {
-      if (requestId === requestIdRef.current) setComputing(false);
+      if (requestId === requestIdRef.current) {
+        setComputing(false);
+        setComputed(null);
+        setError(true);
+      }
       if (workerRef.current === worker) terminateWorker();
     };
 
@@ -81,6 +87,7 @@ export default function Main() {
     // Clear stale results whenever inputs change so the panel stays honest.
     setComputed(null);
     setComputing(false);
+    setError(false);
     terminateWorker();
     requestIdRef.current += 1; // invalidate any in-flight worker response
   }
@@ -91,6 +98,7 @@ export default function Main() {
     saveInput(fresh);
     setComputed(null);
     setComputing(false);
+    setError(false);
     terminateWorker();
     requestIdRef.current += 1;
   }
@@ -113,6 +121,7 @@ export default function Main() {
             input={computed?.input ?? input}
             result={computed?.data ?? null}
             computing={computing}
+            error={error}
             hasErrors={hasErrors}
           />
         </Grid.Col>
