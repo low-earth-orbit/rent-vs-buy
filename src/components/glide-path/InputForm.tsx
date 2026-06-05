@@ -8,10 +8,10 @@ import {
   SimpleGrid,
   Slider,
   Stack,
-  Text,
 } from "@mantine/core";
 import { IconChartLine } from "@tabler/icons-react";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
+import FieldHeader from "@/components/shared/FieldHeader";
 import { GAMMA_PRESETS } from "@/utils/glide-path/presets";
 import { FIELD_CONSTRAINTS } from "@/utils/glide-path/validation";
 import type {
@@ -147,14 +147,10 @@ export default function InputForm({
           <Accordion.Panel>
             <Stack gap="lg">
               <Stack gap={4}>
-                <Text size="sm" fw={600}>
-                  Spending flexibility
-                </Text>
-                <Text size="xs" c="dimmed">
-                  0 = fixed real $ every year. 1 = fully proportional — a 20%
-                  portfolio drop means a 20% spending cut. 0.5 = halfway in
-                  between.
-                </Text>
+                <FieldHeader
+                  label="Spending flexibility"
+                  description="0 = fixed real $ every year, regardless of markets. 1 = withdraw a fixed % of the portfolio, so a 20% drop cuts that withdrawal ~20% (guaranteed income is unaffected)."
+                />
                 <Box w="85%" mx="auto">
                   <Slider
                     my="xs"
@@ -184,14 +180,16 @@ export default function InputForm({
               )}
 
               <Stack gap={4}>
-                <Text size="sm" fw={600}>
-                  Risk aversion (γ)
-                </Text>
-                <Text size="xs" c="dimmed">
-                  How much you dislike risk: 1 = aggressive, 3 = moderate, 8 =
-                  very cautious.
-                </Text>
-                <Group gap="xs" my="xs" role="group" aria-label="Risk aversion">
+                <FieldHeader
+                  label="Retirement spending risk aversion (γ)"
+                  description="Your tolerance for swings in retirement spending. 1 = aggressive; 3 = moderate; 8 = very cautious."
+                />
+                <Group
+                  gap="xs"
+                  my="xs"
+                  role="group"
+                  aria-label="Retirement spending risk aversion"
+                >
                   {GAMMA_PRESETS.map((g) => (
                     <Button
                       key={g}
@@ -209,8 +207,8 @@ export default function InputForm({
               </Stack>
               <UserInputFormItem
                 {...num("beta")}
-                label="Time-discount β"
-                labelHelperText="Patience: 0.99 = long-horizon planner, 0.97 = standard retirement saver, 0.95 = average household, 0.90 = present-oriented."
+                label="Retirement time preference (β)"
+                description="How much you want to front-load spending into your earlier, more active retirement years. 1.00 = spread evenly; 0.985 = lean slightly earlier; 0.97 = clearly favor the early years."
                 step={0.005}
               />
             </Stack>

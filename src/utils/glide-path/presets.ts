@@ -67,7 +67,7 @@ export const DEFAULTS = {
   /** Max equity weight as a % (100 = no leverage; 150 = up to 1.5×). */
   maxEquityPct: 100,
   /** Real annual cost of borrowing (used only when maxEquityPct > 100). */
-  borrowCost: 2,
+  borrowCost: 1,
 
   // ── Engine / Monte Carlo ──────────────────────────────────
   /** Years per glide step (1 = per-age, 5 = every 5y; smaller = slower). */

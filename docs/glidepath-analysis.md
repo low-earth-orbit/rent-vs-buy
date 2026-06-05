@@ -332,11 +332,35 @@ the `recommend_glide.py` flag CLI:
   the borrowing drag and survives the out-of-sample CE guard — typically early accumulation under a
   low γ ("lifecycle investing"). Recommendations therefore use leverage less often than the raw
   coordinate-ascent path when the leveraged upside comes with a fragile left tail.
-- **Single γ, by design.** Risk aversion is one value for the whole life: the _declining_ glide
-  already emerges from the contribution stream + horizon (human capital), and consumption-phase γ
-  pins down the accumulation glide through how wealth becomes spending. A separate accumulation γ has
-  almost no leverage, and a γ(age) gradient would double-count the age–risk relationship the
-  optimizer already produces — so neither is offered.
+- **Retirement-consumption γ, by design.** Risk aversion is applied to retirement consumption, not
+  directly to accumulation wealth. The user's chosen γ is their preference for _stable retirement
+  spending_ — "how hard should the optimizer avoid low spending in bad market draws?" rather than
+  "how much equity do you want?" — and may differ from their general investment risk appetite today.
+  Higher γ penalizes low retirement-spending outcomes more heavily across simulated market scenarios.
+  It is distinct from spending flexibility, which sets how spending _responds_ to portfolio value.
+  Accumulation wealth carries no direct utility, but γ still pins down the accumulation glide through
+  how that wealth becomes retirement spending; the _declining_ glide also emerges from the
+  contribution stream + horizon (human capital). A separate accumulation γ has almost no leverage,
+  and a γ(age) gradient would double-count the age–risk relationship the optimizer already produces —
+  so neither is offered.
+  - _Typical values._ γ = 1 is log utility (aggressive); the literature's plausible band is ~1–10
+    with **2–5 the realistic center** (the ~30–40 needed to rationalize historical equity premia is
+    the "equity premium puzzle" precisely because it is implausible). The recommender default is 3
+    (§2's analysis sweeps use 4 as a base case). γ's effect on the glide is **spending-rule
+    dependent**: under flexible spending a higher γ pulls equity down, but the **constant-$ tent is
+    ~γ-invariant** (§2d) because the rigid floor — not taste — drives that shape.
+- **β front-loads retirement spending; it discounts retirement years, not years from today.** The
+  first retirement year has weight 1, and each subsequent retirement year has β times the previous
+  year's weight (`disc[t] = β^t`, length = retirement years; accumulation is undiscounted). A β of 1
+  weights every retirement year equally; lower β tilts the optimizer toward funding _earlier, more
+  active_ retirement years over later ones. Over 30 years, β of 1, 0.985, and 0.97 give the final
+  year about **100%, 65%, and 41%** of the first year's weight.
+  - _Typical values._ The default **0.985** ≈ 1.5%/yr — close to the empirical "retirement spending
+    smile" (real spending drifts down ~1%/yr in mid-retirement, ≈ β 0.99). **0.97** ≈ 3%/yr is a
+    strong early-years tilt; **0.95** ≈ 5%/yr (final-year weight ~23% over 30y) is a _very_ strong
+    front-load and atypical; the floor is 0.90. The model has **no separate survival/mortality
+    weighting**, so part of any β < 1 a household picks legitimately stands in for declining survival
+    probability — the realistic "neutral" point sits a little below 1.0, not exactly at it.
 
 ## 6. Reproduce
 

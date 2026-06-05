@@ -40,32 +40,41 @@ export default function Methodology() {
         <Text size="sm" c="dimmed">
           The optimizer finds the equity weight at each age that maximizes your{" "}
           <Text span fw={600}>
-            expected lifetime utility
+            expected utility of retirement consumption
           </Text>
-          . Utility is measured with a{" "}
+          , scored with a{" "}
           <Text span fw={600}>
             CRRA (constant relative risk aversion)
           </Text>{" "}
-          function, which captures a key feature of how people actually
-          experience money: the pain of losing $20,000 when you&apos;re nearly
-          broke is far greater than the pleasure of gaining $20,000 when
-          you&apos;re wealthy. Your γ (risk aversion) setting controls how
-          strongly this asymmetry is weighted. The result is the allocation that
-          gives the best{" "}
+          function — so a dollar of spending counts for more when you&apos;d
+          otherwise fall short than when you&apos;re already comfortable. Two
+          preferences shape the curve:{" "}
           <Text span fw={600}>
-            risk-adjusted outcome for your specific situation
+            γ
           </Text>{" "}
-          — not the highest expected return, and not the least volatile, but the
-          point in between that maximizes your welfare given your preferences.
-          Note this maximizes welfare, not success rate: where no stock/bond mix
-          can close a funding gap, lowering the failure rate comes from your
-          inputs (retire later, spend less, save more), not the allocation.
-          Guaranteed income (your pension) is assumed to start at retirement and
-          be paid every year — modelling a pre-pension &ldquo;bridge&rdquo; is
-          out of scope (use the retirement tool for that funding question). The
-          result separates drawdown-only depletion from full-path shortfall: the
-          former starts from the expected retirement balance, while the latter
-          also includes pre-retirement market luck.
+          sets how much you dislike swings in retirement spending (higher →
+          safer, lower-equity plans), and{" "}
+          <Text span fw={600}>
+            β
+          </Text>{" "}
+          sets how much you front-load spending into your earlier, more active
+          retirement years. The result is the best{" "}
+          <Text span fw={600}>
+            risk-adjusted outcome for your situation
+          </Text>{" "}
+          — not the highest expected return, and not the least volatile.
+        </Text>
+        <Text size="sm" c="dimmed">
+          It maximizes welfare, not success rate: where no stock/bond mix can
+          close a funding gap, the fix lives in your inputs (retire later, spend
+          less, save more), not the allocation. Guaranteed income (your pension)
+          is assumed to start at retirement and be paid every year — a
+          pre-pension &ldquo;bridge&rdquo; is out of scope (use the retirement
+          tool for that funding question). Depletion is reported two ways:
+          drawdown-only (from the expected retirement balance) and full-path
+          (which also includes pre-retirement market luck). See the analysis
+          note below for how γ and β enter the objective and typical values for
+          each.
         </Text>
 
         <Title order={3} fz="md">

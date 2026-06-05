@@ -53,16 +53,20 @@ KEY INPUTS
                               in retirement where sequence risk dominates.
   interval                  : years per glide step (1 = per-age, 5 = change allocation every 5y…).
                               Equity weight is held constant within each interval block.
-  gamma                     : CRRA risk aversion — a SINGLE value for the whole life. Higher = more
+  gamma                     : CRRA risk aversion applied to RETIREMENT CONSUMPTION. Higher = more
                               averse to consumption swings → lower equity. 1 ≈ log, 3 = base (default),
-                              8 = very cautious. There is deliberately no separate accumulation γ:
-                              the *declining* glide already emerges from the contribution stream +
-                              horizon (the human-capital effect), and your consumption risk aversion
-                              pins down the accumulation glide through how wealth becomes spending —
-                              so a distinct accumulation γ has almost no leverage and a γ(age) gradient
-                              would double-count the age–risk relationship the optimizer produces.
+                              8 = very cautious. The user's chosen γ is their retirement-spending risk
+                              aversion: higher γ penalizes low retirement-spending outcomes more
+                              heavily across simulated market scenarios. This is distinct from
+                              spending flexibility, which controls how spending responds to portfolio
+                              value. There is no separate current or accumulation γ.
   beta                      : annual time-discount factor (default 0.985 → ~1.5% time preference).
-                              Values near 1 = patient; near 0.95 = heavily discounts distant years.
+                              Applied within retirement only: the first retirement year has weight 1,
+                              then each year receives β times the previous year's weight. Choose 1 to
+                              value all retirement years equally, 0.985 for a modest preference for
+                              earlier years, or 0.97 to strongly prioritize early retirement. Over
+                              30 years, the final-year weights are about 100%, 65%, and 41%.
+                              Accumulation years are not discounted.
   bequest                   : raw warm-glow weight (advanced). 0 = pure consumption. Prefer
                               `bequest_years` below; this is the unscaled lever it calibrates.
   bequest_years             : target median estate expressed in YEARS of retirement spending

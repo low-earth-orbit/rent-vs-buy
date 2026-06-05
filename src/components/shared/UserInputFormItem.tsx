@@ -7,6 +7,7 @@ interface UserInputFormItemProps {
   id: string;
   label: ReactNode;
   labelHelperText?: string;
+  description?: ReactNode;
   additionalText?: string;
   min?: number;
   max?: number;
@@ -25,6 +26,7 @@ export default function UserInputFormItem({
   id,
   label,
   labelHelperText,
+  description,
   additionalText,
   min,
   max,
@@ -42,6 +44,7 @@ export default function UserInputFormItem({
       <NumberInput
         id={id}
         label={<FieldLabel label={label} helperText={labelHelperText} />}
+        description={description}
         value={value}
         onChange={onChange}
         min={min}
