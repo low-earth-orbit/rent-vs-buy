@@ -12,6 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import type { GlidePathInput, GlidePathResult } from "@/utils/glide-path/types";
+import { generateTicks } from "@/utils/charts";
 
 const TEAL = "var(--mantine-color-teal-6)";
 const INDIGO = "var(--mantine-color-indigo-5)";
@@ -74,6 +75,9 @@ export default function GlidePathChart({
     lastBlock.phase === "retire" &&
     prevBlock.equityPct - lastBlock.equityPct >= 15;
 
+  const ageTicks = generateTicks(input.startAge, input.planningAge, 5);
+  const equityTicks = generateTicks(0, yMax, 10);
+
   return (
     <Card withBorder radius="md" padding="md">
       <Text fw={600} mb="md">
@@ -106,6 +110,7 @@ export default function GlidePathChart({
               dataKey="age"
               type="number"
               domain={["dataMin", "dataMax"]}
+              ticks={ageTicks}
               tickMargin={8}
               label={{ value: "Age", position: "bottom", fontSize: 12 }}
               tick={{ fontSize: 12 }}
@@ -113,6 +118,7 @@ export default function GlidePathChart({
             <YAxis
               width={44}
               domain={[0, yMax]}
+              ticks={equityTicks}
               tickFormatter={(v) => `${v}%`}
               tick={{ fontSize: 12 }}
             />
