@@ -1,5 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { buildGlidePathChartData, withSmoothed } from "./GlidePathChart";
+import {
+  buildEquityAxis,
+  buildGlidePathChartData,
+  withSmoothed,
+} from "./GlidePathChart";
+
+describe("buildEquityAxis", () => {
+  it("keeps 100% as the minimum axis ceiling", () => {
+    expect(buildEquityAxis(80)).toEqual({
+      yMax: 100,
+      ticks: [0, 20, 40, 60, 80, 100],
+    });
+  });
+
+  it.each([
+    [100, [0, 20, 40, 60, 80, 100]],
+    [125, [0, 20, 40, 60, 80, 100, 120, 125]],
+    [118, [0, 20, 40, 60, 80, 100, 118]],
+  ])("ends exactly at a %s%% equity cap", (maxEquityPct, expectedTicks) => {
+    expect(buildEquityAxis(maxEquityPct)).toEqual({
+      yMax: maxEquityPct,
+      ticks: expectedTicks,
+    });
+  });
+});
 
 describe("buildGlidePathChartData", () => {
   it("extends the final holding period to the planning-age boundary", () => {

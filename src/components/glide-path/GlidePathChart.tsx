@@ -30,6 +30,15 @@ interface SmoothedPoint extends ChartPoint {
   equitySmooth: number;
 }
 
+export function buildEquityAxis(maxEquityPct: number) {
+  const yMax = Math.max(100, Math.round(maxEquityPct * 10) / 10);
+  const ticks = generateTicks(0, yMax, 20);
+
+  if (!ticks.includes(yMax)) ticks.push(yMax);
+
+  return { yMax, ticks };
+}
+
 export function buildGlidePathChartData(
   input: Pick<GlidePathInput, "startAge" | "planningAge">,
   result: Pick<GlidePathResult, "equityByYear"> & {
@@ -127,7 +136,7 @@ export default function GlidePathChart({
   );
   const lastAge = data.length ? data[data.length - 1].age : retireAge;
   const levCap = result.params.maxLeverage * 100;
-  const yMax = Math.max(100, Math.ceil((levCap + 1) / 10) * 10);
+  const { yMax, ticks: equityTicks } = buildEquityAxis(levCap);
 
   // The optimizer derisks the final block at the fixed planning horizon (an artifact, not
   // advice). Detect a notable drop in the last retirement step to footnote it.
@@ -140,7 +149,6 @@ export default function GlidePathChart({
     prevBlock.equityPct - lastBlock.equityPct >= 15;
 
   const ageTicks = generateTicks(input.startAge, input.planningAge, 5);
-  const equityTicks = generateTicks(0, yMax, 10);
 
   return (
     <Card withBorder radius="md" padding="md">

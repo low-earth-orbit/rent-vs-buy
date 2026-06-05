@@ -530,7 +530,7 @@ export default function Result({
           </Button>
           <Text size="xs" c="dimmed" ta="center" maw={440}>
             {seed > 0
-              ? `Showing alternative draw #${seed}. Re-generate for the default draw.`
+              ? `Showing alternative draw #${seed}.`
               : "Re-runs the Monte Carlo with a new random seed, so you can see how much the result depends on simulation luck."}
           </Text>
         </Stack>
