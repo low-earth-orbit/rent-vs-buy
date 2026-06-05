@@ -126,7 +126,7 @@ export default function Methodology() {
           allocation comparison is shown as inconclusive.
         </Point>
 
-        <Text size="xs" c="dimmed">
+        <Text size="sm" c="dimmed">
           Full methodology:{" "}
           <Anchor
             href="https://github.com/low-earth-orbit/personal-finance/blob/main/docs/glidepath-analysis.md"
@@ -135,9 +135,8 @@ export default function Methodology() {
           >
             glide-path analysis note
           </Anchor>
-          . Runs in your browser — nothing is sent anywhere. Identical inputs
-          give an identical result (seeded RNG). This is an illustration, not
-          financial advice.
+          . Runs in your browser — nothing is sent anywhere. This is an
+          illustration, not financial advice.
         </Text>
       </Stack>
     </Container>
