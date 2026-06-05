@@ -151,8 +151,9 @@ export default function InputForm({
                   Spending flexibility
                 </Text>
                 <Text size="xs" c="dimmed">
-                  0 = fixed real $ every year (rigid). 1 = fully proportional —
-                  a 50% portfolio drop means a 50% spending cut.
+                  0 = fixed real $ every year. 1 = fully proportional — a 20%
+                  portfolio drop means a 20% spending cut. 0.5 = halfway in
+                  between.
                 </Text>
                 <Box w="85%" mx="auto">
                   <Slider
@@ -187,8 +188,8 @@ export default function InputForm({
                   Risk aversion (γ)
                 </Text>
                 <Text size="xs" c="dimmed">
-                  How much steady income matters vs. chasing growth: 1 =
-                  aggressive, 3 = moderate, 8 = very cautious.
+                  How much you dislike risk: 1 = aggressive, 3 = moderate, 8 =
+                  very cautious.
                 </Text>
                 <Group gap="xs" my="xs" role="group" aria-label="Risk aversion">
                   {GAMMA_PRESETS.map((g) => (

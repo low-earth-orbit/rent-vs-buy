@@ -49,7 +49,7 @@ export const DEFAULTS = {
    * be paid every retirement year (the tool models allocation from the point income has started;
    * a pre-pension "bridge" is out of scope — see Methodology).
    */
-  pensionPct: 20,
+  pensionPct: 10,
 
   // ── Spending & preferences ────────────────────────────────
   /** 0 = constant real $; 1 = fully proportional to the balance; blends between. */

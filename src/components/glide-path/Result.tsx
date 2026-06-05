@@ -117,6 +117,25 @@ function GlideShape({
 const RECOMMEND_FLAT_BELOW_PCT = 5;
 const DEPLETION_WARNING_THRESHOLD = 0.1;
 const SEVERE_DEPLETION_THRESHOLD = 0.25;
+const MEANINGFUL_ACCUMULATION_GAP = 0.05;
+
+type PlanRiskKind = "low" | "drawdown" | "accumulation-sensitive" | "combined";
+
+/** Classifies overall plan risk without treating the full-path gap as a causal decomposition. */
+function classifyPlanRisk(result: GlidePathResult): PlanRiskKind {
+  const drawdownNotable =
+    result.drawdownDepletion >= DEPLETION_WARNING_THRESHOLD;
+  const fullPathNotable = result.depletion >= DEPLETION_WARNING_THRESHOLD;
+  const accumulationSensitive =
+    result.depletion - result.drawdownDepletion > MEANINGFUL_ACCUMULATION_GAP;
+
+  if (drawdownNotable && accumulationSensitive) return "combined";
+  if (drawdownNotable) return "drawdown";
+  if (fullPathNotable && accumulationSensitive) {
+    return "accumulation-sensitive";
+  }
+  return "low";
+}
 
 /**
  * A CE income this far below the target is the FLOOR=1 / CRRA artifact (the certainty-equivalent
@@ -394,77 +413,97 @@ function Recommendation({
   );
 }
 
-/** Surfaces ruin risk when the portfolio is exhausted in a meaningful share of markets. */
-function FailureWarning({
+/** Presents one coherent warning for drawdown risk, accumulation sensitivity, or both. */
+function PlanRiskAlert({
   input,
   result,
 }: {
   input: GlidePathInput;
   result: GlidePathResult;
 }) {
-  const dep = result.drawdownDepletion;
-  if (dep < DEPLETION_WARNING_THRESHOLD) return null;
+  const risk = classifyPlanRisk(result);
+  if (risk === "low") return null;
 
-  const severe = dep >= SEVERE_DEPLETION_THRESHOLD;
+  const severe = result.drawdownDepletion >= SEVERE_DEPLETION_THRESHOLD;
+  const retireAge = input.startAge + result.params.accumYears;
+  const drawdownPct = (result.drawdownDepletion * 100).toFixed(1);
+  const fullPathPct = (result.depletion * 100).toFixed(1);
+
+  if (risk === "drawdown") {
+    return (
+      <Alert
+        variant="light"
+        color={severe ? "red" : "yellow"}
+        icon={<IconAlertTriangle />}
+        title="Retirement spending may not be sustainable"
+      >
+        <Text size="sm">
+          Starting retirement with the expected balance of{" "}
+          <Text span fw={600}>
+            {formatCAD(result.expectedRetirementBalance)}
+          </Text>
+          , the portfolio is depleted before age {input.planningAge} in{" "}
+          <Text span fw={600}>
+            {drawdownPct}%
+          </Text>{" "}
+          of simulated retirement markets. Consider saving more, retiring later,
+          or lowering your target income.
+        </Text>
+      </Alert>
+    );
+  }
+
+  if (risk === "accumulation-sensitive") {
+    return (
+      <Alert
+        variant="light"
+        color="yellow"
+        icon={<IconAlertTriangle />}
+        title="Reaching the expected retirement balance matters"
+      >
+        <Text size="sm">
+          Drawdown depletion is{" "}
+          <Text span fw={600}>
+            {drawdownPct}%
+          </Text>{" "}
+          when retirement begins with the expected age-{retireAge} balance of{" "}
+          <Text span fw={600}>
+            {formatCAD(result.expectedRetirementBalance)}
+          </Text>
+          . Across simulations beginning at age {input.startAge}, full-path
+          shortfall is{" "}
+          <Text span fw={600}>
+            {fullPathPct}%
+          </Text>
+          . The gap indicates sensitivity to pre-retirement market performance.
+        </Text>
+      </Alert>
+    );
+  }
 
   return (
     <Alert
       variant="light"
       color={severe ? "red" : "yellow"}
       icon={<IconAlertTriangle />}
-      title={
-        severe
-          ? "High chance of running out of money"
-          : "Notable chance of running out of money"
-      }
+      title="Funding risk exists before and after retirement"
     >
       <Text size="sm">
-        Starting from the expected retirement balance of{" "}
+        Starting retirement with the expected age-{retireAge} balance of{" "}
         <Text span fw={600}>
           {formatCAD(result.expectedRetirementBalance)}
         </Text>
-        , the portfolio is exhausted before age {input.planningAge} in{" "}
+        , the portfolio is depleted before age {input.planningAge} in{" "}
         <Text span fw={600}>
-          {(dep * 100).toFixed(0)}%
+          {drawdownPct}%
         </Text>{" "}
-        of simulated markets. Consider retiring later, lowering your target
-        income, or saving more.
-      </Text>
-    </Alert>
-  );
-}
-
-/** Explains when the full-path number is mostly accumulation uncertainty, not drawdown failure. */
-function AccumulationRiskNote({
-  input,
-  result,
-}: {
-  input: GlidePathInput;
-  result: GlidePathResult;
-}) {
-  if (result.depletion < DEPLETION_WARNING_THRESHOLD) return null;
-  if (result.depletion <= result.drawdownDepletion + 0.05) return null;
-
-  const retireAge = input.startAge + result.params.accumYears;
-  return (
-    <Alert
-      variant="light"
-      color="blue"
-      icon={<IconInfoCircle />}
-      title="Pre-retirement market risk matters"
-    >
-      <Text size="sm">
-        The drawdown-only depletion rate is{" "}
+        of simulated retirement markets. Across simulations beginning at age{" "}
+        {input.startAge}, full-path shortfall is{" "}
         <Text span fw={600}>
-          {(result.drawdownDepletion * 100).toFixed(1)}%
+          {fullPathPct}%
         </Text>{" "}
-        if you reach the expected age-{retireAge} balance. Across full paths
-        starting at age {input.startAge},{" "}
-        <Text span fw={600}>
-          {(result.depletion * 100).toFixed(1)}%
-        </Text>{" "}
-        deplete because weak accumulation markets can leave less saved by
-        retirement.
+        and the gap indicates sensitivity to pre-retirement market performance.
+        Consider saving more, retiring later, or lowering your target income.
       </Text>
     </Alert>
   );
@@ -541,8 +580,7 @@ export default function Result({
     <Stack gap="lg" pos="relative">
       <Recommendation input={input} result={result} />
 
-      <FailureWarning input={input} result={result} />
-      <AccumulationRiskNote input={input} result={result} />
+      <PlanRiskAlert input={input} result={result} />
 
       <Card withBorder radius="md" padding="lg">
         <Title order={3} fz="md" mb="md">

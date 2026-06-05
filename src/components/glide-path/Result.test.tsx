@@ -88,24 +88,92 @@ describe("glide-path Result", () => {
     expect(screen.getByText(/vs constant/i)).toBeInTheDocument();
   });
 
-  it("warns when drawdown depletion is high", () => {
+  it("shows a severe drawdown warning at 25%", () => {
     renderResult(
       makeResult({
-        depletion: 0.3,
-        drawdownDepletion: 0.3,
+        depletion: 0.25,
+        drawdownDepletion: 0.25,
       }),
     );
-    expect(screen.getByText(/High chance of running out/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/retiring later, lowering your target/i),
+      screen.getByText(/Retirement spending may not be sustainable/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/saving more, retiring later/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveStyle({
+      "--alert-color": "var(--mantine-color-red-light-color)",
+    });
   });
 
-  it("does not warn when depletion is low", () => {
-    renderResult(makeResult({ depletion: 0.05 }));
-    // The warning title says "running out of money"; the metric label ("Chance of
-    // running out") is always present, so match the warning-specific phrasing.
-    expect(screen.queryByText(/running out of money/i)).toBeNull();
+  it("shows no risk alert when both rates are below 10%", () => {
+    renderResult(makeResult({ depletion: 0.09, drawdownDepletion: 0.09 }));
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows a drawdown warning at the 10% boundary", () => {
+    renderResult(makeResult({ depletion: 0.15, drawdownDepletion: 0.1 }));
+    expect(
+      screen.getByText(/Retirement spending may not be sustainable/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+
+  it("treats an exact five-point gap as drawdown risk, not accumulation sensitivity", () => {
+    renderResult(makeResult({ depletion: 0.15, drawdownDepletion: 0.1 }));
+    expect(
+      screen.getByText(/Retirement spending may not be sustainable/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/sensitivity to pre-retirement/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows one accumulation-sensitive warning when drawdown risk is low", () => {
+    renderResult(
+      makeResult({
+        depletion: 0.22,
+        drawdownDepletion: 0.03,
+        expectedRetirementBalance: 1960000,
+      }),
+    );
+    expect(
+      screen.getByText(/Reaching the expected retirement balance matters/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/gap indicates sensitivity to pre-retirement/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveStyle({
+      "--alert-color": "var(--mantine-color-yellow-light-color)",
+    });
+  });
+
+  it("keeps accumulation-sensitive warnings yellow even above 25% full-path shortfall", () => {
+    renderResult(makeResult({ depletion: 0.4, drawdownDepletion: 0.03 }));
+    expect(
+      screen.getByText(/Reaching the expected retirement balance matters/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveStyle({
+      "--alert-color": "var(--mantine-color-yellow-light-color)",
+    });
+  });
+
+  it("shows one combined warning when risk exists before and after retirement", () => {
+    renderResult(makeResult({ depletion: 0.22, drawdownDepletion: 0.12 }));
+    expect(
+      screen.getByText(/Funding risk exists before and after retirement/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/gap indicates sensitivity to pre-retirement/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+
+  it("does not describe the full-path gap as a causal accumulation failure rate", () => {
+    renderResult(makeResult({ depletion: 0.22, drawdownDepletion: 0.03 }));
+    expect(screen.queryByText(/because weak accumulation/i)).toBeNull();
+    expect(screen.queryByText(/caused by accumulation/i)).toBeNull();
   });
 
   it("flags a failing plan and suppresses the income figure when depletion is high and CE is degenerate", () => {
@@ -122,7 +190,9 @@ describe("glide-path Result", () => {
     expect(
       screen.getByText(/No allocation reliably funds this plan/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/running out of money/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Retirement spending may not be sustainable/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Tail-dominated/i)).toBeInTheDocument();
   });
 
@@ -138,28 +208,12 @@ describe("glide-path Result", () => {
     expect(
       screen.queryByText(/No allocation reliably funds this plan/i),
     ).toBeNull();
-    expect(screen.queryByText(/running out of money/i)).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByText(/Low ruin risk/i)).toBeInTheDocument();
     expect(
       screen.getByText(/certainty-equivalent income score/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/Tail-dominated/i)).toBeInTheDocument();
-  });
-
-  it("separates drawdown depletion from full-path accumulation shortfall", () => {
-    renderResult(
-      makeResult({
-        depletion: 0.22,
-        drawdownDepletion: 0.03,
-        expectedRetirementBalance: 1960000,
-      }),
-    );
-    expect(screen.queryByText(/running out of money/i)).toBeNull();
-    expect(
-      screen.getByText(/Pre-retirement market risk matters/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Drawdown depletion/i)).toBeInTheDocument();
-    expect(screen.getByText(/Full-path shortfall/i)).toBeInTheDocument();
   });
 
   it("does not recommend the constant comparator when it has worse drawdown risk", () => {
