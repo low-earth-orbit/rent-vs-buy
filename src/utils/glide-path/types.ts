@@ -75,6 +75,8 @@ export interface ResolvedParams {
 export interface GlidePathRequest {
   input: GlidePathInput;
   requestId: number;
+  /** Re-roll nonce: 0 = canonical draw; >0 reseeds the Monte Carlo to a new reproducible draw. */
+  seed?: number;
 }
 
 /** Message returned from the glide-path Web Worker. */

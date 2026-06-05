@@ -3,6 +3,7 @@
 import {
   Alert,
   Badge,
+  Button,
   Card,
   Center,
   Divider,
@@ -21,6 +22,7 @@ import {
   IconTrendingUp,
   IconAlertTriangle,
   IconCheck,
+  IconArrowsShuffle,
 } from "@tabler/icons-react";
 import GlidePathChart from "./GlidePathChart";
 import FieldLabel from "@/components/shared/FieldLabel";
@@ -35,8 +37,14 @@ interface ResultProps {
   input: GlidePathInput;
   result: GlidePathResult | null;
   computing: boolean;
+  /** A re-roll is in flight: keep the current result visible, just spin the re-roll button. */
+  rerolling?: boolean;
   error?: boolean;
   hasErrors: boolean;
+  /** Re-roll nonce currently shown (0 = canonical/default draw). */
+  seed?: number;
+  /** Opt-in: recompute with a fresh Monte Carlo seed, inputs unchanged. */
+  onReroll?: () => void;
 }
 
 const SIMPLICITY_THRESHOLD_PCT = 5;
@@ -45,7 +53,7 @@ const RISK_HIGHLIGHT_THRESHOLD = 0.1;
 const METRIC_HELP = {
   ce: "Certainty-equivalent income — the steady, guaranteed yearly income that would feel as good as this uncertain plan once the bad years are penalised. It sits below the simple average because shortfalls hurt more than surpluses help.",
   drawdown:
-    "Share of simulated retirements with at least one year the portfolio can't fully fund your target spending — measured from the expected balance at retirement (the same view as the When-can-I-retire tool).",
+    "Share of simulated retirements with at least one year the portfolio can't fully fund your target spending — measured from the expected balance at retirement.",
   fullPath:
     "The same shortfall measure taken over the whole path from today, so it also reflects the luck of markets in the years before you retire.",
 } as const;
@@ -329,8 +337,11 @@ export default function Result({
   input,
   result,
   computing,
+  rerolling = false,
   error = false,
   hasErrors,
+  seed = 0,
+  onReroll,
 }: ResultProps) {
   if (hasErrors) {
     return (
@@ -428,7 +439,7 @@ export default function Result({
   const secondary = reco.preferConstant ? glide : constant;
 
   const reasonText = reco.preferConstant
-    ? `The constant allocation is preferred because ${reco.reasons.join(" and ")}.`
+    ? `The constant allocation is preferred because the optimized glide path is marginally better.`
     : reco.flatBad
       ? "The glide path is preferred because the constant allocation's risk-adjusted (CE) income is unreliable — at a single fixed weight it stays exposed to the bad-luck sequences the glide path trims."
       : "The glide path is preferred because the constant allocation trails it by more than the simplicity threshold on every comparable outcome.";
@@ -504,6 +515,26 @@ export default function Result({
         result={result}
         showConstant={!flatDegenerate}
       />
+
+      {onReroll && (
+        <Stack gap={4} align="center" mt="xs">
+          <Button
+            variant="subtle"
+            color="gray"
+            size="xs"
+            leftSection={<IconArrowsShuffle size={14} />}
+            onClick={onReroll}
+            loading={rerolling}
+          >
+            Try a different random draw
+          </Button>
+          <Text size="xs" c="dimmed" ta="center" maw={440}>
+            {seed > 0
+              ? `Showing alternative draw #${seed}. Re-generate for the default draw.`
+              : "Re-runs the Monte Carlo with a new random seed, so you can see how much the result depends on simulation luck."}
+          </Text>
+        </Stack>
+      )}
     </Stack>
   );
 }

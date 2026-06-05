@@ -127,7 +127,7 @@ export default function GlidePathChart({
   );
   const lastAge = data.length ? data[data.length - 1].age : retireAge;
   const levCap = result.params.maxLeverage * 100;
-  const yMax = Math.max(105, Math.ceil((levCap + 5) / 10) * 10);
+  const yMax = Math.max(100, Math.ceil((levCap + 1) / 10) * 10);
 
   // The optimizer derisks the final block at the fixed planning horizon (an artifact, not
   // advice). Detect a notable drop in the last retirement step to footnote it.

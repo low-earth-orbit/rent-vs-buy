@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULTS } from "./presets";
+import { DEFAULTS, DEFAULT_ALLOC_CURVE } from "./presets";
 import { buildEquityGrid, recommendGlidePath } from "./engine";
 import type { GlidePathInput } from "./types";
 
@@ -91,6 +91,25 @@ describe("recommendGlidePath", () => {
     const b = recommendGlidePath(base());
     expect(a.equityByYear).toEqual(b.equityByYear);
     expect(a.ceIncome).toBe(b.ceIncome);
+  });
+
+  it("re-rolls to a new draw per seed while staying deterministic for that seed", () => {
+    const a = recommendGlidePath(base()); // seed 0 (canonical)
+    const b = recommendGlidePath(base(), DEFAULT_ALLOC_CURVE, 1);
+    const c = recommendGlidePath(base(), DEFAULT_ALLOC_CURVE, 1);
+    // Same seed → identical result.
+    expect(b.equityByYear).toEqual(c.equityByYear);
+    expect(b.ceIncome).toBe(c.ceIncome);
+    // The default (no seed) equals an explicit seed 0.
+    expect(
+      recommendGlidePath(base(), DEFAULT_ALLOC_CURVE, 0).equityByYear,
+    ).toEqual(a.equityByYear);
+    // A different seed is a genuinely different draw (moves at least one reported figure).
+    const differs =
+      a.ceIncome !== b.ceIncome ||
+      a.depletion !== b.depletion ||
+      JSON.stringify(a.equityByYear) !== JSON.stringify(b.equityByYear);
+    expect(differs).toBe(true);
   });
 
   it("falls back to a bounded path count for invalid direct engine calls", () => {

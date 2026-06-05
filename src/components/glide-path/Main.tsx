@@ -25,13 +25,16 @@ export default function Main() {
   const [input, setInput] = useState<GlidePathInput>(() => loadInput());
   const [computed, setComputed] = useState<Computed | null>(null);
   const [computing, setComputing] = useState(false);
+  const [rerolling, setRerolling] = useState(false);
   const [error, setError] = useState(false);
+  const [seed, setSeed] = useState(0);
 
   const errors = validateGlidePathInput(input);
   const hasErrors = Object.keys(errors).length > 0;
 
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
+  const seedRef = useRef(0);
 
   function terminateWorker() {
     workerRef.current?.terminate();
@@ -40,7 +43,7 @@ export default function Main() {
 
   useEffect(() => terminateWorker, []);
 
-  function handleGenerate() {
+  function compute(seedValue: number, isReroll: boolean) {
     if (hasErrors) return;
     setError(false);
     requestIdRef.current += 1;
@@ -56,23 +59,40 @@ export default function Main() {
       if (responseId === requestIdRef.current) {
         setComputed({ data: result, input: event.data.input });
         setComputing(false);
+        setRerolling(false);
       }
       if (workerRef.current === worker) terminateWorker();
     };
     worker.onerror = () => {
       if (requestId === requestIdRef.current) {
         setComputing(false);
+        setRerolling(false);
         setComputed(null);
         setError(true);
       }
       if (workerRef.current === worker) terminateWorker();
     };
 
-    setComputing(true);
-    worker.postMessage({
-      input,
-      requestId,
-    });
+    // Re-roll keeps the current result visible (only the button spins); a fresh Generate
+    // swaps to the full loader.
+    if (isReroll) setRerolling(true);
+    else setComputing(true);
+    worker.postMessage({ input, requestId, seed: seedValue });
+  }
+
+  function handleGenerate() {
+    seedRef.current = 0;
+    setSeed(0);
+    compute(0, false);
+  }
+
+  // Opt-in: redraw the Monte Carlo with the next seed, leaving inputs untouched, so the user
+  // can see how much the recommendation depends on simulation luck.
+  function handleReroll() {
+    const next = seedRef.current + 1;
+    seedRef.current = next;
+    setSeed(next);
+    compute(next, true);
   }
 
   function handleChange(key: GlidePathInputKey, value: FieldValue) {
@@ -87,7 +107,10 @@ export default function Main() {
     // Clear stale results whenever inputs change so the panel stays honest.
     setComputed(null);
     setComputing(false);
+    setRerolling(false);
     setError(false);
+    seedRef.current = 0;
+    setSeed(0);
     terminateWorker();
     requestIdRef.current += 1; // invalidate any in-flight worker response
   }
@@ -98,7 +121,10 @@ export default function Main() {
     saveInput(fresh);
     setComputed(null);
     setComputing(false);
+    setRerolling(false);
     setError(false);
+    seedRef.current = 0;
+    setSeed(0);
     terminateWorker();
     requestIdRef.current += 1;
   }
@@ -121,8 +147,11 @@ export default function Main() {
             input={computed?.input ?? input}
             result={computed?.data ?? null}
             computing={computing}
+            rerolling={rerolling}
             error={error}
             hasErrors={hasErrors}
+            seed={seed}
+            onReroll={handleReroll}
           />
         </Grid.Col>
       </Grid>
