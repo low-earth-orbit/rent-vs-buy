@@ -58,9 +58,11 @@ export default function UserInputFormItem({
         styles={{ label: { display: "block" } }}
         {...rest}
       />
-      <Text size="xs" c="dimmed" aria-live="polite">
-        {additionalText}
-      </Text>
+      {additionalText && (
+        <Text size="xs" c="dimmed" aria-live="polite">
+          {additionalText}
+        </Text>
+      )}
     </Stack>
   );
 }
