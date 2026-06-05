@@ -132,12 +132,6 @@ export default function InputForm({
                 labelHelperText="Guaranteed income in retirement as a % of your pre-retirement income."
                 suffix="%"
               />
-              <UserInputFormItem
-                {...num("bequestYears")}
-                label="Estate goal"
-                labelHelperText="Target estate in YEARS of retirement spending (0 = spend it all)."
-                suffix=" yrs"
-              />
             </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>

@@ -83,12 +83,11 @@ export default function GlidePathChart({
   const levCap = result.params.maxLeverage * 100;
   const yMax = Math.max(105, Math.ceil((levCap + 5) / 10) * 10);
 
-  // With no estate goal the optimizer derisks the final block (a fixed-horizon
-  // artifact, not advice). Detect a notable drop in the last retirement step to footnote it.
+  // The optimizer derisks the final block at the fixed planning horizon (an artifact, not
+  // advice). Detect a notable drop in the last retirement step to footnote it.
   const lastBlock = result.schedule.at(-1);
   const prevBlock = result.schedule.at(-2);
   const terminalDerisk =
-    result.params.bequestWeight === 0 &&
     lastBlock != null &&
     prevBlock != null &&
     lastBlock.phase === "retire" &&
@@ -212,10 +211,10 @@ export default function GlidePathChart({
             Note:
           </Text>{" "}
           the dip in the final years is a fixed-horizon artifact, not advice.
-          With no estate goal, holding stocks in the last years only adds risk
-          with no upside (you can&apos;t spend a final-year windfall and leave
-          nothing behind), so the optimizer derisks. Set an estate goal to
-          remove it.
+          Because the model plans to a fixed age with nothing set aside to leave
+          behind, holding stocks in the last years only adds risk with no upside
+          (you can&apos;t spend a final-year windfall), so the optimizer derisks
+          them.
         </Text>
       )}
     </Card>

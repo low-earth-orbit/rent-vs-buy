@@ -19,7 +19,6 @@ import {
   IconTrendingDown,
   IconTrendingUp,
   IconAlertTriangle,
-  IconCheck,
 } from "@tabler/icons-react";
 import GlidePathChart from "./GlidePathChart";
 import { formatCAD } from "@/utils/format";
@@ -99,7 +98,7 @@ function OutcomeCard({
             flagged={ceDegenerate}
           />
           <Metric
-            label="Drawdown depletion"
+            label="Drawdown shortfall"
             value={`${(drawdownDepletion * 100).toFixed(1)}%`}
             note="from expected retirement savings"
             flagged={drawdownDepletion >= RISK_HIGHLIGHT_THRESHOLD}
@@ -226,7 +225,7 @@ function Recommendation({
       ? ["it wins all three comparable outcomes"]
       : [
           ceWithin ? "its CE income is no more than 5% lower" : null,
-          drawdownWithin ? "drawdown depletion is within 5 points" : null,
+          drawdownWithin ? "drawdown shortfall is within 5 points" : null,
           fullPathWithin ? "full-path shortfall is within 5 points" : null,
         ].filter(Boolean);
 
@@ -281,40 +280,6 @@ function Recommendation({
         </Text>
       </Stack>
     </Card>
-  );
-}
-
-/**
- * Estate-goal feedback. Only rendered when the user set a bequest target — the default
- * (spend it all) view is unchanged. Judges attainment from the returned path's median estate,
- * so the badge always agrees with the years shown.
- */
-function EstateGoal({
-  input,
-  result,
-}: {
-  input: GlidePathInput;
-  result: GlidePathResult;
-}) {
-  if (input.bequestYears <= 0 || result.medianEstateYears == null) return null;
-  const reached = result.bequestTargetReached === true;
-  return (
-    <Group gap="sm" mt="md" wrap="nowrap" align="flex-start">
-      <Badge
-        variant="light"
-        color={reached ? "teal" : "orange"}
-        leftSection={
-          reached ? <IconCheck size={12} /> : <IconAlertTriangle size={12} />
-        }
-      >
-        {reached ? "Estate goal on track" : "Estate goal not reached"}
-      </Badge>
-      <Text size="sm" c="dimmed">
-        The optimized path leaves a median estate of ≈{result.medianEstateYears}{" "}
-        years of spending ({formatCAD(result.medianBequest)}), against your{" "}
-        {input.bequestYears}-year goal.
-      </Text>
-    </Group>
   );
 }
 
@@ -419,7 +384,6 @@ export default function Result({
             fullPathShortfall={result.flatDepletion}
           />
         </SimpleGrid>
-        <EstateGoal input={input} result={result} />
       </Card>
 
       <GlidePathChart

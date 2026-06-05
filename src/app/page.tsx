@@ -33,7 +33,7 @@ const TOOLS: Tool[] = [
     emoji: "🏠",
     title: "Rent vs Buy",
     description:
-      "Compare the long-run net worth of renting versus owning a home, with Monte Carlo confidence bands.",
+      "Compare the long-run net worth of renting versus owning a home.",
     href: "/rent-vs-buy",
   },
   {
@@ -49,7 +49,8 @@ const TOOLS: Tool[] = [
     title: "Lifetime Allocation Optimizer",
     description:
       "Find your optimal stock allocation across your lifetime. FOR NERDS.",
-    // href: "/glide-path",
+    href: "/glide-path",
+    status: "Preview",
   },
 ];
 

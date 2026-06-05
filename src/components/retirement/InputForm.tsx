@@ -239,7 +239,7 @@ export default function InputForm({
 
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
-                  Flexible spending
+                  Max spending cut
                 </Text>
                 <Text size="xs" c="dimmed">
                   How much you&apos;d trim spending in a weak market instead of

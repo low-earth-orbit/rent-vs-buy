@@ -15,7 +15,6 @@ function makeResult(o: ResultOverrides = {}): GlidePathResult {
     guaranteed: 20000,
     maxLeverage: 1,
     borrowCost: 2,
-    bequestWeight: 0,
     gamma: 3,
     interval: 5,
     ...o.params,
@@ -53,9 +52,6 @@ function makeResult(o: ResultOverrides = {}): GlidePathResult {
     flatDepletion: 0.06,
     flatDrawdownDepletion: 0.04,
     incomeCv: 0.2,
-    medianBequest: 100000,
-    medianEstateYears: 2,
-    bequestTargetReached: null,
     ...o,
     params,
   };
@@ -202,38 +198,6 @@ describe("glide-path Result", () => {
     expect(
       screen.getByText(/risk-adjusted \(CE\) income is unreliable/i),
     ).toBeInTheDocument();
-  });
-
-  it("surfaces an on-track estate goal when one is set", () => {
-    renderResult(
-      makeResult({
-        medianEstateYears: 8,
-        medianBequest: 480000,
-        bequestTargetReached: true,
-      }),
-      { input: { ...DEFAULTS, bequestYears: 5 } },
-    );
-    expect(screen.getByText(/Estate goal on track/i)).toBeInTheDocument();
-    expect(screen.getByText(/median estate of/i)).toBeInTheDocument();
-  });
-
-  it("surfaces a missed estate goal", () => {
-    renderResult(
-      makeResult({
-        medianEstateYears: 20,
-        medianBequest: 1200000,
-        bequestTargetReached: false,
-      }),
-      { input: { ...DEFAULTS, bequestYears: 40 } },
-    );
-    expect(screen.getByText(/Estate goal not reached/i)).toBeInTheDocument();
-  });
-
-  it("hides estate feedback when no estate goal is set", () => {
-    renderResult(makeResult());
-    expect(
-      screen.queryByText(/Estate goal (on track|not reached)/i),
-    ).toBeNull();
   });
 
   it("renders an error state when the worker fails", () => {

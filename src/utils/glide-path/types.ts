@@ -56,12 +56,6 @@ export interface GlidePathResult {
   flatDrawdownDepletion: number;
   /** Mean coefficient-of-variation of retirement income (spending steadiness). */
   incomeCv: number;
-  /** Median terminal estate ($, real). */
-  medianBequest: number;
-  /** Median terminal estate expressed in years of retirement spending. */
-  medianEstateYears: number | null;
-  /** null = no bequest target; true/false = whether the target was reachable. */
-  bequestTargetReached: boolean | null;
   /** Echo of the resolved inputs / derived values used by the run. */
   params: ResolvedParams;
 }
@@ -73,7 +67,6 @@ export interface ResolvedParams {
   guaranteed: number;
   maxLeverage: number;
   borrowCost: number;
-  bequestWeight: number;
   gamma: number;
   interval: number;
 }

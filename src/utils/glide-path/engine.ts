@@ -5,8 +5,7 @@
  * common random numbers, maximizing expected discounted CRRA utility of retirement
  * consumption. Real (today's) dollars; iid normal returns; mid-year cash flow earns a
  * half-year; a depleted portfolio absorbs at zero. Guaranteed income (pension) is paid every
- * retirement year. Supports a bequest target (in years of spending) and leverage (equity
- * weight > 1, borrowing at a real cost).
+ * retirement year. Supports leverage (equity weight > 1, borrowing at a real cost).
  *
  * The hot path (`meanUtility`) runs on grid-index arrays with precomputed per-grid (mean, vol)
  * so the inner loop is plain float math. Intended to run inside a Web Worker.
@@ -21,18 +20,14 @@ import type {
   SlopeDir,
 } from "./types";
 
-const FLOOR = 1.0; // numerical floor on consumption / estate (real $); a numerical guard, not a
+const FLOOR = 1.0; // numerical floor on consumption (real $); a numerical guard, not a
 // spending-floor assumption (consumption can't approach it while guaranteed income is paid)
 const FLAT_BAND = 0.1; // |Δ equity| within this is "Flat"
 const SEED = 0x9e3779b9;
 const STATS_SEED = 0x85ebca6b;
-const CAL_SEED = 0xc2b2ae35;
-const CAL_EVAL_SEED = 0x27d4eb2f;
 const MIN_OPT_PATHS = 200;
 const MAX_OPT_PATHS = 10000;
 const MAX_STATS_PATHS = 8000;
-const MAX_CAL_PATHS = 1500;
-const MAX_CAL_EVAL_PATHS = 6000;
 
 // ── small numeric helpers ─────────────────────────────────────────────────────
 function realMean(nominalPct: number, inflationPct: number): number {
@@ -49,13 +44,6 @@ function interp(x: number, xs: number[], ys: number[]): number {
   const lo = hi - 1;
   const t = (x - xs[lo]) / (xs[hi] - xs[lo]);
   return ys[lo] + t * (ys[hi] - ys[lo]);
-}
-
-/** Median of a numeric array (mutates a copy). */
-function median(values: Float64Array): number {
-  const arr = Array.from(values).sort((a, b) => a - b);
-  const m = arr.length >> 1;
-  return arr.length % 2 ? arr[m] : (arr[m - 1] + arr[m]) / 2;
 }
 
 function ceFromUtil(u: number, gamma: number): number {
@@ -114,8 +102,6 @@ interface SimCtx {
   isLog: boolean; // gamma == 1
   oneMinusGamma: number;
   invOneMinusGamma: number;
-  bequestW: number;
-  bequestFloor: number;
 }
 
 /**
@@ -143,8 +129,6 @@ function meanUtility(
     isLog,
     oneMinusGamma,
     invOneMinusGamma,
-    bequestW,
-    bequestFloor,
   } = ctx;
   let sum = 0;
   for (let p = 0; p < n; p++) {
@@ -172,14 +156,6 @@ function meanUtility(
         disc[t] *
         (isLog ? Math.log(c) : Math.pow(c, oneMinusGamma) * invOneMinusGamma);
     }
-    if (bequestW > 0) {
-      let b = bal + bequestFloor;
-      if (b < FLOOR) b = FLOOR;
-      eu +=
-        bequestW *
-        disc[retireYears - 1] *
-        (isLog ? Math.log(b) : Math.pow(b, oneMinusGamma) * invOneMinusGamma);
-    }
     sum += eu;
   }
   return sum / n;
@@ -187,16 +163,16 @@ function meanUtility(
 
 interface PathStats {
   ceIncome: number;
+  /** Fraction of paths with an income shortfall (a year the portfolio can't fund the target draw). */
   depletion: number;
   incomeCv: number;
-  medianBequest: number;
 }
 
 interface DrawdownStats extends PathStats {
   startBalance: number;
 }
 
-/** Out-of-sample outcome stats for a fixed per-year path (CE income, depletion, CV, estate). */
+/** Out-of-sample outcome stats for a fixed per-year path (CE income, shortfall rate, CV). */
 function computeStats(
   yearIdx: Int32Array,
   ctx: SimCtx,
@@ -226,7 +202,6 @@ function computeStats(
   let consEuSum = 0;
   let cvSum = 0;
   let depCount = 0;
-  const finals = new Float64Array(n);
 
   for (let p = 0; p < n; p++) {
     let bal = startSavings;
@@ -239,7 +214,7 @@ function computeStats(
     let consEu = 0;
     let sumC = 0;
     let sumC2 = 0;
-    let depleted = false;
+    let shortfall = false;
     for (let t = 0; t < retireYears; t++) {
       const i = accumYears + t;
       const idx = yearIdx[i];
@@ -257,21 +232,21 @@ function computeStats(
         (isLog ? Math.log(c) : Math.pow(c, oneMinusGamma) * invOneMinusGamma);
       sumC += c;
       sumC2 += c * c;
-      if (bal <= FLOOR) depleted = true;
+      // Shortfall = the portfolio couldn't fund the targeted draw (income fell short of plan).
+      // Not "balance hit zero": a fully pension-covered year has target 0 and never shortfalls.
+      if (wdr < target) shortfall = true;
     }
     consEuSum += consEu;
     const tMean = sumC / retireYears;
     const tVar = sumC2 / retireYears - tMean * tMean;
     cvSum += (tVar > 0 ? Math.sqrt(tVar) : 0) / tMean;
-    if (depleted) depCount++;
-    finals[p] = bal;
+    if (shortfall) depCount++;
   }
 
   return {
     ceIncome: ceFromUtil(consEuSum / n / discSum, gamma),
     depletion: depCount / n,
     incomeCv: cvSum / n,
-    medianBequest: median(finals),
   };
 }
 
@@ -319,14 +294,13 @@ function computeDrawdownStats(
   let consEuSum = 0;
   let cvSum = 0;
   let depCount = 0;
-  const finals = new Float64Array(n);
 
   for (let p = 0; p < n; p++) {
     let bal = startBalance;
     let consEu = 0;
     let sumC = 0;
     let sumC2 = 0;
-    let depleted = false;
+    let shortfall = false;
     for (let t = 0; t < retireYears; t++) {
       const i = accumYears + t;
       const idx = yearIdx[i];
@@ -344,21 +318,19 @@ function computeDrawdownStats(
         (isLog ? Math.log(c) : Math.pow(c, oneMinusGamma) * invOneMinusGamma);
       sumC += c;
       sumC2 += c * c;
-      if (bal <= FLOOR) depleted = true;
+      if (wdr < target) shortfall = true;
     }
     consEuSum += consEu;
     const tMean = sumC / retireYears;
     const tVar = sumC2 / retireYears - tMean * tMean;
     cvSum += (tVar > 0 ? Math.sqrt(tVar) : 0) / tMean;
-    if (depleted) depCount++;
-    finals[p] = bal;
+    if (shortfall) depCount++;
   }
 
   return {
     ceIncome: ceFromUtil(consEuSum / n / discSum, gamma),
     depletion: depCount / n,
     incomeCv: cvSum / n,
-    medianBequest: median(finals),
     startBalance,
   };
 }
@@ -453,8 +425,8 @@ export function buildEquityGrid(maxLeverage: number): Float64Array {
 // ── public entry point ────────────────────────────────────────────────────────
 /**
  * Recommend the welfare-maximizing equity glide path for the given inputs. Pure and
- * deterministic (seeded). Runs the optimizer, an optional bequest calibration, and the
- * out-of-sample stats. Intended to be called from the Web Worker.
+ * deterministic (seeded). Runs the optimizer and the out-of-sample stats.
+ * Intended to be called from the Web Worker.
  */
 export function recommendGlidePath(
   input: GlidePathInput,
@@ -503,7 +475,7 @@ export function recommendGlidePath(
     blockEnd[b] = b < nBlocks - 1 ? (b + 1) * interval : nYears;
   }
 
-  const ctxBase: Omit<SimCtx, "bequestW"> = {
+  const ctx: SimCtx = {
     gridMean,
     gridVol,
     accumYears,
@@ -518,72 +490,13 @@ export function recommendGlidePath(
     isLog: Math.abs(gamma - 1) < 1e-9,
     oneMinusGamma: 1 - gamma,
     invOneMinusGamma: 1 / (1 - gamma),
-    bequestFloor: 10000,
   };
 
   const nOpt = clampPathCount(input.numPaths, MIN_OPT_PATHS, MAX_OPT_PATHS);
   const passes = 6;
   const Z = fillNormals(SEED, nYears * nOpt);
 
-  // ── optional bequest calibration (target estate in years of spending) ────────
-  // Search only sets the warm-glow weight here; whether the target is actually reached is
-  // decided later from the FINAL optimized path's out-of-sample median estate (below), so the
-  // reported flag can never contradict the median estate the UI shows.
-  let bequestW = 0;
-  if (input.bequestYears > 0) {
-    const targetEstate = input.bequestYears * input.targetIncome;
-    const nCal = Math.min(nOpt, MAX_CAL_PATHS);
-    const nCalEval = Math.max(nCal, MAX_CAL_EVAL_PATHS);
-    const Zc = fillNormals(CAL_SEED, nYears * nCal);
-    const Zce = fillNormals(CAL_EVAL_SEED, nYears * nCalEval);
-    const medEstate = (bw: number): number => {
-      const ctx: SimCtx = { ...ctxBase, bequestW: bw };
-      const bi = optimize(
-        ctx,
-        Zc,
-        nCal,
-        G,
-        blockStart,
-        blockEnd,
-        blockOfYear,
-        4,
-      );
-      return computeStats(
-        expand(bi, blockOfYear, nYears),
-        ctx,
-        Zce,
-        nCalEval,
-        gamma,
-      ).medianBequest;
-    };
-    const natural = medEstate(0);
-    if (targetEstate <= natural) {
-      bequestW = 0;
-    } else {
-      const cap = 200;
-      let lo = 0;
-      let hi = 25;
-      let estHi = medEstate(hi);
-      while (estHi < targetEstate && hi < cap) {
-        lo = hi;
-        hi = Math.min(hi * 2, cap);
-        estHi = medEstate(hi);
-      }
-      if (estHi < targetEstate) {
-        bequestW = hi;
-      } else {
-        for (let it = 0; it < 8; it++) {
-          const mid = 0.5 * (lo + hi);
-          if (medEstate(mid) < targetEstate) lo = mid;
-          else hi = mid;
-        }
-        bequestW = 0.5 * (lo + hi);
-      }
-    }
-  }
-
-  // ── final optimization + out-of-sample stats ─────────────────────────────────
-  const ctx: SimCtx = { ...ctxBase, bequestW };
+  // ── optimization + out-of-sample stats ───────────────────────────────────────
   const blockIdx = optimize(
     ctx,
     Z,
@@ -604,14 +517,6 @@ export function recommendGlidePath(
   const Zf = fillNormals(STATS_SEED, nYears * nStats);
   const st = computeStats(yearIdx, ctx, Zf, nStats, gamma);
   const drawdownSt = computeDrawdownStats(yearIdx, ctx, Zf, nStats, gamma);
-
-  // Estate-goal attainment, judged on the returned/charted path's out-of-sample median estate
-  // (not the calibration's separate sample/optimization) so it agrees with the median the UI
-  // shows. null when there is no estate goal.
-  const bequestTargetReached =
-    input.bequestYears > 0
-      ? st.medianBequest >= input.bequestYears * input.targetIncome
-      : null;
 
   // ── best single constant (flat) equity weight ────────────────────────────────
   // The glide path's edge over the best *constant* allocation is typically tiny, so we
@@ -661,17 +566,15 @@ export function recommendGlidePath(
   const twin = Math.min(15, retireYears);
   let tentI = 0;
   for (let i = 1; i < twin; i++) if (ret[i] < ret[tentI]) tentI = i;
-  // Classify a phase by its first-to-last change. We optionally drop the final year: with no
-  // bequest the optimizer drives equity toward 0 in the last retirement year(s) (a fixed-horizon
-  // artifact, not advice), which would otherwise skew the read. That artifact is retirement-only
-  // and bequest-only, so trim *only* the retirement phase and *only* when there's no estate motive
-  // — accumulation has no such artifact, and a bequest keeps terminal equity meaningful.
+  // Classify a phase by its first-to-last change. The retirement phase drops its final year(s):
+  // the optimizer drives equity toward 0 at the fixed horizon (an artifact, not advice) that would
+  // otherwise skew the read. Accumulation has no such artifact and is classified over its full span.
   const slope = (w: number[], trimLast: boolean): SlopeDir => {
     const eff = trimLast && w.length >= 3 ? w.slice(0, -1) : w;
     return eff.length >= 2 ? classify(eff[eff.length - 1] - eff[0]) : "n/a";
   };
   const accumDir = slope(acc, false);
-  const retireDir = slope(ret, bequestW === 0);
+  const retireDir = slope(ret, true);
 
   return {
     schedule,
@@ -689,19 +592,12 @@ export function recommendGlidePath(
     flatDepletion: Math.round(flatStats.depletion * 1e4) / 1e4,
     flatDrawdownDepletion: Math.round(flatDrawdownStats.depletion * 1e4) / 1e4,
     incomeCv: Math.round(st.incomeCv * 1e4) / 1e4,
-    medianBequest: Math.round(st.medianBequest),
-    medianEstateYears:
-      input.targetIncome > 0
-        ? Math.round((st.medianBequest / input.targetIncome) * 10) / 10
-        : null,
-    bequestTargetReached,
     params: {
       accumYears,
       retireYears,
       guaranteed,
       maxLeverage,
       borrowCost: input.borrowCost,
-      bequestWeight: Math.round(bequestW * 1000) / 1000,
       gamma,
       interval,
     },

@@ -60,8 +60,6 @@ export const DEFAULTS = {
   gamma: 3,
   /** Annual time-discount factor. */
   beta: 0.985,
-  /** Target estate in YEARS of retirement spending (0 = spend it all). */
-  bequestYears: 0,
 
   // ── Leverage ──────────────────────────────────────────────
   /** Max equity weight as a % (100 = no leverage; 150 = up to 1.5×). */

@@ -70,11 +70,12 @@ export default function Methodology() {
           less, save more), not the allocation. Guaranteed income (your pension)
           is assumed to start at retirement and be paid every year — a
           pre-pension &ldquo;bridge&rdquo; is out of scope (use the retirement
-          tool for that funding question). Depletion is reported two ways:
-          drawdown-only (from the expected retirement balance) and full-path
-          (which also includes pre-retirement market luck). See the analysis
-          note below for how γ and β enter the objective and typical values for
-          each.
+          tool for that funding question). Income shortfall — a year the
+          portfolio can&apos;t fund your targeted spending — is reported two
+          ways: drawdown-only (from the expected retirement balance) and
+          full-path (which also includes pre-retirement market luck). See the
+          analysis note below for how γ and β enter the objective and typical
+          values for each.
         </Text>
 
         <Title order={3} fz="md">
@@ -123,7 +124,7 @@ export default function Methodology() {
           A larger guaranteed income (CPP + OAS + DB) lets the portfolio take
           more equity risk — because the pension already covers downside. Low or
           no pension means the portfolio must be more conservative to avoid
-          depletion.
+          falling short.
         </Point>
 
         <Text size="xs" c="dimmed">

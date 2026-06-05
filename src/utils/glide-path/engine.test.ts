@@ -49,8 +49,23 @@ describe("recommendGlidePath", () => {
     expect(r.flatDepletion).toBeLessThanOrEqual(1);
     expect(r.flatDrawdownDepletion).toBeGreaterThanOrEqual(0);
     expect(r.flatDrawdownDepletion).toBeLessThanOrEqual(1);
-    expect(r.medianEstateYears).not.toBeNull();
-    expect(r.bequestTargetReached).toBeNull(); // no target by default
+  });
+
+  it("reports no shortfall when guaranteed income already covers the target", () => {
+    // Pension fully funds the target, so the portfolio never has a gap to fund — there is no
+    // income shortfall even with no savings. Regression: depletion used to count a zero balance
+    // as failure, reporting 100% "shortfall" for a fully-funded plan.
+    const r = recommendGlidePath(
+      base({
+        pensionPct: 100,
+        preRetirementIncome: 100000,
+        targetIncome: 60000,
+        startSavings: 0,
+        annualContribution: 0,
+      }),
+    );
+    expect(r.depletion).toBe(0);
+    expect(r.drawdownDepletion).toBe(0);
   });
 
   it("reports a best constant allocation the glide path barely beats", () => {
@@ -102,22 +117,6 @@ describe("recommendGlidePath", () => {
       base({ pensionPct: 30, preRetirementIncome: 120000 }),
     );
     expect(r.params.guaranteed).toBeCloseTo(36000, 0);
-  });
-
-  it("never reports an estate goal reached when the shown median estate is short", () => {
-    // The reached flag must be derived from the returned path's median estate, so it can't
-    // contradict the median the UI displays (regression: it used to come from a separate
-    // calibration sample and could say "reached" with a median well below target).
-    for (const bequestYears of [2, 30, 80]) {
-      const r = recommendGlidePath(base({ bequestYears }));
-      const target = bequestYears * DEFAULTS.targetIncome;
-      expect(r.bequestTargetReached).not.toBeNull();
-      if (r.bequestTargetReached) {
-        expect(r.medianBequest).toBeGreaterThanOrEqual(target - 1);
-      } else {
-        expect(r.medianBequest).toBeLessThan(target + 1);
-      }
-    }
   });
 
   it("lowers recommended equity as risk aversion rises", () => {
