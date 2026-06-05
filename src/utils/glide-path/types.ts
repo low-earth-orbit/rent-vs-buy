@@ -70,7 +70,6 @@ export interface GlidePathResult {
 export interface ResolvedParams {
   accumYears: number;
   retireYears: number;
-  pensionDelayYears: number;
   guaranteed: number;
   maxLeverage: number;
   borrowCost: number;

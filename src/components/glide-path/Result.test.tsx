@@ -12,7 +12,6 @@ function makeResult(o: ResultOverrides = {}): GlidePathResult {
   const params = {
     accumYears: 30,
     retireYears: 30,
-    pensionDelayYears: 0,
     guaranteed: 20000,
     maxLeverage: 1,
     borrowCost: 2,
@@ -89,16 +88,17 @@ describe("glide-path Result", () => {
     expect(screen.getByText(/vs constant/i)).toBeInTheDocument();
   });
 
-  it("warns and explains the pension bridge when depletion is high", () => {
+  it("warns when drawdown depletion is high", () => {
     renderResult(
       makeResult({
         depletion: 0.3,
         drawdownDepletion: 0.3,
-        params: { pensionDelayYears: 10 },
       }),
     );
     expect(screen.getByText(/High chance of running out/i)).toBeInTheDocument();
-    expect(screen.getByText(/10-year bridge/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/retiring later, lowering your target/i),
+    ).toBeInTheDocument();
   });
 
   it("does not warn when depletion is low", () => {

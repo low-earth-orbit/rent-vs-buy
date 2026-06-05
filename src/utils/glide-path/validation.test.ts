@@ -8,24 +8,23 @@ const base = (o: Partial<GlidePathInput> = {}): GlidePathInput => ({
   ...o,
 });
 
-describe("validateGlidePathInput — minSpending", () => {
+describe("validateGlidePathInput", () => {
   it("accepts the defaults", () => {
     expect(validateGlidePathInput(base())).toEqual({});
   });
 
-  it("accepts a floor at or below the target income", () => {
-    expect(validateGlidePathInput(base({ minSpending: 60000 }))).toEqual({});
+  it("flags a retirement age that is not after the start age", () => {
+    const errors = validateGlidePathInput(base({ retirementAge: 35 }));
+    expect(errors.retirementAge).toMatch(/must be after your start age/i);
   });
 
-  it("flags a floor above the target income (a floor above target is nonsensical)", () => {
-    const errors = validateGlidePathInput(
-      base({ targetIncome: 60000, minSpending: 70000 }),
-    );
-    expect(errors.minSpending).toMatch(/can't exceed your target income/i);
+  it("flags a planning age that is not after retirement", () => {
+    const errors = validateGlidePathInput(base({ planningAge: 65 }));
+    expect(errors.planningAge).toMatch(/must be after retirement/i);
   });
 
-  it("flags a negative floor via the range constraint", () => {
-    const errors = validateGlidePathInput(base({ minSpending: -1 }));
-    expect(errors.minSpending).toBeTruthy();
+  it("flags an out-of-range field", () => {
+    const errors = validateGlidePathInput(base({ pensionPct: -1 }));
+    expect(errors.pensionPct).toBeTruthy();
   });
 });

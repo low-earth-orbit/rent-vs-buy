@@ -161,7 +161,7 @@ export default function SwrTechnicalNote({ input }: SwrTechnicalNoteProps) {
               >
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th>Stocks / Bonds</Table.Th>
+                    <Table.Th>Stocks / bonds</Table.Th>
                     {SWR_TABLE_HORIZONS.map((h) => (
                       <Table.Th key={h} ta="center">
                         {h}y

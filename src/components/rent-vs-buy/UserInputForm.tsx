@@ -244,7 +244,7 @@ export default function UserInputForm({
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 id="monthlyRent"
-                label="Monthly Rent"
+                label="Monthly rent"
                 additionalText={`Annual rent / purchase price: ${rentalYield}`}
                 value={userInput.monthlyRent}
                 onChange={bind("monthlyRent")}
@@ -254,7 +254,7 @@ export default function UserInputForm({
                 {...c("monthlyRent")}
               />
               {perturbed("rentIncreaseRate", "rentIncreaseSigma", {
-                label: "Rent Growth",
+                label: "Rent growth",
                 helperText:
                   "Expected annual growth in rent payments. Typically at or slightly above inflation (2–2.5%).",
               })}
@@ -268,7 +268,7 @@ export default function UserInputForm({
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 id="initialHomePrice"
-                label="Purchase Price"
+                label="Purchase price"
                 value={userInput.initialHomePrice}
                 onChange={bind("initialHomePrice")}
                 error={errors.initialHomePrice}
@@ -278,14 +278,14 @@ export default function UserInputForm({
               />
 
               {perturbed("homePriceGrowthRate", "homePriceGrowthSigma", {
-                label: "Home Price Growth",
+                label: "Home price growth",
                 helperText:
                   "Expected annual growth in the home's market value. Long-run world historical average is 0–2% above inflation (2–4% nominal).",
               })}
 
               <CurrencyPercentItem
                 id="propertyTaxRate"
-                label="Property Tax"
+                label="Property tax"
                 helperText="Current annual property tax. Switch between dollar amount and rate (% of today's home value). Typical range: 0.5–1.5% depending on municipality."
                 unitAriaLabel="Property Tax input unit"
                 rate={userInput.propertyTaxRate}
@@ -297,7 +297,7 @@ export default function UserInputForm({
 
               <CurrencyPercentItem
                 id="maintPct"
-                label="Maintenance & Insurance"
+                label="Maintenance & insurance"
                 helperText="Annual repairs and insurance. Toggle % of today's home price or $/yr. Excludes condo fees. Typically 0.5–1% for condos and 1–2% for detached homes."
                 unitAriaLabel="Maintenance and Insurance input unit"
                 rate={userInput.maintPct}
@@ -309,7 +309,7 @@ export default function UserInputForm({
 
               <UserInputFormItem
                 id="condoFeesPerMonth"
-                label="Condo Fees"
+                label="Condo fees"
                 labelHelperText="Monthly condo or strata fees in today's dollars. Set to $0 for detached homes."
                 value={userInput.condoFeesPerMonth}
                 onChange={bind("condoFeesPerMonth")}
@@ -321,14 +321,14 @@ export default function UserInputForm({
               />
 
               {perturbed("ownerCostGrowthRate", "ownerCostGrowthSigma", {
-                label: "Owner Cost Growth",
+                label: "Owner cost growth",
                 helperText:
                   "Expected annual growth in maintenance, property tax, insurance, and condo fees. Slightly above inflation or follows home price.",
               })}
 
               <UserInputFormItem
                 id="holdingPeriod"
-                label="Holding Period"
+                label="Holding period"
                 labelHelperText="How long until you sell. The simulation compares net worth at this year. Canadian homeowners sell after ~10–13 years on average, even with a 25-year mortgage."
                 value={userInput.holdingPeriod}
                 onChange={bind("holdingPeriod")}
@@ -349,7 +349,7 @@ export default function UserInputForm({
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 id="downPaymentPercentage"
-                label="Down Payment"
+                label="Down payment"
                 labelHelperText="Minimum is 20%. This calculator only models conventional mortgages."
                 value={userInput.downPaymentPercentage}
                 onChange={bind("downPaymentPercentage")}
@@ -359,7 +359,7 @@ export default function UserInputForm({
               />
               <UserInputFormItem
                 id="amortization"
-                label="Amortization Period"
+                label="Amortization period"
                 labelHelperText="Total length of the mortgage. This calculator caps amortization at 25 years."
                 value={userInput.amortization}
                 onChange={bind("amortization")}
@@ -369,7 +369,7 @@ export default function UserInputForm({
                 {...c("amortization")}
               />
               {perturbed("annualMortgageInterestRate", "mortgageRateSigma", {
-                label: "Mortgage Rate",
+                label: "Mortgage rate",
                 helperText:
                   "Annual mortgage interest rate. The default reflects the Bank of Canada's neutral policy rate (2.75%) plus a typical lender spread (1.75%).",
                 disabled: userInput.downPaymentPercentage === 100,
@@ -394,18 +394,18 @@ export default function UserInputForm({
             </Alert>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               {perturbed("investmentReturnRate", "investmentReturnSigma", {
-                label: "Total Return",
+                label: "Total return",
                 helperText:
                   "Expected pre-tax annualized return, including dividends and capital gains. The default is based on long-term capital market assumptions for a diversified growth portfolio (XGRO).",
               })}
               {perturbed("dividendYield", "dividendYieldSigma", {
-                label: "Annual Yield",
+                label: "Annual yield",
                 helperText:
                   "Portion of the return distributed each year, taxed annually. The remainder accrues as deferred capital gains, taxed only when the portfolio is sold. Capped at the portfolio return.",
               })}
               <UserInputFormItem
                 id="capitalGainTaxRate"
-                label="Capital Gain Tax"
+                label="Capital gain tax"
                 labelHelperText="Tax rate on capital gains when the portfolio is sold. In Canada, 50% of gains are included in taxable income — multiply your marginal rate by 50% to get this number."
                 value={userInput.capitalGainTaxRate}
                 onChange={bind("capitalGainTaxRate")}
@@ -415,7 +415,7 @@ export default function UserInputForm({
               />
               <UserInputFormItem
                 id="dividendTaxRate"
-                label="Annual Yield Tax"
+                label="Annual yield tax"
                 labelHelperText="Blended effective tax rate on your annual yield. Canadian eligible dividends are taxed at a lower rate than interest or foreign dividends — set this as a weighted average based on your expected yield mix."
                 value={userInput.dividendTaxRate}
                 onChange={bind("dividendTaxRate")}
@@ -428,12 +428,12 @@ export default function UserInputForm({
         </Accordion.Item>
 
         <Accordion.Item value="costs">
-          <Accordion.Control>Transaction Costs</Accordion.Control>
+          <Accordion.Control>Transaction costs</Accordion.Control>
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 id="buyerClosingCostsPct"
-                label="Buyer Closing Costs"
+                label="Buyer closing costs"
                 labelHelperText="Closing costs for home buyers as a percentage of home price, including land transfer tax, legal fees, and inspections. Typically 1–4% nationally; higher in provinces with larger land transfer taxes."
                 value={userInput.buyerClosingCostsPct}
                 onChange={bind("buyerClosingCostsPct")}
@@ -443,7 +443,7 @@ export default function UserInputForm({
               />
               <UserInputFormItem
                 id="sellerClosingCostsPct"
-                label="Seller Closing Costs"
+                label="Seller closing costs"
                 labelHelperText="Closing costs for home sellers as a percentage of home price, primarily realtor commission and legal fees. Typically 4–7% nationally."
                 value={userInput.sellerClosingCostsPct}
                 onChange={bind("sellerClosingCostsPct")}

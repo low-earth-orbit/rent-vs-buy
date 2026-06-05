@@ -23,31 +23,37 @@ The codebase is **TypeScript** (`.ts`/`.tsx`); shared domain types live in `src/
 
 ## Multi-Agent Model Workflow
 
-The user has both Claude Pro and Codex Plus and prefers mixing them by role. When limits or time
-pressure force a choice, use this order of preference:
+The user runs both Claude and Codex and mixes them by role. Split work by where the risk is, and
+match the model to the task — the cheapest model that will get it right, not the default.
 
-1. **Plan with Claude Opus/latest strong Claude model** for product direction, UX tradeoffs,
-   modeling assumptions, architecture, and user-facing methodology/copy. Ask Claude to produce a
-   scoped plan or review, not to edit the working tree.
-2. **Execute with Codex using the latest Codex coding model** for repository edits, terminal
-   iteration, tests, lint/typecheck/build fixes, and Playwright/browser verification.
-3. **Review with Claude Opus/latest strong Claude model** when the risk is conceptual: finance
-   math, retirement/glide-path assumptions, UX semantics, edge cases, or copy quality.
-4. **Review and verify with Codex** when the risk is concrete: TypeScript errors, failing tests,
-   regressions in touched files, missing imports, stale mocks, or broken routes.
-5. **Use faster/cheaper models for low-risk work** such as mechanical refactors, formatting,
-   small copy edits, simple test updates, or summarizing an already-understood diff.
+**Roles**
 
-Default handoff pattern:
+- **Claude (strong model) plans and reviews** where the risk is conceptual: product direction, UX
+  and copy, finance / retirement / glide-path modeling assumptions, architecture, and edge cases.
+  Ask Claude for a scoped plan or a diff review, not to grind out large mechanical edits.
+- **Codex executes and verifies** where the risk is concrete: repository edits, multi-file
+  refactors, tests, lint/typecheck/build fixes, and browser/Playwright checks.
 
-1. Claude drafts the plan and calls out risks.
-2. Codex implements the plan in the repo.
-3. Claude reviews the diff for conceptual issues.
-4. Codex applies valid review findings and runs the relevant checks.
+**Default handoff:** Claude drafts the plan and names the risks → Codex implements it → Claude
+reviews the diff for conceptual issues and out-of-scope changes → Codex applies valid findings and
+runs the checks. **One writer at a time** — don't let both edit the working tree at once.
 
-Do not let multiple agents edit the working tree at the same time. Prefer one writer at a time:
-Claude for plans/reviews, Codex for file changes and verification. If usage limits are hit, spend
-premium Claude messages on planning/review and spend Codex messages on execution/debugging.
+**Choosing the Codex model (pick it explicitly).** `~/.codex/config.toml` defaults to
+`gpt-5.4-mini` at `low` reasoning — too weak for non-trivial work (it has changed unrelated files
+and under-reported regressions). Override per invocation:
+
+- Nuanced / multi-file / engine or modeling work → `gpt-5.5` at high reasoning.
+- Bulk mechanical work (label casing, formatting, renames, repetitive edits) → `gpt-5.4`, or
+  `gpt-5.5` at lower reasoning — cheaper than spending premium Claude turns on it.
+- `gpt-5.4-mini` only for the most trivial, fully-specified edits.
+
+Slugs: `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`. Run non-interactively as
+`codex exec -m <model> -c model_reasoning_effort=<level> -s workspace-write -C <repo> "<task>" < /dev/null`
+(close stdin or it hangs), and tell it not to commit/push unless asked.
+
+**Always review the Codex diff before trusting it.** Out-of-scope edits (touching config, fonts, or
+files outside the task), logic changes hidden inside a "mechanical" pass, and glossed-over
+regressions are the failure mode to catch.
 
 ## CI / CD
 
@@ -65,7 +71,7 @@ A hub landing page at `/` links to each tool, and every tool lives at its own ro
 
 - **Rent vs Buy** (`/rent-vs-buy`): compares the financial outcomes of renting versus buying a home. Users input assumptions, and the app generates a year-by-year net worth comparison over 50 years with Monte Carlo confidence bands and a probability-based summary of which option is more likely to win.
 - **When can I retire?** (`/retirement`): a quick retirement reality check. Projects a single combined portfolio in real (today's) dollars, grows savings until retirement, then draws from the portfolio to top up guaranteed income (CPP/OAS/DB, entered as a flat taxable amount) to a target gross income (a % of current income). Reports the earliest feasible retirement age. Deterministic single-return for now; Monte Carlo planned. Engine in `src/utils/retirement/`, components in `src/components/retirement/`.
-- **Glide-path recommender** (`/glide-path`): recommends the welfare-maximizing equity allocation curve across the accumulation and decumulation phases. Uses Monte Carlo coordinate ascent to maximize expected discounted CRRA utility of retirement consumption, and separately scores the best constant allocation out of sample as a robust comparator. The raw optimized glide remains the returned/charted schedule; the UI may recommend the constant comparator when the glide is tail-dominated or only marginally better. Reports both full-path depletion (including pre-retirement market luck) and drawdown-only depletion from the expected retirement balance, which matches the `/retirement` headline semantics. Supports a pension bridge, a bequest target (in years of spending), and leverage (equity weight > 1). Engine in `src/utils/glide-path/`, components in `src/components/glide-path/`.
+- **Glide-path recommender** (`/glide-path`): recommends the welfare-maximizing equity allocation curve across the accumulation and decumulation phases. Uses Monte Carlo coordinate ascent to maximize expected discounted CRRA utility of retirement consumption, and separately scores the best constant allocation out of sample as a robust comparator. The raw optimized glide remains the returned/charted schedule; the UI may recommend the constant comparator when the glide is tail-dominated or only marginally better. Reports both full-path depletion (including pre-retirement market luck) and drawdown-only depletion from the expected retirement balance, which matches the `/retirement` headline semantics. Guaranteed income (the pension) is paid every retirement year — a pre-pension bridge is intentionally out of scope (that funding-feasibility question belongs to `/retirement`). Supports a bequest target (in years of spending) and leverage (equity weight > 1). Engine in `src/utils/glide-path/`, components in `src/components/glide-path/`.
 
 When adding a new tool: add its route under `src/app/<tool>/`, put tool-specific components in `src/components/<tool>/`, and reuse shared chrome/primitives from `src/components/shared/` and shared logic from `src/utils/`. Cross-folder imports use the `@/` alias (`@/* → ./src/*`).
 

@@ -79,20 +79,18 @@ best, and cycle (alternating sweep direction) until the whole vector stops movin
 one-dimensional search exact for the drawn markets, and **no parametric shape is imposed** — so
 flat / tent / monotone shapes all compete on equal footing.
 
-**Consumption floor (`min_spending`).** CRRA utility treats a year of near-zero consumption as
-catastrophically bad (`u(c)→−∞` as `c→0`), so the objective needs a floor. A bare numerical guard
-(`_FLOOR = $1`) is fine **when guaranteed income is paid every year** — consumption can't approach
-zero, so the floor never binds (every scenario in §2 has this property, and is unaffected). It
-breaks in the **pre-pension bridge** case (`pension_delay_years > 0`): during the bridge guaranteed
-income is 0, so a depleted portfolio drives consumption to ≈$1, and with γ≥2 those few cells
-(≈25,000× heavier than any post-pension cell) hijack the certainty-equivalent — collapsing it
-toward the floor and pushing the optimizer to an implausibly low equity weight that *minimizes
-bridge-ruin probability* while being dominated on consumption, depletion, and estate. The fix is a
-real **subsistence floor** `c = max(guaranteed + withdrawal, min_spending)` — the safety net
-(OAS/GIS, family, work) you'd fall back on. It is utility-only (no portfolio injection) and the
-**depletion test keeps the numeric `_FLOOR`**, so the floor cannot mask ruin: the depletion rate
-still reports a truly emptied portfolio. A floor `≤` the guaranteed income leaves every §2 table
-unchanged.
+**Scope — guaranteed income starts at retirement (no pre-pension bridge).** The model assumes the
+pension is paid **every** retirement year, so while the portfolio is solvent consumption never
+approaches zero and CRRA's `u(c)` stays finite (a bare `_FLOOR = $1` is a pure numerical guard that
+never binds; every §2 scenario has this property). A pre-pension **bridge** — retiring before
+CPP/OAS starts, so `guaranteed = 0` for a stretch — is deliberately **out of scope**. There a
+depleted portfolio drives consumption to ≈0, and CRRA's `u(c)→−∞` makes the certainty-equivalent
+degenerate; with γ≥2 a handful of near-zero cells hijack the score and push the optimizer to an
+implausibly low weight. There is no honest single-allocation answer without assigning the broke
+state a finite value (a consumption floor), and any floor at the pre-pension ages effectively
+**fabricates income** the household does not have. So we don't model the bridge: that
+funding-feasibility question belongs to the `/retirement` tool, and here the welfare objective stays
+clean and γ-responsive.
 
 Two honesty checks accompany every result:
 
@@ -319,18 +317,10 @@ constant-$ they move the path between our "derisk" result and ACO's "flat ~100%.
 **Additional dials** (beyond the demo matrix), all exposed on both the interactive prompt flow and
 the `recommend_glide.py` flag CLI:
 
-- **Pension base & timing.** `pension_level` is a fraction of **pre-retirement income**
+- **Pension base.** `pension_level` is a fraction of **pre-retirement income**
   (`pre_retirement_income`), matching the web app's `currentIncome` base — not of the spending
-  target. `pension_delay_years` adds a **bridge**: before the pension starts the portfolio funds the
-  _full_ target income, only the gap afterward (so an age-55 retiree with CPP/OAS at 65 carries a
-  10-year bridge).
-- **Minimum spending (consumption floor).** `min_spending` (real $/yr) is the subsistence income
-  used inside the CRRA objective when the portfolio can't fund the target — see the consumption-floor
-  note in §1. It chiefly matters with a **pre-pension bridge**: too low and the optimizer
-  over-derisks to chase bridge survival; raising it bounds the downside so the welfare-maximizing
-  weight rises (and varies smoothly with γ again). It never adds income or moves the depletion rate;
-  a floor at or below the guaranteed income is inert. The web app exposes it as a "Minimum Spending"
-  input (default $20k ≈ Canadian OAS+GIS); the library defaults it to 0 (old behavior).
+  target. It is paid **every** retirement year (guaranteed income starts at retirement); a
+  pre-pension bridge is out of scope (see §1).
 - **Bequest in years of spending.** `bequest_years` targets a median estate of
   `bequest_years × target_income` and back-calibrates the raw warm-glow weight to hit it. The motive
   can only _raise_ the estate (via more equity), so a target at/below what the spending plan already

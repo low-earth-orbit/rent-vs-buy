@@ -72,12 +72,11 @@ def print_rec(rec):
     spend = {0.0: "constant $", 0.5: "semi-flex 50%", 1.0: "flexible 100%"}.get(
         p["flexibility"], f"flex {p['flexibility']:.2f}")
     by_age = "age_start" in rec["schedule"][0]
-    bridge = f" | bridge {p['pension_delay_years']}y" if p.get("pension_delay_years") else ""
     lev = (f" | leverage≤{p['max_leverage']:g}× @{p['borrow_cost']:g}% real"
            if p.get("max_leverage", 1.0) > 1 else "")
     print("Optimized equity glide path")
     print(f"  {p['accum_years']}y accumulation + {p['retire_years']}y retirement | {spend} | "
-          f"pension {p['pension_level']*100:.0f}% of pre-ret income{bridge} | γ {p['gamma']:g}{lev} | "
+          f"pension {p['pension_level']*100:.0f}% of pre-ret income | γ {p['gamma']:g}{lev} | "
           f"{p['interval']}y steps")
     print(_fmt(rec))
     if rec.get("flat_equity_pct") is not None:
@@ -108,13 +107,7 @@ def main(argv=None):
     ap.add_argument("--accum", type=int, default=30, help="accumulation years")
     ap.add_argument("--retire", type=int, default=30, help="retirement (planning-horizon) years")
     ap.add_argument("--flex", type=float, default=0.0, help="spending flexibility 0..1 (0=constant $, 1=flexible)")
-    ap.add_argument("--pension", type=float, default=0.2, help="pension as a fraction of PRE-RETIREMENT income 0..1")
-    ap.add_argument("--pension-delay", type=int, default=0,
-                    help="years into retirement before the pension starts (a bridge; 0=at retirement)")
-    ap.add_argument("--min-spending", type=float, default=0.0,
-                    help="subsistence consumption floor ($/yr) in the utility/CE objective; the "
-                         "safety net you'd fall back on if the portfolio empties. 0=old behavior. "
-                         "Set ~20000 to keep a long pre-pension bridge from collapsing the CE.")
+    ap.add_argument("--pension", type=float, default=0.2, help="pension as a fraction of PRE-RETIREMENT income 0..1 (paid every retirement year)")
     ap.add_argument("--interval", type=int, default=1, help="years per glide step (1=per-age, 5=every 5y)")
     ap.add_argument("--gamma", type=float, default=3.0, help="CRRA risk aversion (1 log, 3 base, 8 cautious)")
     ap.add_argument("--bequest", type=float, default=0.0, help="raw estate-motive weight (advanced; prefer --bequest-years)")
@@ -152,8 +145,7 @@ def main(argv=None):
         args.accum, args.retire, flexibility=args.flex, pension_level=args.pension,
         alloc_curve=curve, interval=args.interval, gamma=args.gamma,
         bequest=args.bequest, bequest_years=args.bequest_years,
-        pension_delay_years=args.pension_delay, pre_retirement_income=args.pre_income,
-        min_spending=args.min_spending,
+        pre_retirement_income=args.pre_income,
         max_leverage=args.max_leverage, borrow_cost=args.borrow_cost,
         start_age=args.start_age, current_savings=args.savings, annual_contribution=args.contrib,
         target_income=args.target_income, withdrawal_rate=args.withdrawal_rate, inflation=args.inflation,

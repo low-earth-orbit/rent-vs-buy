@@ -48,7 +48,7 @@ const TOOLS: Tool[] = [
     emoji: "🛤️",
     title: "Glide Path Recommender",
     description:
-      "Monte-Carlo-optimize your stock/bond mix — before and after retirement — to maximize lifetime welfare. FOR NERDS.",
+      "Optimal stock/bond mix — before and after retirement — to maximize lifetime welfare. FOR NERDS.",
     // href: "/glide-path",
   },
 ];

@@ -68,94 +68,87 @@ export default function InputForm({
 
       <Accordion
         multiple
-        defaultValue={["you", "income", "prefs"]}
+        defaultValue={["you", "retirement", "prefs"]}
         variant="contained"
       >
         <Accordion.Item value="you">
-          <Accordion.Control>About You</Accordion.Control>
+          <Accordion.Control>About you</Accordion.Control>
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 {...num("startAge")}
-                label="Current Age"
+                label="Current age"
                 suffix=" yrs"
               />
               <UserInputFormItem
                 {...num("preRetirementIncome")}
-                label="Annual Income"
+                label="Annual income"
                 labelHelperText="Gross income today — the base for the pension %."
                 prefix="$"
                 thousandSeparator
               />
               <UserInputFormItem
                 {...num("startSavings")}
-                label="Current Savings"
+                label="Current savings"
                 prefix="$"
                 thousandSeparator
               />
               <UserInputFormItem
                 {...num("annualContribution")}
-                label="Annual Savings"
+                label="Annual savings"
                 labelHelperText="Real $ added to the portfolio each year while working."
                 prefix="$"
                 thousandSeparator
-              />
-              <UserInputFormItem
-                {...num("retirementAge")}
-                label="Retirement Age"
-                suffix=" yrs"
               />
             </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>
 
-        <Accordion.Item value="income">
-          <Accordion.Control>Retirement Income</Accordion.Control>
+        <Accordion.Item value="retirement">
+          <Accordion.Control>Retirement targets</Accordion.Control>
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
+                {...num("retirementAge")}
+                label="Retirement age"
+                suffix=" yrs"
+              />
+              <UserInputFormItem
+                {...num("planningAge")}
+                label="Plan until"
+                labelHelperText="The age your money should last to (life expectancy). 95 is a common horizon."
+                suffix=" yrs"
+              />
+              <UserInputFormItem
                 {...num("targetIncome")}
-                label="Target Retirement Income"
+                label="Target retirement income"
                 labelHelperText="Gross retirement income including pensions."
                 prefix="$"
                 thousandSeparator
               />
               <UserInputFormItem
                 {...num("pensionPct")}
-                label="Pension % of Pre-Retirement Income"
-                labelHelperText="Guaranteed income (CPP + OAS + DB) as a % of your pre-retirement income."
+                label="Pension % of pre-retirement income"
+                labelHelperText="Guaranteed income in retirement as a % of your pre-retirement income."
                 suffix="%"
               />
               <UserInputFormItem
-                {...num("pensionStartAge")}
-                label="Pension Start Age"
-                labelHelperText="If later than retirement, your portfolio bridges the gap until it starts."
+                {...num("bequestYears")}
+                label="Estate goal"
+                labelHelperText="Target estate in YEARS of retirement spending (0 = spend it all)."
                 suffix=" yrs"
-              />
-              <UserInputFormItem
-                {...num("planningAge")}
-                label="Plan Until"
-                labelHelperText="The age your money should last to (life expectancy). 95 is a common horizon."
-                suffix=" yrs"
-              />
-              <UserInputFormItem
-                {...num("minSpending")}
-                label="Minimum Survival Spending"
-                labelHelperText="The lowest annual spending you could fall back on (government benefits, family, part-time work) if the portfolio runs dry. It sets how harshly bad outcomes are penalized — especially during a pre-pension bridge — but does NOT add income to your plan."
-                prefix="$"
-                thousandSeparator
               />
             </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>
 
         <Accordion.Item value="prefs">
-          <Accordion.Control>Spending &amp; Risk</Accordion.Control>
+          <Accordion.Control>Spending &amp; risk</Accordion.Control>
           <Accordion.Panel>
             <Stack gap="lg">
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
-                  Spending Flexibility
+                  Spending flexibility
                 </Text>
                 <Text size="xs" c="dimmed">
                   0 = fixed real $ every year (rigid). 1 = fully proportional —
@@ -183,7 +176,7 @@ export default function InputForm({
               {flex > 0 && (
                 <UserInputFormItem
                   {...num("withdrawalRate")}
-                  label="Flexible Draw Rate"
+                  label="Withdrawal rate"
                   labelHelperText="When spending flexibly, the % of the current portfolio balance drawn each year. This scales with portfolio performance."
                   suffix="%"
                 />
@@ -191,7 +184,7 @@ export default function InputForm({
 
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
-                  Risk Aversion (γ)
+                  Risk aversion (γ)
                 </Text>
                 <Text size="xs" c="dimmed">
                   How much steady income matters vs. chasing growth: 1 =
@@ -213,13 +206,6 @@ export default function InputForm({
                 </Group>
                 <UserInputFormItem {...num("gamma")} label={undefined} />
               </Stack>
-
-              <UserInputFormItem
-                {...num("bequestYears")}
-                label="Estate Goal"
-                labelHelperText="Target estate in YEARS of retirement spending (0 = spend it all)."
-                suffix=" yrs"
-              />
               <UserInputFormItem
                 {...num("beta")}
                 label="Time-discount β"
@@ -236,14 +222,14 @@ export default function InputForm({
             <Stack gap="md">
               <UserInputFormItem
                 {...num("maxEquityPct")}
-                label="Max Equity"
+                label="Max equity"
                 labelHelperText="100% = no leverage. 150% lets the optimizer borrow to hold up to 1.5× equity."
                 suffix="%"
               />
               {leveraged && (
                 <UserInputFormItem
                   {...num("borrowCost")}
-                  label="Real Cost of Borrowing"
+                  label="Real cost of borrowing"
                   labelHelperText="Your real (after-inflation) borrowing rate."
                   suffix="%"
                 />
@@ -258,13 +244,13 @@ export default function InputForm({
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 {...num("interval")}
-                label="Glide Step"
+                label="Glide step"
                 labelHelperText="Years the equity weight is held constant. 1 = per-age (much slower); 5 = every 5 years."
                 suffix=" yrs"
               />
               <UserInputFormItem
                 {...num("numPaths")}
-                label="Monte Carlo Paths"
+                label="Monte Carlo paths"
                 labelHelperText="More paths = steadier result, slower. 2000 is a good balance."
                 thousandSeparator
               />

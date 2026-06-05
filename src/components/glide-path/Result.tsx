@@ -406,8 +406,6 @@ function FailureWarning({
   if (dep < DEPLETION_WARNING_THRESHOLD) return null;
 
   const severe = dep >= SEVERE_DEPLETION_THRESHOLD;
-  const retireAge = input.startAge + result.params.accumYears;
-  const delay = result.params.pensionDelayYears;
 
   return (
     <Alert
@@ -429,19 +427,8 @@ function FailureWarning({
         <Text span fw={600}>
           {(dep * 100).toFixed(0)}%
         </Text>{" "}
-        of simulated markets.
-        {delay > 0 && (
-          <>
-            {" "}
-            Most of this risk is the{" "}
-            <Text span fw={600}>
-              {delay}-year bridge
-            </Text>{" "}
-            (ages {retireAge}–{retireAge + delay - 1}) before your pension
-            starts, when the portfolio funds your entire income alone.
-          </>
-        )}{" "}
-        Consider retiring later, lowering your target income, or saving more.
+        of simulated markets. Consider retiring later, lowering your target
+        income, or saving more.
       </Text>
     </Alert>
   );

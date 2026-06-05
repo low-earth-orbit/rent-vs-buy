@@ -26,17 +26,9 @@ KEY INPUTS
                               currentIncome base). Acts like a bond you own outside the portfolio:
                               the higher it is, the less the portfolio must derisk.
   pre_retirement_income     : the household's real pre-retirement gross income (dollars); the base
-                              for `pension_level`. Default 100k.
-  pension_delay_years       : years into retirement before the pension starts (a "bridge"). 0 =
-                              starts at retirement. e.g. retire at 55 with CPP/OAS at 65 → 10.
-                              During the bridge the portfolio funds the FULL target income; after,
-                              only the remaining gap.
-  min_spending              : subsistence consumption floor (real $) used ONLY inside the CRRA
-                              utility/CE objective — the safety net (OAS/GIS, family, work) you'd
-                              fall back on if the portfolio empties. Stops the CE collapsing toward
-                              the inert $1 numerical floor when a long bridge can drive consumption
-                              to ~0; does NOT add income or change the depletion rate. 0 = old
-                              behavior. Binds only where guaranteed income is low (the bridge).
+                              for `pension_level`. Default 100k. The pension is paid every
+                              retirement year (guaranteed income starts at retirement; a pre-pension
+                              "bridge" is out of scope — model that funding question separately).
   target_income             : the household's real annual spending target in retirement (dollars).
                               "Retirement expenses" for the bequest unit below.
   annual_contribution       : real annual savings added during accumulation (dollars).
@@ -164,11 +156,10 @@ def _build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost=0.0):
 
 # ── core lifecycle simulator over a bundle of candidate paths (common random numbers) ──
 #
-# `gap_arr` and `guar_arr` are per-retirement-year arrays (length retire_years), so the model
-# supports a "bridge": before the pension starts the portfolio funds the full target income
-# (guar=0, gap=target_income); once it starts, the portfolio funds only the remaining gap.
+# `gap_arr` and `guar_arr` are per-retirement-year arrays (length retire_years). Guaranteed
+# income (the pension) is paid every retirement year; the portfolio funds the remaining gap.
 def _eu(W, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
-        contrib, start_savings, gamma, beta, bequest, bequest_floor, c_min):
+        contrib, start_savings, gamma, beta, bequest, bequest_floor):
     """Return expected discounted utility for each of G candidate equity-weight paths.
 
     W : (n_years, G) — one column per candidate path; equity weight constant within each
@@ -196,14 +187,14 @@ def _eu(W, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
         afford = grown / (1 + r / 2)
         wdr = np.minimum(target, afford)
         bal = grown - wdr * (1 + r / 2)
-        eu += disc[t] * _crra(np.maximum(guar_arr[t] + wdr, c_min), gamma)
+        eu += disc[t] * _crra(guar_arr[t] + wdr, gamma)
     if bequest > 0:
         eu += bequest * disc[-1] * _crra(bal + bequest_floor, gamma)
     return eu.mean(axis=1)
 
 
 def _stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
-           contrib, start_savings, gamma, beta, bequest, bequest_floor, c_min):
+           contrib, start_savings, gamma, beta, bequest, bequest_floor):
     """Outcome stats for one path (independent draw). CE income is CONSUMPTION-ONLY — the
     bequest motive shapes the path but is reported separately (median estate), so adding a
     bequest weight does not distort the spending CE. `gamma` here is the retirement-phase
@@ -224,7 +215,7 @@ def _stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_
         target = (1 - flex) * gap_arr[t] + flex * (wr * bal)
         wdr = np.minimum(target, grown / (1 + r / 2))
         bal = grown - wdr * (1 + r / 2)
-        C[t] = np.maximum(guar_arr[t] + wdr, c_min)
+        C[t] = guar_arr[t] + wdr
         cons_eu += disc[t] * _crra(C[t], gamma)
         depleted |= bal <= _FLOOR
     return {
@@ -246,7 +237,7 @@ def _deterministic_accum_balance(weights, accum_years, alloc, *, contrib, start_
 
 
 def _drawdown_stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr,
-                    wr, contrib, start_savings, gamma, beta, bequest, bequest_floor, c_min):
+                    wr, contrib, start_savings, gamma, beta, bequest, bequest_floor):
     """Retirement-phase stats from the deterministic expected retirement balance.
 
     This matches the `/retirement` calculator headline semantics. `_stats` above
@@ -268,7 +259,7 @@ def _drawdown_stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_a
         target = (1 - flex) * gap_arr[t] + flex * (wr * bal)
         wdr = np.minimum(target, grown / (1 + r / 2))
         bal = grown - wdr * (1 + r / 2)
-        C[t] = np.maximum(guar_arr[t] + wdr, c_min)
+        C[t] = guar_arr[t] + wdr
         cons_eu += disc[t] * _crra(C[t], gamma)
         depleted |= bal <= _FLOOR
     return {
@@ -301,9 +292,6 @@ def recommend_glide_path(
     target_income: float = 60_000.0,
     withdrawal_rate: float = 0.04,
     pre_retirement_income: float = 100_000.0,   # base for the pension %
-    pension_delay_years: int = 0,               # years into retirement before the pension starts
-    min_spending: float = 0.0,                  # subsistence consumption floor in the utility/CE
-                                                # objective (real $); 0 = inert numerical floor
     # preferences
     gamma: float = 3.0,                         # CRRA risk aversion (single value; drives the glide)
     beta: float = 0.985,
@@ -341,29 +329,22 @@ def recommend_glide_path(
     n_years = accum_years + retire_years
     if n_years < 1:
         raise ValueError("need at least one year")
-    pension_delay = max(0, int(pension_delay_years))
-    if pension_delay >= retire_years and pension_level > 0:
-        raise ValueError("pension_delay_years must be < retire_years (else the pension never pays)")
     if not (grid_step <= max_leverage <= 3.0):
         raise ValueError("max_leverage must be in [grid_step, 3.0] (1.0 = no leverage)")
 
     alloc = _build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost)
     # Pension is a fraction of PRE-RETIREMENT income (matches the web app's currentIncome base).
+    # It is paid every retirement year (guaranteed income starts at retirement; a pre-pension
+    # bridge is out of scope — see docs); the portfolio funds the remaining gap.
     guaranteed = pension_level * pre_retirement_income
-    # Per-retirement-year arrays for the bridge: before the pension starts the portfolio funds
-    # the whole target income; once it starts it funds only the remaining (non-negative) gap.
-    guar_arr = np.where(np.arange(retire_years) < pension_delay, 0.0, guaranteed)
+    guar_arr = np.full(retire_years, guaranteed)
     gap_arr = np.maximum(target_income - guar_arr, 0.0)
 
-    # Subsistence consumption floor for the utility/CE objective. Clamped to the numeric _FLOOR
-    # so min_spending=0 degrades to the old behavior. Only binds when guaranteed income is low
-    # enough for consumption to approach it — i.e. a pre-pension bridge; see docs.
-    c_min = max(min_spending, _FLOOR)
     # Internal short aliases passed to _eu/_stats. NOTE: gamma and bequest are passed
     # per-call (the bequest weight may be calibrated below); the rest live here.
     common = dict(flex=flexibility, gap_arr=gap_arr, guar_arr=guar_arr, wr=withdrawal_rate,
                   contrib=annual_contribution, start_savings=current_savings,
-                  beta=beta, bequest_floor=bequest_floor, c_min=c_min)
+                  beta=beta, bequest_floor=bequest_floor)
 
     # Candidate equity weights 0..max_leverage. Weights > 1 are leveraged (borrowed) positions.
     grid = np.round(np.arange(0.0, max_leverage + 1e-9, grid_step), 6)
@@ -531,8 +512,7 @@ def recommend_glide_path(
             "accum_years": accum_years, "retire_years": retire_years,
             "flexibility": flexibility, "pension_level": pension_level,
             "pre_retirement_income": pre_retirement_income, "target_income": target_income,
-            "guaranteed": guaranteed, "pension_delay_years": pension_delay,
-            "min_spending": float(min_spending), "c_min": float(c_min),
+            "guaranteed": guaranteed,
             "post_pension_gap": float(target_income - guaranteed), "interval": interval,
             "gamma": gamma,
             "bequest": round(float(bequest_w), 3), "bequest_years": bequest_years,
@@ -727,19 +707,6 @@ def _run_interactive():
         "  as a % of your PRE-RETIREMENT income",
         20.0, float, "0 = none,  20 = typical CPP/OAS,  50 = generous DB pension")
     pension_level = pension_pct / 100.0
-    pension_start_age = _ask(
-        "Age the pension starts paying\n"
-        "  (if earlier than retirement, it just starts at retirement)",
-        retirement_age, int, "65 for CPP/OAS even if you retire at 60")
-    pension_delay = max(0, pension_start_age - retirement_age)
-    if pension_delay > 0:
-        print(f"  → {pension_delay}-year bridge: your portfolio funds the full "
-              f"${target_income:,.0f} until the pension starts.")
-    min_spending = _ask(
-        "Minimum acceptable spending if the portfolio runs dry ($/yr)\n"
-        "  (safety net — OAS/GIS, family, work; used only to value bad outcomes,\n"
-        "   it does NOT add income or change the depletion rate)",
-        20_000, float, "≈ OAS+GIS subsistence; 0 = ignore (old behavior)")
 
     # ── Spending rule ─────────────────────────────────────────────────────────
     _section("Spending rule")
@@ -802,8 +769,6 @@ def _run_interactive():
         flexibility=flexibility,
         pension_level=pension_level,
         pre_retirement_income=pre_ret_income,
-        pension_delay_years=pension_delay,
-        min_spending=min_spending,
         interval=interval,
         current_savings=current_savings,
         annual_contribution=annual_contrib,

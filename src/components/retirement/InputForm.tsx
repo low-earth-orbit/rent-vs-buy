@@ -81,32 +81,32 @@ export default function InputForm({
         variant="contained"
       >
         <Accordion.Item value="you">
-          <Accordion.Control>About You</Accordion.Control>
+          <Accordion.Control>About you</Accordion.Control>
           <Accordion.Panel>
             <Stack gap="md">
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <UserInputFormItem
                   {...num("currentAge")}
-                  label="Current Age"
+                  label="Current age"
                   suffix=" yrs"
                 />
                 <UserInputFormItem
                   {...num("currentIncome")}
-                  label="Annual Income"
+                  label="Annual income"
                   labelHelperText="Gross income today. Used as the base for your savings rate and guaranteed-income percentages."
                   prefix="$"
                   thousandSeparator
                 />
                 <UserInputFormItem
                   {...num("currentSavings")}
-                  label="Current Savings"
+                  label="Current savings"
                   labelHelperText="Total invested across RRSP, TFSA, and non-registered accounts today."
                   prefix="$"
                   thousandSeparator
                 />
                 <CurrencyPercentItem
                   id="contributionPct"
-                  label="Annual Savings"
+                  label="Annual savings"
                   helperText="How much you add to investments each year. Toggle between a dollar amount and a % of your income."
                   unitAriaLabel="Annual savings input unit"
                   rate={input.contributionPct}
@@ -123,13 +123,13 @@ export default function InputForm({
         </Accordion.Item>
 
         <Accordion.Item value="goals">
-          <Accordion.Control>Retirement Goals</Accordion.Control>
+          <Accordion.Control>Retirement goals</Accordion.Control>
           <Accordion.Panel>
             <Stack gap="md">
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <CurrencyPercentItem
                   id="targetIncomePct"
-                  label="Target Income"
+                  label="Target income"
                   helperText="The gross income you want in retirement — as a % of your current income (a replacement ratio of 60–70% is typical) or a dollar amount. Your guaranteed income below counts toward this."
                   unitAriaLabel="Target retirement income input unit"
                   rate={input.targetIncomePct}
@@ -142,7 +142,7 @@ export default function InputForm({
                 />
                 <CurrencyPercentItem
                   id="guaranteedIncomePct"
-                  label="Pension Amount"
+                  label="Pension amount"
                   helperText="Estimated CPP + OAS + workplace (DB) pension income, starting at retirement. Toggle between a dollar amount and a % of your income."
                   unitAriaLabel="Guaranteed income input unit"
                   rate={input.guaranteedIncomePct}
@@ -155,13 +155,13 @@ export default function InputForm({
                 />
                 <UserInputFormItem
                   {...num("pensionStartAge")}
-                  label="Pension Start Age"
+                  label="Pension start age"
                   labelHelperText="When your CPP/OAS/pension income begins — usually 65. If you retire before this, your portfolio funds the full target until then (a 'bridge')."
                   suffix=" yrs"
                 />
                 <UserInputFormItem
                   {...num("planningAge")}
-                  label="Plan Until"
+                  label="Plan until"
                   labelHelperText="The age your savings should last to (life expectancy). 95 is a common planning horizon, longer than the average ~85 to account for longevity risk."
                   suffix=" yrs"
                 />
@@ -169,7 +169,7 @@ export default function InputForm({
 
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
-                  Plan Success Rate
+                  Plan success rate
                 </Text>
                 <Text size="xs" c="dimmed">
                   The share of simulated markets your savings must outlast to
@@ -239,7 +239,7 @@ export default function InputForm({
 
               <Stack gap={4}>
                 <Text size="sm" fw={600}>
-                  Flexible Spending
+                  Flexible spending
                 </Text>
                 <Text size="xs" c="dimmed">
                   How much you&apos;d trim spending in a weak market instead of
@@ -272,11 +272,11 @@ export default function InputForm({
         </Accordion.Item>
 
         <Accordion.Item value="assumptions">
-          <Accordion.Control>Market Assumptions</Accordion.Control>
+          <Accordion.Control>Market assumptions</Accordion.Control>
           <Accordion.Panel>
             <Stack gap="xs" mb="xs">
               <Text size="sm" fw={600}>
-                Expected Return
+                Expected return
               </Text>
               <Text size="xs" c="dimmed">
                 Based on stock / bond mix — e.g. 80/20 is 80% stocks — before
@@ -345,12 +345,12 @@ export default function InputForm({
                       </Text>
                       <UserInputFormItem
                         {...num("accumReturn")}
-                        label="While Working"
+                        label="While working"
                         suffix="%"
                       />
                       <UserInputFormItem
                         {...num("retireReturn")}
-                        label="In Retirement"
+                        label="In retirement"
                         suffix="%"
                       />
                     </Stack>

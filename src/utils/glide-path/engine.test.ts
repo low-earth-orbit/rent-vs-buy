@@ -80,13 +80,14 @@ describe("recommendGlidePath", () => {
     expect(bounded.ceIncome).toBe(minimum.ceIncome);
   });
 
-  it("derives the bridge from a later pension start age", () => {
+  it("pays the pension every retirement year (no bridge)", () => {
+    // Guaranteed income starts at retirement, so no year funds the full target alone.
     const r = recommendGlidePath(
-      base({ retirementAge: 55, pensionStartAge: 65, planningAge: 95 }),
+      base({ retirementAge: 55, planningAge: 95, pensionPct: 25 }),
     );
-    expect(r.params.pensionDelayYears).toBe(10);
     expect(r.params.accumYears).toBe(20);
     expect(r.params.retireYears).toBe(40);
+    expect(r.params.guaranteed).toBeCloseTo(25000, 0);
   });
 
   it("computes the pension from pre-retirement income", () => {
@@ -94,6 +95,17 @@ describe("recommendGlidePath", () => {
       base({ pensionPct: 30, preRetirementIncome: 120000 }),
     );
     expect(r.params.guaranteed).toBeCloseTo(36000, 0);
+  });
+
+  it("lowers recommended equity as risk aversion rises", () => {
+    // The constant-$ shape is fairly γ-invariant, but the overall equity level should not
+    // increase with γ — a more cautious investor never gets a more aggressive recommendation.
+    const cautious = recommendGlidePath(base({ gamma: 8, maxEquityPct: 100 }));
+    const aggressive = recommendGlidePath(base({ gamma: 1, maxEquityPct: 100 }));
+    const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    expect(avg(cautious.equityByYear)).toBeLessThanOrEqual(
+      avg(aggressive.equityByYear) + 1e-9,
+    );
   });
 
   it("allows leverage (>100% equity) under low risk aversion and cheap borrowing", () => {
@@ -104,140 +116,8 @@ describe("recommendGlidePath", () => {
     expect(Math.max(...r.equityByYear)).toBeGreaterThan(1.0);
   });
 
-  it("reports the robust flat comparator without replacing the raw optimized glide", () => {
-    const r = recommendGlidePath(
-      base({
-        startAge: 34,
-        retirementAge: 60,
-        planningAge: 95,
-        preRetirementIncome: 120000,
-        startSavings: 350000,
-        annualContribution: 54000,
-        targetIncome: 80000,
-        pensionPct: 25,
-        pensionStartAge: 70,
-        flexibility: 0.25,
-        withdrawalRate: 3,
-        gamma: 3,
-        beta: 0.985,
-        maxEquityPct: 150,
-        borrowCost: 1,
-        interval: 5,
-        numPaths: 2000,
-        minSpending: 10000, // pinned so the expectation isn't coupled to the default
-      }),
-    );
-
-    // With the subsistence floor the 10y bridge no longer collapses the CE, so the robust flat
-    // comparator is a sane leveraged weight (was a degenerate ~100% before the floor existed).
-    expect(r.flatEquityPct).toBe(140);
-    expect(r.flatCeIncome).toBeGreaterThan(90000);
-    expect(new Set(r.equityByYear).size).toBeGreaterThan(1);
-    expect(Math.max(...r.equityByYear)).toBeGreaterThan(1);
-  }, 15000);
-
-  it("separates retirement drawdown risk from full-path accumulation risk", () => {
-    const r = recommendGlidePath(
-      base({
-        startAge: 34,
-        retirementAge: 61,
-        planningAge: 95,
-        preRetirementIncome: 100000,
-        startSavings: 350000,
-        annualContribution: 20000,
-        targetIncome: 70000,
-        pensionPct: 25,
-        pensionStartAge: 70,
-        flexibility: 0,
-        withdrawalRate: 4,
-        gamma: 2,
-        beta: 0.985,
-        maxEquityPct: 150,
-        borrowCost: 1,
-        interval: 5,
-        numPaths: 2000,
-      }),
-    );
-
-    expect(r.drawdownDepletion).toBeLessThan(0.1);
-    expect(r.depletion).toBeGreaterThan(0.1);
-  }, 10000);
-
   it("keeps equity at/below 100% with no leverage", () => {
     const r = recommendGlidePath(base({ maxEquityPct: 100 }));
     expect(Math.max(...r.equityByYear)).toBeLessThanOrEqual(1.0 + 1e-9);
   });
-
-  // ── subsistence consumption floor (minSpending) ──────────────────────────────
-  // A long pre-pension bridge (retire 55, pension at 70) drives consumption to ~$0 in depleted
-  // paths; with γ≥2 the CE objective collapses toward the inert $1 floor and the best constant
-  // craters to a degenerate low equity weight. A real minSpending floor repairs this.
-  const bridge = (minSpending: number): GlidePathInput =>
-    base({
-      startAge: 34,
-      retirementAge: 55,
-      planningAge: 95,
-      preRetirementIncome: 100000,
-      startSavings: 350000,
-      annualContribution: 30000,
-      targetIncome: 70000,
-      pensionPct: 25,
-      pensionStartAge: 70,
-      flexibility: 0.25,
-      withdrawalRate: 4,
-      gamma: 2,
-      maxEquityPct: 150,
-      borrowCost: 1,
-      minSpending,
-    });
-
-  it("a subsistence floor lifts the bridge recommendation off the degenerate low-equity corner", () => {
-    const noFloor = recommendGlidePath(bridge(1)); // ~old $1 behavior
-    const withFloor = recommendGlidePath(bridge(20000));
-    // Without a real floor the best constant craters (~30%) and the CE collapses to the artifact;
-    // the floor restores a sane, much higher weight and a meaningful CE income.
-    expect(noFloor.flatEquityPct).toBeLessThan(50);
-    expect(withFloor.flatEquityPct).toBeGreaterThan(100);
-    expect(withFloor.ceIncome).toBeGreaterThan(noFloor.ceIncome * 3);
-  }, 20000);
-
-  it("changes CE but not depletion when only the consumption floor moves (utility-only)", () => {
-    // Both floors pick the same best constant (the 150% leverage cap), so its depletion — which
-    // uses the numeric FLOOR, not cMin — is identical, while its CE rises with the higher floor.
-    // Locks the separation: cMin shapes welfare, never the ruin metric.
-    const lo = recommendGlidePath(bridge(20000));
-    const hi = recommendGlidePath(bridge(40000));
-    expect(lo.flatEquityPct).toBe(hi.flatEquityPct);
-    expect(hi.flatDrawdownDepletion).toBeCloseTo(lo.flatDrawdownDepletion, 10);
-    expect(hi.flatCeIncome).toBeGreaterThan(lo.flatCeIncome);
-  }, 20000);
-
-  it("leaves a no-bridge plan unchanged when the floor is at or below the guaranteed income", () => {
-    // Pension at retirement → guaranteed income every year, so a floor ≤ it never binds and the
-    // whole recommendation is identical with or without it (the validated analysis is untouched).
-    const noBridge = (minSpending: number): GlidePathInput =>
-      base({
-        startAge: 34,
-        retirementAge: 55,
-        planningAge: 95,
-        preRetirementIncome: 100000,
-        startSavings: 350000,
-        annualContribution: 30000,
-        targetIncome: 70000,
-        pensionPct: 25,
-        pensionStartAge: 55, // no bridge; guaranteed = 25% × 100k = 25k ≥ floor
-        flexibility: 0.25,
-        withdrawalRate: 4,
-        gamma: 2,
-        maxEquityPct: 150,
-        borrowCost: 1,
-        minSpending,
-      });
-    const a = recommendGlidePath(noBridge(1));
-    const b = recommendGlidePath(noBridge(20000));
-    expect(b.flatEquityPct).toBe(a.flatEquityPct);
-    expect(b.ceIncome).toBe(a.ceIncome);
-    expect(b.drawdownDepletion).toBe(a.drawdownDepletion);
-    expect(b.equityByYear).toEqual(a.equityByYear);
-  }, 20000);
 });

@@ -4,8 +4,9 @@
  * Optimizes the equity weight at each interval step by Monte Carlo coordinate ascent under
  * common random numbers, maximizing expected discounted CRRA utility of retirement
  * consumption. Real (today's) dollars; iid normal returns; mid-year cash flow earns a
- * half-year; a depleted portfolio absorbs at zero. Supports a pension bridge, a bequest
- * target (in years of spending), and leverage (equity weight > 1, borrowing at a real cost).
+ * half-year; a depleted portfolio absorbs at zero. Guaranteed income (pension) is paid every
+ * retirement year. Supports a bequest target (in years of spending) and leverage (equity
+ * weight > 1, borrowing at a real cost).
  *
  * The hot path (`meanUtility`) runs on grid-index arrays with precomputed per-grid (mean, vol)
  * so the inner loop is plain float math. Intended to run inside a Web Worker.
@@ -20,8 +21,8 @@ import type {
   SlopeDir,
 } from "./types";
 
-const FLOOR = 1.0; // numerical guard for the depletion test + bequest term (real $); the
-// consumption floor used in the utility/CE objective is the user's `cMin` (see SimCtx)
+const FLOOR = 1.0; // numerical floor on consumption / estate (real $); a numerical guard, not a
+// spending-floor assumption (consumption can't approach it while guaranteed income is paid)
 const FLAT_BAND = 0.1; // |Δ equity| within this is "Flat"
 const SEED = 0x9e3779b9;
 const STATS_SEED = 0x85ebca6b;
@@ -115,7 +116,6 @@ interface SimCtx {
   invOneMinusGamma: number;
   bequestW: number;
   bequestFloor: number;
-  cMin: number; // subsistence consumption floor in the utility/CE objective (real $)
 }
 
 /**
@@ -145,7 +145,6 @@ function meanUtility(
     invOneMinusGamma,
     bequestW,
     bequestFloor,
-    cMin,
   } = ctx;
   let sum = 0;
   for (let p = 0; p < n; p++) {
@@ -168,7 +167,7 @@ function meanUtility(
       const wdr = target < afford ? target : afford;
       bal = grown - wdr * (1 + r / 2);
       let c = guarArr[t] + wdr;
-      if (c < cMin) c = cMin;
+      if (c < FLOOR) c = FLOOR;
       eu +=
         disc[t] *
         (isLog ? Math.log(c) : Math.pow(c, oneMinusGamma) * invOneMinusGamma);
@@ -220,7 +219,6 @@ function computeStats(
     isLog,
     oneMinusGamma,
     invOneMinusGamma,
-    cMin,
   } = ctx;
   let discSum = 0;
   for (let t = 0; t < retireYears; t++) discSum += disc[t];
@@ -253,7 +251,7 @@ function computeStats(
       const wdr = target < afford ? target : afford;
       bal = grown - wdr * (1 + r / 2);
       let c = guarArr[t] + wdr;
-      if (c < cMin) c = cMin;
+      if (c < FLOOR) c = FLOOR;
       consEu +=
         disc[t] *
         (isLog ? Math.log(c) : Math.pow(c, oneMinusGamma) * invOneMinusGamma);
@@ -313,7 +311,6 @@ function computeDrawdownStats(
     isLog,
     oneMinusGamma,
     invOneMinusGamma,
-    cMin,
   } = ctx;
   let discSum = 0;
   for (let t = 0; t < retireYears; t++) discSum += disc[t];
@@ -341,7 +338,7 @@ function computeDrawdownStats(
       const wdr = target < afford ? target : afford;
       bal = grown - wdr * (1 + r / 2);
       let c = guarArr[t] + wdr;
-      if (c < cMin) c = cMin;
+      if (c < FLOOR) c = FLOOR;
       consEu +=
         disc[t] *
         (isLog ? Math.log(c) : Math.pow(c, oneMinusGamma) * invOneMinusGamma);
@@ -476,18 +473,11 @@ export function recommendGlidePath(
     input.borrowCost,
   );
 
-  // Bridge: before the pension starts the portfolio funds the full target income.
+  // Guaranteed income (pension) is paid every retirement year; the portfolio funds the gap.
   const guaranteed = (input.pensionPct / 100) * input.preRetirementIncome;
-  const pensionDelay = Math.min(
-    retireYears,
-    Math.max(0, Math.round(input.pensionStartAge - input.retirementAge)),
-  );
-  const guarArr = new Float64Array(retireYears);
-  const gapArr = new Float64Array(retireYears);
-  for (let t = 0; t < retireYears; t++) {
-    guarArr[t] = t < pensionDelay ? 0 : guaranteed;
-    gapArr[t] = Math.max(input.targetIncome - guarArr[t], 0);
-  }
+  const gap = Math.max(input.targetIncome - guaranteed, 0);
+  const guarArr = new Float64Array(retireYears).fill(guaranteed);
+  const gapArr = new Float64Array(retireYears).fill(gap);
   const disc = new Float64Array(retireYears);
   for (let t = 0; t < retireYears; t++) disc[t] = Math.pow(input.beta, t);
 
@@ -519,9 +509,6 @@ export function recommendGlidePath(
     oneMinusGamma: 1 - gamma,
     invOneMinusGamma: 1 / (1 - gamma),
     bequestFloor: 10000,
-    // Subsistence consumption floor for the utility/CE objective. Clamped to the numeric FLOOR
-    // so minSpending=0 degrades to the old behavior instead of producing log(0)/division blowups.
-    cMin: Math.max(input.minSpending, FLOOR),
   };
 
   const nOpt = clampPathCount(input.numPaths, MIN_OPT_PATHS, MAX_OPT_PATHS);
@@ -657,10 +644,15 @@ export function recommendGlidePath(
   const twin = Math.min(15, retireYears);
   let tentI = 0;
   for (let i = 1; i < twin; i++) if (ret[i] < ret[tentI]) tentI = i;
-  const accumDir =
-    accumYears >= 2 ? classify(acc[acc.length - 1] - acc[0]) : "n/a";
-  const retireDir =
-    retireYears >= 2 ? classify(ret[ret.length - 1] - ret[0]) : "n/a";
+  // Slope of a phase, ignoring its final year: with no bequest the optimizer drives equity toward
+  // 0 in the last retirement year(s) (a fixed-horizon artifact, not advice), which would otherwise
+  // skew the Rising/Falling read. Drop the last year when the phase is long enough to still classify.
+  const phaseDir = (w: number[]): SlopeDir => {
+    const eff = w.length >= 3 ? w.slice(0, -1) : w;
+    return eff.length >= 2 ? classify(eff[eff.length - 1] - eff[0]) : "n/a";
+  };
+  const accumDir = phaseDir(acc);
+  const retireDir = phaseDir(ret);
 
   return {
     schedule,
@@ -687,7 +679,6 @@ export function recommendGlidePath(
     params: {
       accumYears,
       retireYears,
-      pensionDelayYears: pensionDelay,
       guaranteed,
       maxLeverage,
       borrowCost: input.borrowCost,

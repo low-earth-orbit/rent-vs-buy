@@ -57,30 +57,30 @@ interface ChartPoint {
 }
 
 const INPUT_LABELS = {
-  monthlyRent: "Monthly Rent ($)",
-  initialHomePrice: "Home Price ($)",
-  downPaymentPercentage: "Down Payment (%)",
-  annualMortgageInterestRate: "Mortgage Rate (%/yr)",
+  monthlyRent: "Monthly rent ($)",
+  initialHomePrice: "Home price ($)",
+  downPaymentPercentage: "Down payment (%)",
+  annualMortgageInterestRate: "Mortgage rate (%/yr)",
   amortization: "Amortization (years)",
-  holdingPeriod: "Holding Period (years)",
-  rentIncreaseRate: "Rent Increase Rate (%/yr)",
-  homePriceGrowthRate: "Home Price Growth (%/yr)",
-  ownerCostGrowthRate: "Owner Cost Growth (%/yr)",
-  investmentReturnRate: "Investment Return (%/yr)",
-  dividendYield: "Dividend Yield (%)",
-  dividendTaxRate: "Dividend Tax Rate (%)",
-  capitalGainTaxRate: "Capital Gain Tax Rate (%)",
-  propertyTaxRate: "Property Tax Rate (%)",
+  holdingPeriod: "Holding period (years)",
+  rentIncreaseRate: "Rent increase rate (%/yr)",
+  homePriceGrowthRate: "Home price growth (%/yr)",
+  ownerCostGrowthRate: "Owner cost growth (%/yr)",
+  investmentReturnRate: "Investment return (%/yr)",
+  dividendYield: "Dividend yield (%)",
+  dividendTaxRate: "Dividend tax rate (%)",
+  capitalGainTaxRate: "Capital gain tax rate (%)",
+  propertyTaxRate: "Property tax rate (%)",
   maintPct: "Maintenance (%/yr)",
-  condoFeesPerMonth: "Condo Fees ($/month)",
-  buyerClosingCostsPct: "Buyer Closing Costs (%)",
-  sellerClosingCostsPct: "Seller Closing Costs (%)",
-  homePriceGrowthSigma: "Home Price Growth Sigma",
-  investmentReturnSigma: "Investment Return Sigma",
-  rentIncreaseSigma: "Rent Increase Sigma",
-  ownerCostGrowthSigma: "Owner Cost Growth Sigma",
-  mortgageRateSigma: "Mortgage Rate Sigma",
-  dividendYieldSigma: "Dividend Yield Sigma",
+  condoFeesPerMonth: "Condo fees ($/month)",
+  buyerClosingCostsPct: "Buyer closing costs (%)",
+  sellerClosingCostsPct: "Seller closing costs (%)",
+  homePriceGrowthSigma: "Home price growth sigma",
+  investmentReturnSigma: "Investment return sigma",
+  rentIncreaseSigma: "Rent increase sigma",
+  ownerCostGrowthSigma: "Owner cost growth sigma",
+  mortgageRateSigma: "Mortgage rate sigma",
+  dividendYieldSigma: "Dividend yield sigma",
 };
 
 function ChartTooltip({ payload }: { payload?: { payload: ChartPoint }[] }) {
@@ -279,13 +279,13 @@ export default function NetWorthChart({ userInput }: { userInput: UserInput }) {
       [],
       [
         "Year",
-        "Rent Median",
+        "Rent median",
         "Rent P25",
         "Rent P75",
-        "Buy Median",
+        "Buy median",
         "Buy P25",
         "Buy P75",
-        "Renter Win %",
+        "Renter win %",
       ],
       ...points.map((d) => [
         d.year,
@@ -545,14 +545,14 @@ export default function NetWorthChart({ userInput }: { userInput: UserInput }) {
                   paddingBottom: 4,
                 }}
               >
-                Year-by-year net worth comparison: Renting vs Buying (
+                Year-by-year net worth comparison: Renting vs buying (
                 {NUM_SIMULATIONS.toLocaleString()} Monte Carlo simulations)
               </caption>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th scope="col">Year</Table.Th>
                   <Table.Th scope="col" c="teal">
-                    Rent Median
+                    Rent median
                   </Table.Th>
                   <Table.Th scope="col" c="teal">
                     <abbr title="25th percentile">Rent P25</abbr>
@@ -561,7 +561,7 @@ export default function NetWorthChart({ userInput }: { userInput: UserInput }) {
                     <abbr title="75th percentile">Rent P75</abbr>
                   </Table.Th>
                   <Table.Th scope="col" c="indigo">
-                    Buy Median
+                    Buy median
                   </Table.Th>
                   <Table.Th scope="col" c="indigo">
                     <abbr title="25th percentile">Buy P25</abbr>
@@ -570,7 +570,7 @@ export default function NetWorthChart({ userInput }: { userInput: UserInput }) {
                     <abbr title="75th percentile">Buy P75</abbr>
                   </Table.Th>
                   <Table.Th scope="col">
-                    Renter Win %
+                    Renter win %
                     <VisuallyHidden> (% of simulations)</VisuallyHidden>
                   </Table.Th>
                 </Table.Tr>

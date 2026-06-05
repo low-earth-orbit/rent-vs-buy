@@ -44,18 +44,12 @@ export const DEFAULTS = {
   // ── Retirement income ─────────────────────────────────────
   /** Target real annual spending in retirement. */
   targetIncome: 60000,
-  /** Guaranteed income (CPP/OAS/DB), as a % of pre-retirement income. */
-  pensionPct: 20,
-  /** Age the pension starts (a bridge if later than retirement). */
-  pensionStartAge: 65,
   /**
-   * Minimum acceptable real spending — the safety-net floor (OAS/GIS, family, part-time work)
-   * you'd fall back on if the portfolio runs dry. Used only as the consumption floor in the
-   * utility/CE objective so a depleted bridge year is valued as `minSpending`, not ~$0; it does
-   * NOT add income to the plan, and the depletion rate still reflects a truly emptied portfolio.
-   * ~Canadian OAS+GIS subsistence for a single senior. See docs/glidepath-analysis.md.
+   * Guaranteed income (CPP/OAS/DB) in retirement, as a % of pre-retirement income. Assumed to
+   * be paid every retirement year (the tool models allocation from the point income has started;
+   * a pre-pension "bridge" is out of scope — see Methodology).
    */
-  minSpending: 20000,
+  pensionPct: 20,
 
   // ── Spending & preferences ────────────────────────────────
   /** 0 = constant real $; 1 = fully proportional to the balance; blends between. */
