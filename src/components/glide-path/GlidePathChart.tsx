@@ -152,10 +152,17 @@ export default function GlidePathChart({
 
   return (
     <Card withBorder radius="md" padding="md">
-      <Group justify="space-between" align="center" mb="md" wrap="nowrap">
+      <Group
+        justify="space-between"
+        align="center"
+        mb="md"
+        wrap="wrap"
+        gap="xs"
+      >
         <Text fw={600}>Optimal equity allocation by age</Text>
         <SegmentedControl
           size="xs"
+          w={{ base: "100%", xs: "auto" }}
           value={view}
           onChange={(v) => setView(v as ChartView)}
           data={[
