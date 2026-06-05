@@ -99,6 +99,32 @@ describe("glide-path Result", () => {
     expect(screen.getByText("24.0%")).toBeInTheDocument();
   });
 
+  it("matches slope badge icons to the actual glide-path shape", () => {
+    const { container } = renderResult(
+      makeResult({ accumDir: "Rising", retireDir: "Falling" }),
+    );
+
+    expect(container.querySelectorAll(".tabler-icon-trending-up")).toHaveLength(
+      1,
+    );
+    expect(
+      container.querySelectorAll(".tabler-icon-trending-down"),
+    ).toHaveLength(1);
+  });
+
+  it("uses a horizontal icon for flat slopes and no icon for n/a", () => {
+    const { container } = renderResult(
+      makeResult({ accumDir: "Flat", retireDir: "n/a" }),
+    );
+
+    expect(container.querySelectorAll(".tabler-icon-minus")).toHaveLength(1);
+    expect(
+      container.querySelectorAll(
+        ".tabler-icon-trending-up, .tabler-icon-trending-down",
+      ),
+    ).toHaveLength(0);
+  });
+
   it("prefers the constant when drawdown depletion is within five points", () => {
     renderResult(
       makeResult({
