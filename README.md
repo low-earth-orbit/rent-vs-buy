@@ -6,13 +6,18 @@ Latest deployed version: [Click Me](https://low-earth-orbit.github.io/personal-f
 
 ## Tools
 
-| Tool                                                    | Route          | Status |
-| ------------------------------------------------------- | -------------- | ------ |
-| **Rent vs Buy** — compare renting vs owning a home      | `/rent-vs-buy` | Live   |
-| **When can I retire?** — quick retirement reality check | `/retirement`  | Live   |
+| Tool                                                                  | Route          | Status |
+| --------------------------------------------------------------------- | -------------- | ------ |
+| **Rent vs Buy** — compare renting vs owning a home                    | `/rent-vs-buy` | Live   |
+| **When can I retire?** — quick retirement reality check               | `/retirement`  | Live   |
+| **Glide-path recommender** — optimize stock/bond allocation over time | `/glide-path`  | Live   |
 
 The site is a single statically-exported Next.js app: a hub landing page at `/`
 links to each tool, which lives at its own route.
+
+The glide-path recommender reports drawdown-only depletion separately from full-path
+shortfall, so its retirement-risk headline can be compared directly with the
+retirement calculator while still showing accumulation-market risk.
 
 ## Disclaimer
 
@@ -40,9 +45,11 @@ src/
   app/
     page.tsx              # hub landing page (lists tools)
     rent-vs-buy/page.tsx  # rent-vs-buy tool route
+    glide-path/page.tsx   # glide-path recommender route
   components/
     shared/               # reusable chrome + form primitives (Header, Footer, inputs)
     rent-vs-buy/          # rent-vs-buy-specific components
+    glide-path/           # glide-path recommender components
   utils/                  # math, formatting, Monte Carlo (shared) + tool-specific logic
   types.ts                # shared domain types
 ```

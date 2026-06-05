@@ -19,6 +19,26 @@ next-env.d.ts
 /playwright-report
 /playwright/.cache
 
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+env/
+ENV/
+.env/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+*.egg-info/
+.ipynb_checkpoints/
+
 # production
 /build
 

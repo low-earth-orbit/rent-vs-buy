@@ -115,12 +115,14 @@ function GlideShape({
 
 /** Glide-path edge below this (% of CE income, vs the best constant weight) → lead with the constant. */
 const RECOMMEND_FLAT_BELOW_PCT = 5;
+const DEPLETION_WARNING_THRESHOLD = 0.1;
+const SEVERE_DEPLETION_THRESHOLD = 0.25;
 
 /**
  * A CE income this far below the target is the FLOOR=1 / CRRA artifact (the certainty-equivalent
  * collapses toward zero when consumption hits the floor in a meaningful share of paths), not a
  * real planning figure. We use it to suppress percentage comparisons against a degenerate
- * denominator and to surface the failure warning even when the depletion rate looks modest.
+ * denominator; depletion rate is the pass/fail signal.
  */
 function ceIsDegenerate(income: number, targetIncome: number): boolean {
   return income < Math.max(1000, 0.05 * targetIncome);
@@ -142,10 +144,105 @@ function Recommendation({
   const flatPct = result.flatEquityPct.toFixed(0);
   const glideBad = ceIsDegenerate(result.ceIncome, input.targetIncome);
   const flatBad = ceIsDegenerate(result.flatCeIncome, input.targetIncome);
+  const failingPlan = result.drawdownDepletion >= DEPLETION_WARNING_THRESHOLD;
+  const flatFailingPlan =
+    result.flatDrawdownDepletion >= DEPLETION_WARNING_THRESHOLD;
+
+  if (failingPlan && !flatFailingPlan) {
+    return (
+      <Card withBorder radius="md" padding="lg">
+        <Stack gap="sm">
+          <Group gap="xs">
+            <Title order={3} fz="md">
+              Recommended: hold a constant {flatPct}% equity
+            </Title>
+            <Badge color="teal" variant="filled">
+              Lower drawdown risk
+            </Badge>
+          </Group>
+          <Text size="sm" c="dimmed">
+            The optimized glide is shown below, but its drawdown depletion rate
+            is {(result.drawdownDepletion * 100).toFixed(1)}%. The constant{" "}
+            {flatPct}% allocation keeps the drawdown-only rate to{" "}
+            {(result.flatDrawdownDepletion * 100).toFixed(1)}% in the
+            out-of-sample check.
+          </Text>
+          <Divider
+            my={4}
+            label="The optimized glide, for reference"
+            labelPosition="left"
+          />
+          <GlideShape input={input} result={result} />
+        </Stack>
+      </Card>
+    );
+  }
+
+  // Whenever the constant comparator fails the drawdown bar AND is riskier than the glide,
+  // recommend the glide — even if the glide also fails. The CE-income comparison is
+  // tail-dominated in that regime (e.g. a long pre-pension bridge) and can rank the fragile
+  // constant above the safer glide; depletion is the robust signal, so defer to it. (This
+  // generalizes the earlier "glide safe, constant failing" case to the both-failing case.)
+  if (
+    flatFailingPlan &&
+    result.flatDrawdownDepletion > result.drawdownDepletion
+  ) {
+    return (
+      <Card withBorder radius="md" padding="lg">
+        <Stack gap="sm">
+          <Group gap="xs">
+            <Title order={3} fz="md">
+              Recommended glide path
+            </Title>
+            <Badge color="teal" variant="filled">
+              Lower drawdown risk
+            </Badge>
+          </Group>
+          <GlideShape input={input} result={result} />
+          <Text size="xs" c="dimmed">
+            The best constant allocation has a higher
+            certainty-equivalent-income score, but it depletes in{" "}
+            {(result.flatDrawdownDepletion * 100).toFixed(1)}% of drawdown-only
+            markets. The optimized glide keeps that rate to{" "}
+            {(result.drawdownDepletion * 100).toFixed(1)}%.
+          </Text>
+        </Stack>
+      </Card>
+    );
+  }
+
+  if (glideBad && !flatBad) {
+    return (
+      <Card withBorder radius="md" padding="lg">
+        <Stack gap="sm">
+          <Group gap="xs">
+            <Title order={3} fz="md">
+              Recommended: hold a constant {flatPct}% equity
+            </Title>
+            <Badge color="teal" variant="filled">
+              More robust
+            </Badge>
+          </Group>
+          <Text size="sm" c="dimmed">
+            The optimized glide is shown below, but its certainty-equivalent
+            income is tail-dominated: rare low-income paths overwhelm the score.
+            A fixed {flatPct}% stock allocation has a cleaner out-of-sample
+            income score in this simulation and is easier to hold.
+          </Text>
+          <Divider
+            my={4}
+            label="The optimized glide, for reference"
+            labelPosition="left"
+          />
+          <GlideShape input={input} result={result} />
+        </Stack>
+      </Card>
+    );
+  }
 
   // No allocation reliably funds the plan — the income figure is the floor artifact, not a
   // real number. Don't pick a "winner" or show a percentage; defer to the failure warning.
-  if (glideBad) {
+  if (glideBad && flatBad && failingPlan) {
     return (
       <Card withBorder radius="md" padding="lg">
         <Stack gap="sm">
@@ -160,6 +257,29 @@ function Recommendation({
           </Text>
           <Divider my={4} label="Best-effort glide path" labelPosition="left" />
           <GlideShape input={input} result={result} />
+        </Stack>
+      </Card>
+    );
+  }
+
+  if (glideBad && flatBad) {
+    return (
+      <Card withBorder radius="md" padding="lg">
+        <Stack gap="sm">
+          <Group gap="xs">
+            <Title order={3} fz="md">
+              Recommended glide path
+            </Title>
+            <Badge color="teal" variant="filled">
+              Low ruin risk
+            </Badge>
+          </Group>
+          <GlideShape input={input} result={result} />
+          <Text size="xs" c="dimmed">
+            The chance of depleting the portfolio is low, but rare bridge-period
+            shortfalls dominate the certainty-equivalent income score. Treat the
+            income comparison as tail-sensitive and focus on the depletion rate.
+          </Text>
         </Stack>
       </Card>
     );
@@ -181,9 +301,10 @@ function Recommendation({
           </Group>
           <GlideShape input={input} result={result} />
           <Text size="xs" c="dimmed">
-            A single constant allocation can&apos;t reliably fund this plan (it
-            runs out in too many markets), so the glide path&apos;s ability to
-            shift risk over time matters here — there is no simpler equivalent.
+            A single constant allocation has a tail-dominated
+            certainty-equivalent income score, so the glide path&apos;s ability
+            to shift risk over time matters here — there is no simpler
+            equivalent.
           </Text>
         </Stack>
       </Card>
@@ -192,6 +313,35 @@ function Recommendation({
 
   const edgePct =
     result.flatCeIncome > 0 ? (edge / result.flatCeIncome) * 100 : 0;
+
+  if (edgePct <= -RECOMMEND_FLAT_BELOW_PCT) {
+    return (
+      <Card withBorder radius="md" padding="lg">
+        <Stack gap="sm">
+          <Group gap="xs">
+            <Title order={3} fz="md">
+              Recommended: hold a constant {flatPct}% equity
+            </Title>
+            <Badge color="teal" variant="filled">
+              More robust
+            </Badge>
+          </Group>
+          <Text size="sm" c="dimmed">
+            The optimized glide is shown below, but a fixed {flatPct}% stock
+            allocation has about {Math.abs(edgePct).toFixed(1)}% higher
+            certainty-equivalent income in the out-of-sample check and is easier
+            to hold.
+          </Text>
+          <Divider
+            my={4}
+            label="The optimized glide, for reference"
+            labelPosition="left"
+          />
+          <GlideShape input={input} result={result} />
+        </Stack>
+      </Card>
+    );
+  }
 
   if (edgePct < RECOMMEND_FLAT_BELOW_PCT) {
     return (
@@ -252,13 +402,10 @@ function FailureWarning({
   input: GlidePathInput;
   result: GlidePathResult;
 }) {
-  const dep = result.depletion;
-  // A degenerate CE income means consumption hits the floor often enough to make the plan a
-  // failure even when the headline depletion rate looks modest — warn in that case too.
-  const glideBad = ceIsDegenerate(result.ceIncome, input.targetIncome);
-  if (dep < 0.1 && !glideBad) return null;
+  const dep = result.drawdownDepletion;
+  if (dep < DEPLETION_WARNING_THRESHOLD) return null;
 
-  const severe = dep >= 0.25 || glideBad;
+  const severe = dep >= SEVERE_DEPLETION_THRESHOLD;
   const retireAge = input.startAge + result.params.accumYears;
   const delay = result.params.pensionDelayYears;
 
@@ -274,7 +421,11 @@ function FailureWarning({
       }
     >
       <Text size="sm">
-        The portfolio is exhausted before age {input.planningAge} in{" "}
+        Starting from the expected retirement balance of{" "}
+        <Text span fw={600}>
+          {formatCAD(result.expectedRetirementBalance)}
+        </Text>
+        , the portfolio is exhausted before age {input.planningAge} in{" "}
         <Text span fw={600}>
           {(dep * 100).toFixed(0)}%
         </Text>{" "}
@@ -290,10 +441,43 @@ function FailureWarning({
             starts, when the portfolio funds your entire income alone.
           </>
         )}{" "}
-        Because income can collapse toward zero in those scenarios, the
-        risk-adjusted Income figure is pulled far down and isn&apos;t a reliable
-        number here — focus on this depletion rate, and consider retiring later,
-        lowering your target income, or saving more.
+        Consider retiring later, lowering your target income, or saving more.
+      </Text>
+    </Alert>
+  );
+}
+
+/** Explains when the full-path number is mostly accumulation uncertainty, not drawdown failure. */
+function AccumulationRiskNote({
+  input,
+  result,
+}: {
+  input: GlidePathInput;
+  result: GlidePathResult;
+}) {
+  if (result.depletion < DEPLETION_WARNING_THRESHOLD) return null;
+  if (result.depletion <= result.drawdownDepletion + 0.05) return null;
+
+  const retireAge = input.startAge + result.params.accumYears;
+  return (
+    <Alert
+      variant="light"
+      color="blue"
+      icon={<IconInfoCircle />}
+      title="Pre-retirement market risk matters"
+    >
+      <Text size="sm">
+        The drawdown-only depletion rate is{" "}
+        <Text span fw={600}>
+          {(result.drawdownDepletion * 100).toFixed(1)}%
+        </Text>{" "}
+        if you reach the expected age-{retireAge} balance. Across full paths
+        starting at age {input.startAge},{" "}
+        <Text span fw={600}>
+          {(result.depletion * 100).toFixed(1)}%
+        </Text>{" "}
+        deplete because weak accumulation markets can leave less saved by
+        retirement.
       </Text>
     </Alert>
   );
@@ -371,25 +555,35 @@ export default function Result({
       <Recommendation input={input} result={result} />
 
       <FailureWarning input={input} result={result} />
+      <AccumulationRiskNote input={input} result={result} />
 
       <Card withBorder radius="md" padding="lg">
         <Title order={3} fz="md" mb="md">
           Projected outcomes
         </Title>
-        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="lg">
+        <SimpleGrid cols={{ base: 2, sm: 3, md: 5 }} spacing="lg">
           <Metric
-            label="Income"
-            value={incomeDegenerate ? "—" : `${formatCAD(result.ceIncome)}/yr`}
+            label="CE income"
+            value={
+              incomeDegenerate
+                ? "Tail-dominated"
+                : `${formatCAD(result.ceIncome)}/yr`
+            }
             note={
               incomeDegenerate
-                ? "unreliable — plan fails (see warning)"
-                : "risk-adjusted, today's $"
+                ? "full-path bad tails overwhelm the score"
+                : "full-path certainty-equivalent, today's $"
             }
           />
           <Metric
-            label="Chance of running out"
+            label="Drawdown depletion"
+            value={`${(result.drawdownDepletion * 100).toFixed(1)}%`}
+            note="from expected retirement savings"
+          />
+          <Metric
+            label="Full-path shortfall"
             value={`${(result.depletion * 100).toFixed(1)}%`}
-            note="across simulated markets"
+            note="includes pre-retirement markets"
           />
           <Metric
             label="Income swings"

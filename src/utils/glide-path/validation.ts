@@ -42,6 +42,7 @@ export const FIELD_CONSTRAINTS: Record<GlidePathInputKey, Constraint> = {
   },
   pensionPct: { min: 0, max: 150, step: 5, label: "Pension %" },
   pensionStartAge: { min: 50, max: 90, step: 1, label: "Pension start age" },
+  minSpending: { min: 0, max: 1_000_000, step: 1000, label: "Minimum spending" },
   flexibility: { min: 0, max: 1, step: 0.05, label: "Spending flexibility" },
   withdrawalRate: { min: 1, max: 10, step: 0.1, label: "Withdrawal rate" },
   gamma: { min: 0.5, max: 15, step: 0.5, label: "Risk aversion γ" },
@@ -93,6 +94,13 @@ export function validateGlidePathInput(input: GlidePathInput): GlidePathErrors {
     input.planningAge <= input.retirementAge
   ) {
     errors.planningAge = "Plan-until age must be after retirement.";
+  }
+  if (
+    !errors.minSpending &&
+    !errors.targetIncome &&
+    input.minSpending > input.targetIncome
+  ) {
+    errors.minSpending = "Minimum spending can't exceed your target income.";
   }
 
   return errors;

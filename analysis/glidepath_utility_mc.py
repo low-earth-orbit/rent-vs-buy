@@ -400,9 +400,13 @@ def run_shape_value(retire_sweep):
             w_acc100 = w_opt.copy(); w_acc100[:BASE_ACCUM] = 1.0
             ce_acc100 = full_stats(w_acc100, Zf, BASE_ACCUM, h, flex, GAMMA)["ce"]
             ce_flat100 = full_stats(np.ones(n_years), Zf, BASE_ACCUM, h, flex, GAMMA)["ce"]
-            flat_eu = eu_vec(np.tile(grid, (n_years, 1)), Zf, BASE_ACCUM, h, flex, GAMMA)
-            bw = grid[int(np.argmax(flat_eu))]
-            ce_flat = full_stats(np.full(n_years, bw), Zf, BASE_ACCUM, h, flex, GAMMA)["ce"]
+            flat_stats = [
+                full_stats(np.full(n_years, w), Zf, BASE_ACCUM, h, flex, GAMMA)
+                for w in grid
+            ]
+            best_flat_i = int(np.argmax([s["ce"] for s in flat_stats]))
+            bw = grid[best_flat_i]
+            ce_flat = flat_stats[best_flat_i]["ce"]
             print(f"{label:<14} {h:>3}y | ${ce_opt:>7,.0f} ${ce_acc100:>14,.0f} "
                   f"${ce_flat100:>8,.0f} ${ce_flat:>9,.0f} (w={bw*100:>3.0f})")
     print("-" * 104)

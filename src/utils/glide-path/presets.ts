@@ -48,12 +48,20 @@ export const DEFAULTS = {
   pensionPct: 20,
   /** Age the pension starts (a bridge if later than retirement). */
   pensionStartAge: 65,
+  /**
+   * Minimum acceptable real spending — the safety-net floor (OAS/GIS, family, part-time work)
+   * you'd fall back on if the portfolio runs dry. Used only as the consumption floor in the
+   * utility/CE objective so a depleted bridge year is valued as `minSpending`, not ~$0; it does
+   * NOT add income to the plan, and the depletion rate still reflects a truly emptied portfolio.
+   * ~Canadian OAS+GIS subsistence for a single senior. See docs/glidepath-analysis.md.
+   */
+  minSpending: 20000,
 
   // ── Spending & preferences ────────────────────────────────
   /** 0 = constant real $; 1 = fully proportional to the balance; blends between. */
   flexibility: 0,
   /** When spending flexibly, the % of the live balance drawn each year. */
-  withdrawalRate: 4,
+  withdrawalRate: 3.5,
   /** CRRA risk aversion (1 = log, 3 = base, 8 = very cautious). */
   gamma: 3,
   /** Annual time-discount factor. */

@@ -43,8 +43,8 @@ interface ChartPoint {
 const generateTicks = (min: number, max: number, step = 5) => {
   const ticks = [];
   // Round min down and max up to the nearest multiple of 5
-  const start = Math.floor(min / step) * step;
-  const end = Math.ceil(max / step) * step;
+  const start = Math.ceil(min / step) * step;
+  const end = Math.floor(max / step) * step;
 
   for (let i = start; i <= end; i += step) {
     ticks.push(i);

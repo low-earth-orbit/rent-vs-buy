@@ -79,6 +79,21 @@ best, and cycle (alternating sweep direction) until the whole vector stops movin
 one-dimensional search exact for the drawn markets, and **no parametric shape is imposed** — so
 flat / tent / monotone shapes all compete on equal footing.
 
+**Consumption floor (`min_spending`).** CRRA utility treats a year of near-zero consumption as
+catastrophically bad (`u(c)→−∞` as `c→0`), so the objective needs a floor. A bare numerical guard
+(`_FLOOR = $1`) is fine **when guaranteed income is paid every year** — consumption can't approach
+zero, so the floor never binds (every scenario in §2 has this property, and is unaffected). It
+breaks in the **pre-pension bridge** case (`pension_delay_years > 0`): during the bridge guaranteed
+income is 0, so a depleted portfolio drives consumption to ≈$1, and with γ≥2 those few cells
+(≈25,000× heavier than any post-pension cell) hijack the certainty-equivalent — collapsing it
+toward the floor and pushing the optimizer to an implausibly low equity weight that *minimizes
+bridge-ruin probability* while being dominated on consumption, depletion, and estate. The fix is a
+real **subsistence floor** `c = max(guaranteed + withdrawal, min_spending)` — the safety net
+(OAS/GIS, family, work) you'd fall back on. It is utility-only (no portfolio injection) and the
+**depletion test keeps the numeric `_FLOOR`**, so the floor cannot mask ruin: the depletion rate
+still reports a truly emptied portfolio. A floor `≤` the guaranteed income leaves every §2 table
+unchanged.
+
 Two honesty checks accompany every result:
 
 - **Tent vs terminal artifact.** With bequest weight 0, the optimizer drives equity toward 0 in the
@@ -89,6 +104,12 @@ Two honesty checks accompany every result:
   draw against (a) flat 100%, (b) the best single flat weight, and (c) the optimal retirement glide
   with accumulation _forced_ to 100%. If the optimized accumulation shape doesn't beat flat-100% out
   of sample, we don't believe it.
+- **Product recommender fallback.** The interactive recommender applies one extra robustness guard:
+  after coordinate ascent, it scores the optimized glide and the best constant allocation on an
+  independent draw. If the constant allocation wins materially, the UI/CLI recommends that flat
+  allocation as the robust choice, while still charting and reporting the raw optimized glide.
+  Smaller differences are treated as shape-vs-level noise: the app may still call out the simpler
+  constant allocation, but it keeps the optimized glide visible.
 
 ---
 
@@ -181,7 +202,8 @@ consumption-volatility aversion pull the saver off the 100% corner.
 
 Re-scored on an **independent** shock draw. CE = certainty-equivalent annual retirement
 consumption. `opt ret / 100 acc` keeps the optimal retirement glide but forces flat 100% in
-accumulation; `best flat` is the single constant weight that maximizes CE.
+accumulation; `best flat` is the single constant weight that maximizes CE on the same independent
+draw.
 
 | Spending      | Ret. horizon | optimum | opt ret / 100% acc | flat 100% | best flat (w\*) | **glide vs best-flat** |
 | ------------- | ------------ | ------- | ------------------ | --------- | --------------- | ---------------------- |
@@ -266,12 +288,19 @@ The same model is exposed as a one-call recommender —
 [`analysis/glide_path_recommender.py`](../analysis/glide_path_recommender.py),
 `recommend_glide_path(...)` — that **optimizes** (does not look up) the equity weight per
 chosen step (`interval` = 1y, 5y, …) given your horizons, spending flexibility, pension level,
-risk aversion, bequest motive, and an arbitrary return/vol curve passed in as a variable. It
-returns the per-step schedule plus out-of-sample CE income, depletion, income CV, the median
-estate, and the **best single constant equity weight** (`flat_equity_pct` / `flat_ce_income`) — the
-simpler alternative whose CE the glide path usually beats by only a hair (§2e) — and ships a
-`plot_glide_path()` helper. `python3 analysis/glide_path_recommender.py --demo` sweeps **each lever across all
-three spending rules** — a 3×3 matrix, holding every other input at its default — and writes
+risk aversion, bequest motive, and an arbitrary return/vol curve passed in as a variable. It first
+finds a coordinate-ascent glide, then scores both that glide and the best single constant allocation
+out of sample. It always returns the raw optimized glide as the schedule, plus the robust constant
+comparator (`flat_equity_pct` / `flat_ce_income`) so callers can recommend the flat path when it is
+materially better. It returns the per-step schedule plus out-of-sample CE income, income CV, the
+median estate, and two depletion views: full-path depletion (`depletion`), which includes
+pre-retirement market luck from today, and drawdown-only depletion (`drawdown_depletion`), which
+starts from the deterministic expected retirement balance and matches the `/retirement` headline
+semantics. It also returns the **best single constant equity weight** — the simpler alternative whose
+CE the glide path usually beats by only a hair (§2e) — and ships a `plot_glide_path()` helper.
+
+`python3 analysis/glide_path_recommender.py --demo` sweeps **each lever across all three spending
+rules** — a 3×3 matrix, holding every other input at its default — and writes
 `glide_<spending>_by_<lever>.png` (spending ∈ {`constant`, `semiflex`, `flexible`}; lever ∈
 {`pension`, `bequest`, `gamma`}) plus a `glide_by_spending.png` overview to
 [`analysis/glidepath_figures/`](../analysis/glidepath_figures/). What each lever does — and how the
@@ -295,6 +324,13 @@ the `recommend_glide.py` flag CLI:
   target. `pension_delay_years` adds a **bridge**: before the pension starts the portfolio funds the
   _full_ target income, only the gap afterward (so an age-55 retiree with CPP/OAS at 65 carries a
   10-year bridge).
+- **Minimum spending (consumption floor).** `min_spending` (real $/yr) is the subsistence income
+  used inside the CRRA objective when the portfolio can't fund the target — see the consumption-floor
+  note in §1. It chiefly matters with a **pre-pension bridge**: too low and the optimizer
+  over-derisks to chase bridge survival; raising it bounds the downside so the welfare-maximizing
+  weight rises (and varies smoothly with γ again). It never adds income or moves the depletion rate;
+  a floor at or below the guaranteed income is inert. The web app exposes it as a "Minimum Spending"
+  input (default $20k ≈ Canadian OAS+GIS); the library defaults it to 0 (old behavior).
 - **Bequest in years of spending.** `bequest_years` targets a median estate of
   `bequest_years × target_income` and back-calibrates the raw warm-glow weight to hit it. The motive
   can only _raise_ the estate (via more equity), so a target at/below what the spending plan already
@@ -303,8 +339,9 @@ the `recommend_glide.py` flag CLI:
 - **Leverage.** `max_leverage` (1.0 = none; 1.5 = up to 150% equity) lets the optimizer borrow at a
   **real** `borrow_cost` to hold w>1 in the all-equity portfolio (real return `w·eq − (w−1)·borrow`,
   vol `w·eq_vol`; a wipeout is treated as ruin). It leverages only where the risk-adjusted gain beats
-  the borrowing drag — typically early accumulation under a low γ ("lifecycle investing") — and the
-  effect is modest because the drag roughly offsets the equity premium for a CRRA agent.
+  the borrowing drag and survives the out-of-sample CE guard — typically early accumulation under a
+  low γ ("lifecycle investing"). Recommendations therefore use leverage less often than the raw
+  coordinate-ascent path when the leveraged upside comes with a fragile left tail.
 - **Single γ, by design.** Risk aversion is one value for the whole life: the _declining_ glide
   already emerges from the contribution stream + horizon (human capital), and consumption-phase γ
   pins down the accumulation glide through how wealth becomes spending. A separate accumulation γ has

@@ -20,7 +20,8 @@ import type {
   SlopeDir,
 } from "./types";
 
-const FLOOR = 1.0; // numerical floor on consumption / estate (real $); not a spending floor
+const FLOOR = 1.0; // numerical guard for the depletion test + bequest term (real $); the
+// consumption floor used in the utility/CE objective is the user's `cMin` (see SimCtx)
 const FLAT_BAND = 0.1; // |Δ equity| within this is "Flat"
 const SEED = 0x9e3779b9;
 const STATS_SEED = 0x85ebca6b;
@@ -114,6 +115,7 @@ interface SimCtx {
   invOneMinusGamma: number;
   bequestW: number;
   bequestFloor: number;
+  cMin: number; // subsistence consumption floor in the utility/CE objective (real $)
 }
 
 /**
@@ -143,6 +145,7 @@ function meanUtility(
     invOneMinusGamma,
     bequestW,
     bequestFloor,
+    cMin,
   } = ctx;
   let sum = 0;
   for (let p = 0; p < n; p++) {
@@ -165,7 +168,7 @@ function meanUtility(
       const wdr = target < afford ? target : afford;
       bal = grown - wdr * (1 + r / 2);
       let c = guarArr[t] + wdr;
-      if (c < FLOOR) c = FLOOR;
+      if (c < cMin) c = cMin;
       eu +=
         disc[t] *
         (isLog ? Math.log(c) : Math.pow(c, oneMinusGamma) * invOneMinusGamma);
@@ -188,6 +191,10 @@ interface PathStats {
   depletion: number;
   incomeCv: number;
   medianBequest: number;
+}
+
+interface DrawdownStats extends PathStats {
+  startBalance: number;
 }
 
 /** Out-of-sample outcome stats for a fixed per-year path (CE income, depletion, CV, estate). */
@@ -213,6 +220,7 @@ function computeStats(
     isLog,
     oneMinusGamma,
     invOneMinusGamma,
+    cMin,
   } = ctx;
   let discSum = 0;
   for (let t = 0; t < retireYears; t++) discSum += disc[t];
@@ -245,7 +253,7 @@ function computeStats(
       const wdr = target < afford ? target : afford;
       bal = grown - wdr * (1 + r / 2);
       let c = guarArr[t] + wdr;
-      if (c < FLOOR) c = FLOOR;
+      if (c < cMin) c = cMin;
       consEu +=
         disc[t] *
         (isLog ? Math.log(c) : Math.pow(c, oneMinusGamma) * invOneMinusGamma);
@@ -266,6 +274,95 @@ function computeStats(
     depletion: depCount / n,
     incomeCv: cvSum / n,
     medianBequest: median(finals),
+  };
+}
+
+function deterministicAccumBalance(yearIdx: Int32Array, ctx: SimCtx): number {
+  const { gridMean, accumYears, contrib, startSavings } = ctx;
+  let bal = startSavings;
+  for (let i = 0; i < accumYears; i++) {
+    const r = gridMean[yearIdx[i]];
+    const grown = bal * (1 + r);
+    bal = (grown < 0 ? 0 : grown) + contrib * (1 + r / 2);
+  }
+  return bal;
+}
+
+/**
+ * Retirement-phase stats conditional on reaching the deterministic mean-return balance
+ * at retirement. This matches the `/retirement` tool's headline success-rate semantics;
+ * `computeStats` above is the full path from today and includes accumulation market luck.
+ */
+function computeDrawdownStats(
+  yearIdx: Int32Array,
+  ctx: SimCtx,
+  Z: Float64Array,
+  n: number,
+  gamma: number,
+): DrawdownStats {
+  const {
+    gridMean,
+    gridVol,
+    accumYears,
+    retireYears,
+    disc,
+    gapArr,
+    guarArr,
+    flex,
+    wr,
+    isLog,
+    oneMinusGamma,
+    invOneMinusGamma,
+    cMin,
+  } = ctx;
+  let discSum = 0;
+  for (let t = 0; t < retireYears; t++) discSum += disc[t];
+
+  const startBalance = deterministicAccumBalance(yearIdx, ctx);
+  let consEuSum = 0;
+  let cvSum = 0;
+  let depCount = 0;
+  const finals = new Float64Array(n);
+
+  for (let p = 0; p < n; p++) {
+    let bal = startBalance;
+    let consEu = 0;
+    let sumC = 0;
+    let sumC2 = 0;
+    let depleted = false;
+    for (let t = 0; t < retireYears; t++) {
+      const i = accumYears + t;
+      const idx = yearIdx[i];
+      const r = gridMean[idx] + gridVol[idx] * Z[i * n + p];
+      let grown = bal * (1 + r);
+      if (grown < 0) grown = 0;
+      const target = (1 - flex) * gapArr[t] + flex * (wr * bal);
+      const afford = grown / (1 + r / 2);
+      const wdr = target < afford ? target : afford;
+      bal = grown - wdr * (1 + r / 2);
+      let c = guarArr[t] + wdr;
+      if (c < cMin) c = cMin;
+      consEu +=
+        disc[t] *
+        (isLog ? Math.log(c) : Math.pow(c, oneMinusGamma) * invOneMinusGamma);
+      sumC += c;
+      sumC2 += c * c;
+      if (bal <= FLOOR) depleted = true;
+    }
+    consEuSum += consEu;
+    const tMean = sumC / retireYears;
+    const tVar = sumC2 / retireYears - tMean * tMean;
+    cvSum += (tVar > 0 ? Math.sqrt(tVar) : 0) / tMean;
+    if (depleted) depCount++;
+    finals[p] = bal;
+  }
+
+  return {
+    ceIncome: ceFromUtil(consEuSum / n / discSum, gamma),
+    depletion: depCount / n,
+    incomeCv: cvSum / n,
+    medianBequest: median(finals),
+    startBalance,
   };
 }
 
@@ -422,6 +519,9 @@ export function recommendGlidePath(
     oneMinusGamma: 1 - gamma,
     invOneMinusGamma: 1 / (1 - gamma),
     bequestFloor: 10000,
+    // Subsistence consumption floor for the utility/CE objective. Clamped to the numeric FLOOR
+    // so minSpending=0 degrades to the old behavior instead of producing log(0)/division blowups.
+    cMin: Math.max(input.minSpending, FLOOR),
   };
 
   const nOpt = clampPathCount(input.numPaths, MIN_OPT_PATHS, MAX_OPT_PATHS);
@@ -507,25 +607,35 @@ export function recommendGlidePath(
   const nStats = MAX_STATS_PATHS;
   const Zf = fillNormals(STATS_SEED, nYears * nStats);
   const st = computeStats(yearIdx, ctx, Zf, nStats, gamma);
+  const drawdownSt = computeDrawdownStats(yearIdx, ctx, Zf, nStats, gamma);
 
   // ── best single constant (flat) equity weight ────────────────────────────────
   // The glide path's edge over the best *constant* allocation is typically tiny, so we
   // report that simpler alternative for the UI to quantify the gap and recommend the
-  // behaviorally-stickier flat weight. Chosen by the same in-sample utility objective,
-  // then scored on Zf for an apples-to-apples CE-income comparison with the glide path.
+  // behaviorally-stickier flat weight. Choose it by out-of-sample CE income, not the
+  // in-sample optimization matrix; tail-sensitive utility plus leverage can otherwise
+  // overfit rare bad paths and pick a fragile constant weight. The raw optimized glide
+  // is still returned and charted; the UI can recommend this flatter comparator when
+  // it is materially better.
   const flatIdx = new Int32Array(nYears);
   let bestFlatG = 0;
-  let bestFlatU = -Infinity;
-  for (let g = 0; g < G; g++) {
+  let flatStats = computeStats(flatIdx, ctx, Zf, nStats, gamma);
+  for (let g = 1; g < G; g++) {
     flatIdx.fill(g);
-    const u = meanUtility(flatIdx, ctx, Z, nOpt);
-    if (u > bestFlatU) {
-      bestFlatU = u;
+    const candidate = computeStats(flatIdx, ctx, Zf, nStats, gamma);
+    if (candidate.ceIncome > flatStats.ceIncome) {
+      flatStats = candidate;
       bestFlatG = g;
     }
   }
   flatIdx.fill(bestFlatG);
-  const flatStats = computeStats(flatIdx, ctx, Zf, nStats, gamma);
+  const flatDrawdownStats = computeDrawdownStats(
+    flatIdx,
+    ctx,
+    Zf,
+    nStats,
+    gamma,
+  );
 
   // ── schedule + shape descriptors ─────────────────────────────────────────────
   const schedule: ScheduleBlock[] = [];
@@ -563,6 +673,10 @@ export function recommendGlidePath(
     flatEquityPct: Math.round(grid[bestFlatG] * 1000) / 10,
     flatCeIncome: Math.round(flatStats.ceIncome),
     depletion: Math.round(st.depletion * 1e4) / 1e4,
+    drawdownDepletion: Math.round(drawdownSt.depletion * 1e4) / 1e4,
+    expectedRetirementBalance: Math.round(drawdownSt.startBalance),
+    flatDepletion: Math.round(flatStats.depletion * 1e4) / 1e4,
+    flatDrawdownDepletion: Math.round(flatDrawdownStats.depletion * 1e4) / 1e4,
     incomeCv: Math.round(st.incomeCv * 1e4) / 1e4,
     medianBequest: Math.round(st.medianBequest),
     medianEstateYears:

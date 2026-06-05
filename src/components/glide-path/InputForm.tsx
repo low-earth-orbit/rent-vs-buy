@@ -77,30 +77,19 @@ export default function InputForm({
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 {...num("startAge")}
-                label="Start Age"
+                label="Current Age"
                 suffix=" yrs"
               />
               <UserInputFormItem
-                {...num("retirementAge")}
-                label="Retirement Age"
-                suffix=" yrs"
-              />
-              <UserInputFormItem
-                {...num("planningAge")}
-                label="Plan Until Age"
-                labelHelperText="The age your money should last to (life expectancy). 95 is a common horizon."
-                suffix=" yrs"
-              />
-              <UserInputFormItem
-                {...num("startSavings")}
-                label="Start Savings"
+                {...num("preRetirementIncome")}
+                label="Annual Income"
+                labelHelperText="Gross income today — the base for the pension %."
                 prefix="$"
                 thousandSeparator
               />
               <UserInputFormItem
-                {...num("preRetirementIncome")}
-                label="Income"
-                labelHelperText="Gross income today — the base for the pension %."
+                {...num("startSavings")}
+                label="Current Savings"
                 prefix="$"
                 thousandSeparator
               />
@@ -110,6 +99,11 @@ export default function InputForm({
                 labelHelperText="Real $ added to the portfolio each year while working."
                 prefix="$"
                 thousandSeparator
+              />
+              <UserInputFormItem
+                {...num("retirementAge")}
+                label="Retirement Age"
+                suffix=" yrs"
               />
             </SimpleGrid>
           </Accordion.Panel>
@@ -121,14 +115,14 @@ export default function InputForm({
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 {...num("targetIncome")}
-                label="Target Income"
+                label="Target Retirement Income"
                 labelHelperText="Gross retirement income including pensions."
                 prefix="$"
                 thousandSeparator
               />
               <UserInputFormItem
                 {...num("pensionPct")}
-                label="Pension"
+                label="Pension % of Pre-Retirement Income"
                 labelHelperText="Guaranteed income (CPP + OAS + DB) as a % of your pre-retirement income."
                 suffix="%"
               />
@@ -137,6 +131,19 @@ export default function InputForm({
                 label="Pension Start Age"
                 labelHelperText="If later than retirement, your portfolio bridges the gap until it starts."
                 suffix=" yrs"
+              />
+              <UserInputFormItem
+                {...num("planningAge")}
+                label="Plan Until"
+                labelHelperText="The age your money should last to (life expectancy). 95 is a common horizon."
+                suffix=" yrs"
+              />
+              <UserInputFormItem
+                {...num("minSpending")}
+                label="Minimum Survival Spending"
+                labelHelperText="The lowest annual spending you could fall back on (government benefits, family, part-time work) if the portfolio runs dry. It sets how harshly bad outcomes are penalized — especially during a pre-pension bridge — but does NOT add income to your plan."
+                prefix="$"
+                thousandSeparator
               />
             </SimpleGrid>
           </Accordion.Panel>

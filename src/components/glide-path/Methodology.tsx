@@ -59,8 +59,12 @@ export default function Methodology() {
           point in between that maximizes your welfare given your preferences.
           Note this maximizes welfare, not success rate: where derisking
           can&apos;t close a gap (e.g. an unfunded bridge before your pension),
-          it may stay aggressive — lowering the failure rate there comes from
-          your inputs (retire later, spend less, save more), not the allocation.
+          it leans on growth rather than going conservative — lowering the
+          failure rate there comes from your inputs (retire later, spend less,
+          save more), not the allocation.
+          The result separates drawdown-only depletion from full-path shortfall:
+          the former starts from the expected retirement balance, while the
+          latter also includes pre-retirement market luck.
         </Text>
 
         <Title order={3} fz="md">
@@ -110,6 +114,19 @@ export default function Methodology() {
           more equity risk — because the pension already covers downside. Low or
           no pension means the portfolio must be more conservative to avoid
           depletion.
+        </Point>
+        <Point heading="Minimum spending sets how bad a bad year is.">
+          With a CRRA objective, a year of near-zero spending is catastrophically
+          bad — so without a floor, the rare paths where a long pre-pension bridge
+          empties the portfolio dominate the risk-adjusted score and can push the
+          recommendation to an implausibly low equity weight. Your{" "}
+          <Text span fw={600}>
+            Minimum Spending
+          </Text>{" "}
+          is the income you&apos;d fall back on in that case (government benefits,
+          family, part-time work). It only shapes how harshly bad outcomes are
+          weighed; it does not add income to your plan, and the depletion rate
+          still reflects a truly emptied portfolio.
         </Point>
 
         <Text size="xs" c="dimmed">

@@ -31,6 +31,12 @@ KEY INPUTS
                               starts at retirement. e.g. retire at 55 with CPP/OAS at 65 → 10.
                               During the bridge the portfolio funds the FULL target income; after,
                               only the remaining gap.
+  min_spending              : subsistence consumption floor (real $) used ONLY inside the CRRA
+                              utility/CE objective — the safety net (OAS/GIS, family, work) you'd
+                              fall back on if the portfolio empties. Stops the CE collapsing toward
+                              the inert $1 numerical floor when a long bridge can drive consumption
+                              to ~0; does NOT add income or change the depletion rate. 0 = old
+                              behavior. Binds only where guaranteed income is low (the bridge).
   target_income             : the household's real annual spending target in retirement (dollars).
                               "Retirement expenses" for the bequest unit below.
   annual_contribution       : real annual savings added during accumulation (dollars).
@@ -162,7 +168,7 @@ def _build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost=0.0):
 # supports a "bridge": before the pension starts the portfolio funds the full target income
 # (guar=0, gap=target_income); once it starts, the portfolio funds only the remaining gap.
 def _eu(W, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
-        contrib, start_savings, gamma, beta, bequest, bequest_floor):
+        contrib, start_savings, gamma, beta, bequest, bequest_floor, c_min):
     """Return expected discounted utility for each of G candidate equity-weight paths.
 
     W : (n_years, G) — one column per candidate path; equity weight constant within each
@@ -190,14 +196,14 @@ def _eu(W, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
         afford = grown / (1 + r / 2)
         wdr = np.minimum(target, afford)
         bal = grown - wdr * (1 + r / 2)
-        eu += disc[t] * _crra(guar_arr[t] + wdr, gamma)
+        eu += disc[t] * _crra(np.maximum(guar_arr[t] + wdr, c_min), gamma)
     if bequest > 0:
         eu += bequest * disc[-1] * _crra(bal + bequest_floor, gamma)
     return eu.mean(axis=1)
 
 
 def _stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
-           contrib, start_savings, gamma, beta, bequest, bequest_floor):
+           contrib, start_savings, gamma, beta, bequest, bequest_floor, c_min):
     """Outcome stats for one path (independent draw). CE income is CONSUMPTION-ONLY — the
     bequest motive shapes the path but is reported separately (median estate), so adding a
     bequest weight does not distort the spending CE. `gamma` here is the retirement-phase
@@ -218,7 +224,7 @@ def _stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_
         target = (1 - flex) * gap_arr[t] + flex * (wr * bal)
         wdr = np.minimum(target, grown / (1 + r / 2))
         bal = grown - wdr * (1 + r / 2)
-        C[t] = guar_arr[t] + wdr
+        C[t] = np.maximum(guar_arr[t] + wdr, c_min)
         cons_eu += disc[t] * _crra(C[t], gamma)
         depleted |= bal <= _FLOOR
     return {
@@ -226,6 +232,51 @@ def _stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_
         "depletion": float(depleted.mean()),
         "income_cv": float(np.mean(C.std(axis=0) / C.mean(axis=0))),
         "median_bequest": float(np.median(bal)),
+    }
+
+
+def _deterministic_accum_balance(weights, accum_years, alloc, *, contrib, start_savings):
+    """Mean-return balance at retirement under a fixed glide path."""
+    means, _ = alloc(weights)
+    bal = float(start_savings)
+    for i in range(accum_years):
+        r = float(means[i])
+        bal = max(bal * (1 + r), 0.0) + contrib * (1 + r / 2)
+    return bal
+
+
+def _drawdown_stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr,
+                    wr, contrib, start_savings, gamma, beta, bequest, bequest_floor, c_min):
+    """Retirement-phase stats from the deterministic expected retirement balance.
+
+    This matches the `/retirement` calculator headline semantics. `_stats` above
+    remains the full-path result from today and includes accumulation market luck.
+    """
+    means, vols = alloc(weights)
+    start_balance = _deterministic_accum_balance(
+        weights, accum_years, alloc, contrib=contrib, start_savings=start_savings
+    )
+    bal = np.full(Z.shape[1], start_balance)
+    disc = beta ** np.arange(retire_years)
+    C = np.empty((retire_years, Z.shape[1]))
+    cons_eu = np.zeros(Z.shape[1])
+    depleted = np.zeros(Z.shape[1], bool)
+    for t in range(retire_years):
+        i = accum_years + t
+        r = means[i] + vols[i] * Z[i]
+        grown = np.maximum(bal * (1 + r), 0.0)
+        target = (1 - flex) * gap_arr[t] + flex * (wr * bal)
+        wdr = np.minimum(target, grown / (1 + r / 2))
+        bal = grown - wdr * (1 + r / 2)
+        C[t] = np.maximum(guar_arr[t] + wdr, c_min)
+        cons_eu += disc[t] * _crra(C[t], gamma)
+        depleted |= bal <= _FLOOR
+    return {
+        "ce_income": _ce_from_util(cons_eu.mean() / disc.sum(), gamma),
+        "depletion": float(depleted.mean()),
+        "income_cv": float(np.mean(C.std(axis=0) / C.mean(axis=0))),
+        "median_bequest": float(np.median(bal)),
+        "start_balance": start_balance,
     }
 
 
@@ -251,6 +302,8 @@ def recommend_glide_path(
     withdrawal_rate: float = 0.04,
     pre_retirement_income: float = 100_000.0,   # base for the pension %
     pension_delay_years: int = 0,               # years into retirement before the pension starts
+    min_spending: float = 0.0,                  # subsistence consumption floor in the utility/CE
+                                                # objective (real $); 0 = inert numerical floor
     # preferences
     gamma: float = 3.0,                         # CRRA risk aversion (single value; drives the glide)
     beta: float = 0.985,
@@ -302,11 +355,15 @@ def recommend_glide_path(
     guar_arr = np.where(np.arange(retire_years) < pension_delay, 0.0, guaranteed)
     gap_arr = np.maximum(target_income - guar_arr, 0.0)
 
+    # Subsistence consumption floor for the utility/CE objective. Clamped to the numeric _FLOOR
+    # so min_spending=0 degrades to the old behavior. Only binds when guaranteed income is low
+    # enough for consumption to approach it — i.e. a pre-pension bridge; see docs.
+    c_min = max(min_spending, _FLOOR)
     # Internal short aliases passed to _eu/_stats. NOTE: gamma and bequest are passed
     # per-call (the bequest weight may be calibrated below); the rest live here.
     common = dict(flex=flexibility, gap_arr=gap_arr, guar_arr=guar_arr, wr=withdrawal_rate,
                   contrib=annual_contribution, start_savings=current_savings,
-                  beta=beta, bequest_floor=bequest_floor)
+                  beta=beta, bequest_floor=bequest_floor, c_min=c_min)
 
     # Candidate equity weights 0..max_leverage. Weights > 1 are leveraged (borrowed) positions.
     grid = np.round(np.arange(0.0, max_leverage + 1e-9, grid_step), 6)
@@ -396,16 +453,25 @@ def recommend_glide_path(
     Zf = np.random.default_rng(seed + 9999).standard_normal((n_years, max(n_paths, 40_000)))
     st = _stats(weights, Zf, accum_years, retire_years, alloc,
                 gamma=gamma, bequest=bequest_w, **common)
+    drawdown_st = _drawdown_stats(weights, Zf, accum_years, retire_years, alloc,
+                                  gamma=gamma, bequest=bequest_w, **common)
 
     # Best single CONSTANT (flat) equity weight — the simpler alternative to the glide path.
-    # Picked by the same in-sample utility objective, then scored out-of-sample on Zf for a
-    # fair CE-income comparison. The glide path's edge over it is usually tiny (see §2e of the
-    # analysis note), so the web tool leads with this when the gap is small.
-    flat_eu = _eu(np.tile(grid, (n_years, 1)), Z, accum_years, retire_years, alloc,
-                  gamma=gamma, bequest=bequest_w, **common)
-    best_flat_w = float(grid[int(np.argmax(flat_eu))])
-    flat_st = _stats(np.full(n_years, best_flat_w), Zf, accum_years, retire_years, alloc,
-                     gamma=gamma, bequest=bequest_w, **common)
+    # Choose it by out-of-sample CE income, not the in-sample optimization matrix; tail-sensitive
+    # utility plus leverage can otherwise overfit rare bad paths and pick a fragile constant
+    # weight. The raw optimized glide is still returned and charted; callers can recommend this
+    # flatter comparator when it is materially better.
+    flat_stats = []
+    for w in grid:
+        candidate = _stats(np.full(n_years, w), Zf, accum_years, retire_years, alloc,
+                           gamma=gamma, bequest=bequest_w, **common)
+        flat_stats.append(candidate)
+    best_flat_i = int(np.argmax([s["ce_income"] for s in flat_stats]))
+    best_flat_w = float(grid[best_flat_i])
+    flat_st = flat_stats[best_flat_i]
+    flat_drawdown_st = _drawdown_stats(np.full(n_years, best_flat_w), Zf, accum_years,
+                                       retire_years, alloc, gamma=gamma,
+                                       bequest=bequest_w, **common)
 
     # Shape descriptors.
     def classify(d):
@@ -456,12 +522,17 @@ def recommend_glide_path(
                                 if target_income > 0 else None),
         "bequest_target_reached": bequest_target_reached,
         "depletion": round(st["depletion"], 4),
+        "drawdown_depletion": round(drawdown_st["depletion"], 4),
+        "expected_retirement_balance": round(drawdown_st["start_balance"], 0),
+        "flat_depletion": round(flat_st["depletion"], 4),
+        "flat_drawdown_depletion": round(flat_drawdown_st["depletion"], 4),
         "income_cv": round(st["income_cv"], 4),
         "params": {
             "accum_years": accum_years, "retire_years": retire_years,
             "flexibility": flexibility, "pension_level": pension_level,
             "pre_retirement_income": pre_retirement_income, "target_income": target_income,
             "guaranteed": guaranteed, "pension_delay_years": pension_delay,
+            "min_spending": float(min_spending), "c_min": float(c_min),
             "post_pension_gap": float(target_income - guaranteed), "interval": interval,
             "gamma": gamma,
             "bequest": round(float(bequest_w), 3), "bequest_years": bequest_years,
@@ -547,7 +618,8 @@ def _fmt(rec):
     tent = rec.get("tent_age", rec.get("tent_year"))
     return (f"  before={rec['accum_dir']:<7} after={rec['retire_dir']:<7} "
             f"tent={rec['tent_pct']}%@{tent}  CE=${rec['ce_income']:,.0f} "
-            f"deplete={rec['depletion']*100:.1f}% incCV={rec['income_cv']*100:.0f}% "
+            f"drawdown={rec['drawdown_depletion']*100:.1f}% "
+            f"full={rec['depletion']*100:.1f}% incCV={rec['income_cv']*100:.0f}% "
             f"estate≈${rec['median_bequest']:,.0f}\n"
             f"  schedule: {sched}")
 
@@ -663,6 +735,11 @@ def _run_interactive():
     if pension_delay > 0:
         print(f"  → {pension_delay}-year bridge: your portfolio funds the full "
               f"${target_income:,.0f} until the pension starts.")
+    min_spending = _ask(
+        "Minimum acceptable spending if the portfolio runs dry ($/yr)\n"
+        "  (safety net — OAS/GIS, family, work; used only to value bad outcomes,\n"
+        "   it does NOT add income or change the depletion rate)",
+        20_000, float, "≈ OAS+GIS subsistence; 0 = ignore (old behavior)")
 
     # ── Spending rule ─────────────────────────────────────────────────────────
     _section("Spending rule")
@@ -726,6 +803,7 @@ def _run_interactive():
         pension_level=pension_level,
         pre_retirement_income=pre_ret_income,
         pension_delay_years=pension_delay,
+        min_spending=min_spending,
         interval=interval,
         current_savings=current_savings,
         annual_contribution=annual_contrib,
@@ -743,7 +821,7 @@ def _run_interactive():
 
     # ── Results ───────────────────────────────────────────────────────────────
     print(f"\n{'═' * 50}")
-    print(f"  RECOMMENDED GLIDE PATH")
+    print(f"  OPTIMIZED GLIDE PATH")
     print(f"{'═' * 50}")
     print(f"  Accumulation ({current_age}→{retirement_age}): {rec['accum_dir']}")
     print(f"  Retirement   ({retirement_age}→{planning_age}): {rec['retire_dir']}")
@@ -752,9 +830,15 @@ def _run_interactive():
     print()
     print(f"  Outcome stats (out-of-sample):")
     print(f"    CE income     : ${rec['ce_income']:>10,.0f} /yr  (certainty-equivalent spending)")
+    if rec["flat_ce_income"] > rec["ce_income"] * 1.05:
+        print(f"    Robust pick   : {rec['flat_equity_pct']:>9.0f} % constant equity "
+              f"(CE ${rec['flat_ce_income']:,.0f}/yr)")
     print(f"    Best constant : {rec['flat_equity_pct']:>9.0f} %   "
-          f"(CE ${rec['flat_ce_income']:,.0f}/yr — the glide's edge over a flat weight is usually tiny)")
-    print(f"    Depletion rate: {rec['depletion']*100:>8.1f} %")
+          f"(CE ${rec['flat_ce_income']:,.0f}/yr — robust flat comparator)")
+    print(f"    Drawdown dep.  : {rec['drawdown_depletion']*100:>8.1f} %  "
+          f"(from expected retirement balance ${rec['expected_retirement_balance']:,.0f})")
+    print(f"    Full-path dep. : {rec['depletion']*100:>8.1f} %  "
+          f"(includes pre-retirement markets)")
     print(f"    Income CV     : {rec['income_cv']*100:>8.1f} %  (spending variability; lower = steadier)")
     print(f"    Median estate : ${rec['median_bequest']:>10,.0f}  "
           f"(~{rec['median_estate_years']} yrs of spending)")

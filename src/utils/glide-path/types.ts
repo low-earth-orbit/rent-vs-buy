@@ -44,8 +44,16 @@ export interface GlidePathResult {
   flatEquityPct: number;
   /** CE income of holding `flatEquityPct` equity at all ages ($/yr). */
   flatCeIncome: number;
-  /** Fraction of paths whose portfolio is depleted before the planning age. */
+  /** Full-path fraction depleted before the planning age, including pre-retirement market luck. */
   depletion: number;
+  /** Drawdown-only depletion from the deterministic expected balance at retirement. */
+  drawdownDepletion: number;
+  /** Deterministic expected balance at retirement under the optimized glide path. */
+  expectedRetirementBalance: number;
+  /** Full-path depletion for the best constant allocation. */
+  flatDepletion: number;
+  /** Drawdown-only depletion for the best constant allocation. */
+  flatDrawdownDepletion: number;
   /** Mean coefficient-of-variation of retirement income (spending steadiness). */
   incomeCv: number;
   /** Median terminal estate ($, real). */

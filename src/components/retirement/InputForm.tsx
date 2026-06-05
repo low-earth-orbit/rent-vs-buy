@@ -81,7 +81,7 @@ export default function InputForm({
         variant="contained"
       >
         <Accordion.Item value="you">
-          <Accordion.Control>About you</Accordion.Control>
+          <Accordion.Control>About You</Accordion.Control>
           <Accordion.Panel>
             <Stack gap="md">
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -123,7 +123,7 @@ export default function InputForm({
         </Accordion.Item>
 
         <Accordion.Item value="goals">
-          <Accordion.Control>Retirement goals</Accordion.Control>
+          <Accordion.Control>Retirement Goals</Accordion.Control>
           <Accordion.Panel>
             <Stack gap="md">
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
@@ -272,7 +272,7 @@ export default function InputForm({
         </Accordion.Item>
 
         <Accordion.Item value="assumptions">
-          <Accordion.Control>Market assumptions</Accordion.Control>
+          <Accordion.Control>Market Assumptions</Accordion.Control>
           <Accordion.Panel>
             <Stack gap="xs" mb="xs">
               <Text size="sm" fw={600}>

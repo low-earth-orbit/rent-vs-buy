@@ -49,6 +49,10 @@ function makeResult(o: ResultOverrides = {}): GlidePathResult {
     flatEquityPct: 60,
     flatCeIncome: 49000,
     depletion: 0.05,
+    drawdownDepletion: 0.05,
+    expectedRetirementBalance: 1200000,
+    flatDepletion: 0.06,
+    flatDrawdownDepletion: 0.04,
     incomeCv: 0.2,
     medianBequest: 100000,
     medianEstateYears: 2,
@@ -89,6 +93,7 @@ describe("glide-path Result", () => {
     renderResult(
       makeResult({
         depletion: 0.3,
+        drawdownDepletion: 0.3,
         params: { pensionDelayYears: 10 },
       }),
     );
@@ -103,17 +108,94 @@ describe("glide-path Result", () => {
     expect(screen.queryByText(/running out of money/i)).toBeNull();
   });
 
-  it("flags a failing plan and suppresses the income figure when the CE is degenerate", () => {
-    // Both CEs collapsed to the floor artifact; depletion is low (5%) but the plan fails.
+  it("flags a failing plan and suppresses the income figure when depletion is high and CE is degenerate", () => {
+    // Both CEs collapsed to the floor artifact, and depletion clears the warning threshold.
     renderResult(
-      makeResult({ ceIncome: 95, flatCeIncome: 99, depletion: 0.05 }),
+      makeResult({
+        ceIncome: 95,
+        flatCeIncome: 99,
+        depletion: 0.3,
+        drawdownDepletion: 0.3,
+        flatDrawdownDepletion: 0.3,
+      }),
     );
     expect(
       screen.getByText(/No allocation reliably funds this plan/i),
     ).toBeInTheDocument();
-    // Warning fires despite sub-threshold depletion, and the income figure is hidden.
     expect(screen.getByText(/running out of money/i)).toBeInTheDocument();
-    expect(screen.getByText(/unreliable/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tail-dominated/i)).toBeInTheDocument();
+  });
+
+  it("does not show a running-out warning when depletion is low even if CE is degenerate", () => {
+    renderResult(
+      makeResult({
+        ceIncome: 95,
+        flatCeIncome: 99,
+        depletion: 0.02,
+        drawdownDepletion: 0.02,
+      }),
+    );
+    expect(
+      screen.queryByText(/No allocation reliably funds this plan/i),
+    ).toBeNull();
+    expect(screen.queryByText(/running out of money/i)).toBeNull();
+    expect(screen.getByText(/Low ruin risk/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/certainty-equivalent income score/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Tail-dominated/i)).toBeInTheDocument();
+  });
+
+  it("separates drawdown depletion from full-path accumulation shortfall", () => {
+    renderResult(
+      makeResult({
+        depletion: 0.22,
+        drawdownDepletion: 0.03,
+        expectedRetirementBalance: 1960000,
+      }),
+    );
+    expect(screen.queryByText(/running out of money/i)).toBeNull();
+    expect(
+      screen.getByText(/Pre-retirement market risk matters/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Drawdown depletion/i)).toBeInTheDocument();
+    expect(screen.getByText(/Full-path shortfall/i)).toBeInTheDocument();
+  });
+
+  it("does not recommend the constant comparator when it has worse drawdown risk", () => {
+    renderResult(
+      makeResult({
+        ceIncome: 30000,
+        flatCeIncome: 50000,
+        depletion: 0.2,
+        drawdownDepletion: 0.03,
+        flatDrawdownDepletion: 0.16,
+      }),
+    );
+    expect(screen.getByText(/Recommended glide path/i)).toBeInTheDocument();
+    expect(screen.getByText(/Lower drawdown risk/i)).toBeInTheDocument();
+    expect(screen.queryByText(/hold a constant 60% equity/i)).toBeNull();
+  });
+
+  it("does not recommend the riskier constant even when BOTH plans fail the drawdown bar", () => {
+    // Reproduces the long pre-pension bridge case: the glide's CE is tail-dominated
+    // (degenerate) and the constant's CE looks higher, but the constant depletes far more
+    // often. Both clear the failure threshold; the recommendation must still defer to the
+    // safer glide rather than steering to the fragile constant.
+    renderResult(
+      makeResult({
+        ceIncome: 2900, // degenerate (< 5% of the 60k target)
+        flatCeIncome: 5000, // above the degenerate floor, but tail-dominated
+        depletion: 0.24,
+        drawdownDepletion: 0.12,
+        flatDepletion: 0.47,
+        flatDrawdownDepletion: 0.38,
+      }),
+    );
+    expect(screen.getByText(/Recommended glide path/i)).toBeInTheDocument();
+    expect(screen.getByText(/Lower drawdown risk/i)).toBeInTheDocument();
+    expect(screen.queryByText(/hold a constant 60% equity/i)).toBeNull();
+    expect(screen.queryByText(/More robust/i)).toBeNull();
   });
 
   it("recommends the glide path without a bogus % when the best constant is degenerate", () => {
@@ -123,6 +205,9 @@ describe("glide-path Result", () => {
     );
     expect(screen.getByText(/Recommended glide path/i)).toBeInTheDocument();
     expect(screen.getByText(/Materially better/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/tail-dominated certainty-equivalent income score/i),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/vs constant/i)).toBeNull();
     expect(screen.queryByText(/20982/)).toBeNull();
   });
