@@ -447,7 +447,7 @@ export default function Result({
   const reasonText = reco.preferConstant
     ? reco.glideBad
       ? "The constant allocation is preferred because the glide path's CE income is tail-dominated."
-      : "The constant allocation is preferred because the optimized glide path is marginally better."
+      : "The constant allocation is preferred because the optimized glide path is only marginally better."
     : reco.flatBad
       ? "The glide path is preferred because the constant allocation's CE income is tail-dominated."
       : "The glide path is preferred because the constant allocation trails it by more than the simplicity threshold on every comparable outcome.";
