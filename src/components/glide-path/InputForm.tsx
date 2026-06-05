@@ -244,7 +244,7 @@ export default function InputForm({
               <UserInputFormItem
                 {...num("numPaths")}
                 label="Monte Carlo paths"
-                labelHelperText="More paths = steadier result, slower. 2000 is a good balance."
+                labelHelperText="More paths = steadier result, slower."
                 thousandSeparator
               />
               <UserInputFormItem

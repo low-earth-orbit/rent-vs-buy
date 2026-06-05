@@ -72,7 +72,7 @@ function renderResult(result: GlidePathResult | null, extra = {}) {
 describe("glide-path Result", () => {
   it("prefers the constant allocation when CE income is within 5%", () => {
     renderResult(makeResult());
-    expect(screen.getByText(/Preferred: constant 60%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
       screen.getByText(/The constant allocation is preferred/i),
     ).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe("glide-path Result", () => {
         flatDepletion: 0.25,
       }),
     );
-    expect(screen.getByText(/Preferred: constant 60%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
       screen.getByText(/The constant allocation is preferred/i),
     ).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe("glide-path Result", () => {
         flatDepletion: 0.15,
       }),
     );
-    expect(screen.getByText(/Preferred: constant 60%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
       screen.getByText(/The constant allocation is preferred/i),
     ).toBeInTheDocument();
@@ -144,7 +144,7 @@ describe("glide-path Result", () => {
         flatDepletion: 0.1,
       }),
     );
-    expect(screen.getByText(/Preferred: constant 60%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
       screen.getByText(/The constant allocation is preferred/i),
     ).toBeInTheDocument();
@@ -161,7 +161,7 @@ describe("glide-path Result", () => {
         flatDepletion: 0.16,
       }),
     );
-    expect(screen.getByText(/Preferred: glide path/i)).toBeInTheDocument();
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(screen.getByText(/trails it by more than/i)).toBeInTheDocument();
   });
 
@@ -187,7 +187,9 @@ describe("glide-path Result", () => {
     renderResult(
       makeResult({ ceIncome: 93608, flatCeIncome: 444, depletion: 0.05 }),
     );
-    expect(screen.getByText(/Preferred: glide path/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/risk-adjusted \(CE\) income is unreliable/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Tail-dominated/i)).toBeInTheDocument();
   });
 
