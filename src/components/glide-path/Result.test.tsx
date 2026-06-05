@@ -206,26 +206,40 @@ describe("glide-path Result", () => {
     expect(
       container.querySelectorAll(".tabler-icon-alert-triangle"),
     ).toHaveLength(3);
-    expect(screen.getByText(/Tail-dominated/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Tail-dominated/i)).not.toHaveLength(0);
   });
 
-  it("prefers the glide path when the constant CE score is tail-dominated", () => {
-    renderResult(
-      makeResult({ ceIncome: 93608, flatCeIncome: 444, depletion: 0.05 }),
-    );
+  it("prefers the constant when only the glide path CE is tail-dominated", () => {
+    renderResult(makeResult({ ceIncome: 95, flatCeIncome: 50000 }));
+
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/risk-adjusted \(CE\) income is unreliable/i),
+      screen.getByText(/glide path's CE income is tail-dominated/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Tail-dominated/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Comparison inconclusive/i)).toBeNull();
   });
 
-  it("explains preferring the glide path when the constant is tail-dominated", () => {
-    renderResult(
-      makeResult({ ceIncome: 93608, flatCeIncome: 444, depletion: 0.05 }),
-    );
+  it("prefers the glide path when only the constant CE is tail-dominated", () => {
+    renderResult(makeResult({ ceIncome: 50000, flatCeIncome: 444 }));
+
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/risk-adjusted \(CE\) income is unreliable/i),
+      screen.getByText(/constant allocation's CE income is tail-dominated/i),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Comparison inconclusive/i)).toBeNull();
+  });
+
+  it("shows an inconclusive comparison when both CE scores are tail-dominated", () => {
+    renderResult(makeResult({ ceIncome: 95, flatCeIncome: 444 }));
+
+    expect(screen.getByText(/Comparison inconclusive/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/cannot reliably distinguish these allocations/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Recommended allocation/i)).toBeNull();
+    expect(screen.queryByText(/Not preferred/i)).toBeNull();
+    expect(screen.getAllByText("Optimized glide path")).not.toHaveLength(0);
+    expect(screen.getAllByText("Constant 60% equity")).not.toHaveLength(0);
   });
 
   it("renders an error state when the worker fails", () => {
