@@ -36,8 +36,6 @@ export const DEFAULTS = {
   startAge: 35,
   retirementAge: 65,
   planningAge: 95,
-  /** Pre-retirement gross income — the base for the pension %. */
-  preRetirementIncome: 100000,
   startSavings: 200000,
   annualContribution: 20000,
 
@@ -45,11 +43,11 @@ export const DEFAULTS = {
   /** Target real annual spending in retirement. */
   targetIncome: 60000,
   /**
-   * Guaranteed income (CPP/OAS/DB) in retirement, as a % of pre-retirement income. Assumed to
-   * be paid every retirement year (the tool models allocation from the point income has started;
-   * a pre-pension "bridge" is out of scope — see Methodology).
+   * Guaranteed real annual income (CPP/OAS/DB) in retirement. Assumed to be paid every retirement
+   * year (the tool models allocation from the point income has started; a pre-pension "bridge" is
+   * out of scope — see Methodology).
    */
-  pensionPct: 10,
+  guaranteedIncome: 20000,
 
   // ── Spending & preferences ────────────────────────────────
   /** 0 = constant real $; 1 = fully proportional to the balance; blends between. */

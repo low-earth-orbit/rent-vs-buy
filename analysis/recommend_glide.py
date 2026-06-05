@@ -10,20 +10,17 @@ prompt mode: `python3 analysis/glide_path_recommender.py`).
 EXAMPLES
 --------
   # constant-$ spending, 30y accumulation + 30y retirement, per-age, labelled by age
-  python3 analysis/recommend_glide.py --accum 30 --retire 30 --flex 0 --pension 0.2 --start-age 35
+  python3 analysis/recommend_glide.py --accum 30 --retire 30 --flex 0 --guaranteed-income 20000 --start-age 35
 
   # semi-flexible, 5-year steps, more risk-averse, with an estate target, and save a plot
-  python3 analysis/recommend_glide.py --accum 25 --retire 35 --flex 0.5 --pension 0.3 \\
+  python3 analysis/recommend_glide.py --accum 25 --retire 35 --flex 0.5 --guaranteed-income 30000 \\
       --interval 5 --gamma 6 --bequest-years 10 --start-age 40 --plot myglide.png
-
-  # early retirement with a 10y CPP/OAS bridge (pension starts 10y into retirement)
-  python3 analysis/recommend_glide.py --accum 20 --retire 40 --pension 0.3 --pension-delay 10 --start-age 40
 
   # allow lifecycle leverage: up to 1.5x equity, borrowing at 1.5% real
   python3 analysis/recommend_glide.py --accum 30 --retire 30 --gamma 2 --max-leverage 1.5 --borrow-cost 1.5
 
   # use your own capital-market curve (CSV rows: equity_weight,mean,vol  — nominal %, deflated by --inflation)
-  python3 analysis/recommend_glide.py --curve mycurve.csv --flex 1 --pension 0.4
+  python3 analysis/recommend_glide.py --curve mycurve.csv --flex 1 --guaranteed-income 40000
 
   # the built-in showcase (3 spending rules × 3 levers + overview)
   python3 analysis/recommend_glide.py --demo
@@ -76,7 +73,7 @@ def print_rec(rec):
            if p.get("max_leverage", 1.0) > 1 else "")
     print("Optimized equity glide path")
     print(f"  {p['accum_years']}y accumulation + {p['retire_years']}y retirement | {spend} | "
-          f"pension {p['pension_level']*100:.0f}% of pre-ret income | γ {p['gamma']:g}{lev} | "
+          f"guaranteed income ${p['guaranteed_income']:,.0f}/yr | γ {p['gamma']:g}{lev} | "
           f"{p['interval']}y steps")
     print(_fmt(rec))
     if rec.get("flat_equity_pct") is not None:
@@ -107,7 +104,8 @@ def main(argv=None):
     ap.add_argument("--accum", type=int, default=30, help="accumulation years")
     ap.add_argument("--retire", type=int, default=30, help="retirement (planning-horizon) years")
     ap.add_argument("--flex", type=float, default=0.0, help="spending flexibility 0..1 (0=constant $, 1=flexible)")
-    ap.add_argument("--pension", type=float, default=0.2, help="pension as a fraction of PRE-RETIREMENT income 0..1 (paid every retirement year)")
+    ap.add_argument("--guaranteed-income", type=float, default=20_000.0,
+                    help="guaranteed retirement income ($/yr, paid every retirement year)")
     ap.add_argument("--interval", type=int, default=1, help="years per glide step (1=per-age, 5=every 5y)")
     ap.add_argument("--gamma", type=float, default=3.0, help="CRRA risk aversion (1 log, 3 base, 8 cautious)")
     ap.add_argument("--bequest", type=float, default=0.0, help="raw estate-motive weight (advanced; prefer --bequest-years)")
@@ -118,8 +116,6 @@ def main(argv=None):
     ap.add_argument("--savings", type=float, default=200_000.0, help="Start savings ($)")
     ap.add_argument("--contrib", type=float, default=20_000.0, help="annual contribution ($/yr, accumulation)")
     ap.add_argument("--target-income", type=float, default=60_000.0, help="target real retirement income ($/yr)")
-    ap.add_argument("--pre-income", type=float, default=100_000.0,
-                    help="pre-retirement gross income ($/yr); the base for --pension")
     ap.add_argument("--withdrawal-rate", type=float, default=0.04, help="rate for the flexible spending part")
     ap.add_argument("--inflation", type=float, default=2.1, help="inflation %% used to deflate the curve to real")
     # leverage
@@ -142,10 +138,9 @@ def main(argv=None):
 
     curve = load_curve(args.curve) if args.curve else PWL_CURVE
     rec = recommend_glide_path(
-        args.accum, args.retire, flexibility=args.flex, pension_level=args.pension,
+        args.accum, args.retire, flexibility=args.flex, guaranteed_income=args.guaranteed_income,
         alloc_curve=curve, interval=args.interval, gamma=args.gamma,
         bequest=args.bequest, bequest_years=args.bequest_years,
-        pre_retirement_income=args.pre_income,
         max_leverage=args.max_leverage, borrow_cost=args.borrow_cost,
         start_age=args.start_age, current_savings=args.savings, annual_contribution=args.contrib,
         target_income=args.target_income, withdrawal_rate=args.withdrawal_rate, inflation=args.inflation,

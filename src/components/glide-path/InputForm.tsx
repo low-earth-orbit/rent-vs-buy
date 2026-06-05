@@ -81,13 +81,6 @@ export default function InputForm({
                 suffix=" yrs"
               />
               <UserInputFormItem
-                {...num("preRetirementIncome")}
-                label="Annual income"
-                labelHelperText="Gross income today — the base for the pension %."
-                prefix="$"
-                thousandSeparator
-              />
-              <UserInputFormItem
                 {...num("startSavings")}
                 label="Current savings"
                 prefix="$"
@@ -122,15 +115,16 @@ export default function InputForm({
               <UserInputFormItem
                 {...num("targetIncome")}
                 label="Target retirement income"
-                labelHelperText="Gross retirement income including pensions."
+                labelHelperText="Gross retirement income including guaranteed income."
                 prefix="$"
                 thousandSeparator
               />
               <UserInputFormItem
-                {...num("pensionPct")}
-                label="Pension % of pre-retirement income"
-                labelHelperText="Guaranteed income in retirement as a % of your pre-retirement income."
-                suffix="%"
+                {...num("guaranteedIncome")}
+                label="Guaranteed income"
+                labelHelperText="Annual CPP, OAS, DB pension, and other income paid every retirement year, in today's dollars."
+                prefix="$"
+                thousandSeparator
               />
             </SimpleGrid>
           </Accordion.Panel>

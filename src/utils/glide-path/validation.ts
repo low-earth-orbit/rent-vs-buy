@@ -16,12 +16,6 @@ export const FIELD_CONSTRAINTS: Record<GlidePathInputKey, Constraint> = {
   startAge: { min: 18, max: 90, step: 1, label: "Start age" },
   retirementAge: { min: 30, max: 90, step: 1, label: "Retirement age" },
   planningAge: { min: 60, max: 110, step: 1, label: "Plan until age" },
-  preRetirementIncome: {
-    min: 1,
-    max: 100_000_000,
-    step: 10000,
-    label: "Pre-retirement income",
-  },
   startSavings: {
     min: 0,
     max: 100_000_000,
@@ -31,16 +25,21 @@ export const FIELD_CONSTRAINTS: Record<GlidePathInputKey, Constraint> = {
   annualContribution: {
     min: 0,
     max: 100_000_000,
-    step: 1000,
+    step: 10000,
     label: "Annual contribution",
   },
   targetIncome: {
     min: 1,
     max: 100_000_000,
-    step: 1000,
+    step: 10000,
     label: "Target income",
   },
-  pensionPct: { min: 0, max: 150, step: 5, label: "Pension %" },
+  guaranteedIncome: {
+    min: 10000,
+    max: 100_000_000,
+    step: 10000,
+    label: "Guaranteed income",
+  },
   flexibility: { min: 0, max: 1, step: 0.05, label: "Spending flexibility" },
   withdrawalRate: { min: 1, max: 10, step: 0.1, label: "Withdrawal rate" },
   gamma: {
@@ -57,7 +56,7 @@ export const FIELD_CONSTRAINTS: Record<GlidePathInputKey, Constraint> = {
   },
   maxEquityPct: { min: 100, max: 200, step: 5, label: "Max equity %" },
   borrowCost: { min: 0, max: 10, step: 0.25, label: "Borrow cost" },
-  interval: { min: 5, max: 10, step: 5, label: "Glide step" },
+  interval: { min: 1, max: 10, step: 5, label: "Glide step" },
   numPaths: { min: 5000, max: 30000, step: 5000, label: "Monte Carlo paths" },
   inflation: { min: 0, max: 5, step: 0.1, label: "Inflation" },
 };

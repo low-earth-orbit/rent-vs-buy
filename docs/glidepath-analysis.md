@@ -33,6 +33,11 @@ Simulation: [`analysis/glidepath_utility_mc.py`](../analysis/glidepath_utility_m
 
 4. **Both studies are right in their own world.** ACO's flat-100% is optimal _when spending is flexible (or wealth is valued)_; ERN/Kitces–Pfau's rising retirement glide is optimal _when spending is rigid_ — and the sequence-risk rationale survives iid even though ERN's CAPE-conditional SWR _boost_ cannot.
 
+5. **A CRRA allocation recommendation requires some guaranteed retirement income.** If guaranteed
+   income is zero, even a rare depleted year drives consumption to the numerical floor and makes CE
+   tail-dominated. The app can still report depletion and the two candidate paths, but it treats
+   their allocation comparison as inconclusive rather than recommending either one.
+
 ---
 
 ## 1. Method
@@ -46,7 +51,7 @@ The app's allocation curve ([`presets.ts`](../src/utils/retirement/presets.ts) `
 ### Household & phases
 
 `START_AGE=35`, `START_SAVINGS=$200k`, income `$100k`, save **20%/yr** during accumulation,
-target retirement income **60%** of income, of which a **20%** guaranteed floor (CPP/OAS/DB) is
+target retirement income **60%** of income, of which **$20k** is guaranteed income (CPP/OAS/DB)
 paid every retirement year — so the portfolio must fund a **$40k** gap. Accumulation consumption is
 allocation-invariant, so it drops out of the objective; the accumulation glide matters only through
 the **wealth distribution it hands to retirement**. Retirement is a **fixed planning horizon**
@@ -79,18 +84,39 @@ best, and cycle (alternating sweep direction) until the whole vector stops movin
 one-dimensional search exact for the drawn markets, and **no parametric shape is imposed** — so
 flat / tent / monotone shapes all compete on equal footing.
 
-**Scope — guaranteed income starts at retirement (no pre-pension bridge).** The model assumes the
-pension is paid **every** retirement year, so while the portfolio is solvent consumption never
-approaches zero and CRRA's `u(c)` stays finite (a bare `_FLOOR = $1` is a pure numerical guard that
-never binds; every §2 scenario has this property). A pre-pension **bridge** — retiring before
-CPP/OAS starts, so `guaranteed = 0` for a stretch — is deliberately **out of scope**. There a
-depleted portfolio drives consumption to ≈0, and CRRA's `u(c)→−∞` makes the certainty-equivalent
-degenerate; with γ≥2 a handful of near-zero cells hijack the score and push the optimizer to an
-implausibly low weight. There is no honest single-allocation answer without assigning the broke
-state a finite value (a consumption floor), and any floor at the pre-pension ages effectively
-**fabricates income** the household does not have. So we don't model the bridge: that
-funding-feasibility question belongs to the `/retirement` tool, and here the welfare objective stays
-clean and γ-responsive.
+### Zero-income states and the CRRA impossible trinity
+
+The model assumes guaranteed income is paid **every** retirement year. With positive guaranteed
+income, consumption remains positive after portfolio depletion and CRRA's `u(c)` stays finite. The
+bare `_FLOOR = $1` is then only a numerical guard and does not bind in the §2 scenarios.
+
+A pre-pension bridge, or a plan with **$0 guaranteed income for all of retirement**, breaks that
+assumption. Once the portfolio depletes, consumption falls to the numerical floor. Because
+`u(c)→−∞` as `c→0`, with γ≥2 even a handful of `$1` consumption-years can dominate thousands of
+otherwise successful paths. CE collapses toward the floor and the optimizer can select an
+implausible allocation merely to avoid those rare cells.
+
+We tested three approaches and found an **impossible trinity**: the model cannot simultaneously
+provide all three of the following:
+
+1. **No consumption floor or assumed fallback income.**
+2. **A γ-responsive welfare objective.**
+3. **Possible ruin while still producing one preferred allocation.**
+
+Raw all-path CRRA preserves (1) and (2), but a ruined year has effectively unbounded negative
+utility, so it cannot produce a useful comparison when (3) occurs. Assigning a finite utility value
+to a broke year restores a comparison, but that floor effectively fabricates consumption the
+household does not have. Scoring CRRA only over surviving paths avoids fabricated income, but under
+target spending every survivor consumes the target by construction. Survivor CE therefore equals
+the target for every γ; the objective collapses to γ-independent depletion minimization and, in
+testing, recommended roughly the same 120–135% leveraged allocation from γ=1 through γ=12.
+
+The chosen scope is therefore to preserve clean, all-path, γ-responsive CRRA and not model a
+pre-pension bridge. That funding-feasibility question belongs to `/retirement`. A user-entered
+**$0 guaranteed income is economically a permanent bridge** and recreates the same limitation: the
+product labels the CE values as tail-dominated and presents the allocation comparison as
+**inconclusive** rather than treating either candidate as a reliable recommendation. Depletion
+metrics remain meaningful and are still reported.
 
 Two honesty checks accompany every result:
 
@@ -285,7 +311,7 @@ retirement**; the precise curve is worth ~0.5%.
 The same model is exposed as a one-call recommender —
 [`analysis/glide_path_recommender.py`](../analysis/glide_path_recommender.py),
 `recommend_glide_path(...)` — that **optimizes** (does not look up) the equity weight per
-chosen step (`interval` = 1y, 5y, …) given your horizons, spending flexibility, pension level,
+chosen step (`interval` = 1y, 5y, …) given your horizons, spending flexibility, guaranteed income,
 risk aversion, bequest motive, and an arbitrary return/vol curve passed in as a variable. It first
 finds a coordinate-ascent glide, then scores both that glide and the best single constant allocation
 out of sample. It always returns the raw optimized glide as the schedule, plus the robust constant
@@ -300,27 +326,27 @@ CE the glide path usually beats by only a hair (§2e) — and ships a `plot_glid
 `python3 analysis/glide_path_recommender.py --demo` sweeps **each lever across all three spending
 rules** — a 3×3 matrix, holding every other input at its default — and writes
 `glide_<spending>_by_<lever>.png` (spending ∈ {`constant`, `semiflex`, `flexible`}; lever ∈
-{`pension`, `bequest`, `gamma`}) plus a `glide_by_spending.png` overview to
+{`guaranteed`, `bequest`, `gamma`}) plus a `glide_by_spending.png` overview to
 [`analysis/glidepath_figures/`](../analysis/glidepath_figures/). What each lever does — and how the
 effect itself depends on the spending rule:
 
-| Lever                 | Effect on the optimal glide (spending-dependent)                                                                                                                                                 |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Spending** (`flex`) | rigid → deep retirement tent; flexible → flat ~100% (`glide_by_spending.png`).                                                                                                                   |
-| **Pension** (floor)   | a bigger guaranteed floor lets the portfolio derisk → **deeper, lower tent**; a 0% pension makes a rigid plan "go for broke" near 100% (it can only be saved by growth). The floor is your bond. |
-| **Bequest** (motive)  | **constant-$**: lifts equity toward flat-high (upside stops being wasted → ACO). **Flexible**: ≈ no effect (already ~100%). **Semi-flex**: instead derisks mid-retirement to protect the estate. |
-| **Risk aversion** (γ) | higher γ → lower equity / deeper tent — but mostly under **flexible/semi-flex** spending; the **constant-$ shape is ~γ-invariant** (its tent is driven by the rigid floor, not by taste).        |
+| Lever                 | Effect on the optimal glide (spending-dependent)                                                                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Spending** (`flex`) | rigid → deep retirement tent; flexible → flat ~100% (`glide_by_spending.png`).                                                                                                                                                                                |
+| **Guaranteed income** | a bigger guaranteed floor lets the portfolio derisk → **deeper, lower tent**. $0 guaranteed income is a permanent zero-income bridge: CE becomes tail-dominated, so its allocation comparison is inconclusive rather than a valid "go for broke" result (§1). |
+| **Bequest** (motive)  | **constant-$**: lifts equity toward flat-high (upside stops being wasted → ACO). **Flexible**: ≈ no effect (already ~100%). **Semi-flex**: instead derisks mid-retirement to protect the estate.                                                              |
+| **Risk aversion** (γ) | higher γ → lower equity / deeper tent — but mostly under **flexible/semi-flex** spending; the **constant-$ shape is ~γ-invariant** (its tent is driven by the rigid floor, not by taste).                                                                     |
 
-The pension and bequest panels are the concrete, dial-able form of the §3a reconciliation: for
+The guaranteed-income and bequest panels are the concrete, dial-able form of the §3a reconciliation: for
 constant-$ they move the path between our "derisk" result and ACO's "flat ~100%."
 
 **Additional dials** (beyond the demo matrix), all exposed on both the interactive prompt flow and
 the `recommend_glide.py` flag CLI:
 
-- **Pension base.** `pension_level` is a fraction of **pre-retirement income**
-  (`pre_retirement_income`), matching the web app's `currentIncome` base — not of the spending
-  target. It is paid **every** retirement year (guaranteed income starts at retirement); a
-  pre-pension bridge is out of scope (see §1).
+- **Guaranteed income amount.** `guaranteed_income` is the real annual dollar amount from CPP, OAS,
+  DB pensions, and other income paid **every** retirement year. A pre-pension bridge is out of
+  scope. A zero amount recreates the same zero-income state and makes the CE allocation comparison
+  inconclusive (see §1).
 - **Bequest in years of spending.** `bequest_years` targets a median estate of
   `bequest_years × target_income` and back-calibrates the raw warm-glow weight to hit it. The motive
   can only _raise_ the estate (via more equity), so a target at/below what the spending plan already

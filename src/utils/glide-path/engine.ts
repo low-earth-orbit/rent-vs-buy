@@ -4,7 +4,7 @@
  * Optimizes the equity weight at each interval step by Monte Carlo coordinate ascent under
  * common random numbers, maximizing expected discounted CRRA utility of retirement
  * consumption. Real (today's) dollars; iid normal returns; mid-year cash flow earns a
- * half-year; a depleted portfolio absorbs at zero. Guaranteed income (pension) is paid every
+ * half-year; a depleted portfolio absorbs at zero. Guaranteed income is paid every
  * retirement year. Supports leverage (equity weight > 1, borrowing at a real cost).
  *
  * The hot path (`meanUtility`) runs on grid-index arrays with precomputed per-grid (mean, vol)
@@ -233,7 +233,7 @@ function computeStats(
       sumC += c;
       sumC2 += c * c;
       // Shortfall = the portfolio couldn't fund the targeted draw (income fell short of plan).
-      // Not "balance hit zero": a fully pension-covered year has target 0 and never shortfalls.
+      // Not "balance hit zero": a fully guaranteed-income-covered year has target 0 and no shortfall.
       if (wdr < target) shortfall = true;
     }
     consEuSum += consEu;
@@ -457,8 +457,8 @@ export function recommendGlidePath(
     input.borrowCost,
   );
 
-  // Guaranteed income (pension) is paid every retirement year; the portfolio funds the gap.
-  const guaranteed = (input.pensionPct / 100) * input.preRetirementIncome;
+  // Guaranteed income is paid every retirement year; the portfolio funds the gap.
+  const guaranteed = input.guaranteedIncome;
   const gap = Math.max(input.targetIncome - guaranteed, 0);
   const guarArr = new Float64Array(retireYears).fill(guaranteed);
   const gapArr = new Float64Array(retireYears).fill(gap);
