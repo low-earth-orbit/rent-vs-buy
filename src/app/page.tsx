@@ -46,9 +46,9 @@ const TOOLS: Tool[] = [
   },
   {
     emoji: "🛤️",
-    title: "Glide Path Recommender",
+    title: "Lifetime Allocation Optimizer",
     description:
-      "Optimal stock/bond mix — before and after retirement — to maximize lifetime welfare. FOR NERDS.",
+      "Compare an optimized equity path with the best constant allocation for your circumstances. FOR NERDS.",
     // href: "/glide-path",
   },
 ];

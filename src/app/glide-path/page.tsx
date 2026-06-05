@@ -5,17 +5,17 @@ import GlidePathApp from "@/components/glide-path/GlidePathApp";
 import Methodology from "@/components/glide-path/Methodology";
 
 export const metadata: Metadata = {
-  title: "Glide Path Recommender",
+  title: "Lifetime Allocation Optimizer",
   description:
-    "Find your optimal stock/bond mix at every age — before and after retirement — to maximize lifetime welfare, with a pension bridge, bequest target, and optional leverage.",
+    "Compare an optimized equity path with the best constant allocation for your circumstances.",
 };
 
 export default function GlidePathPage() {
   return (
     <>
       <Header
-        title="Glide Path Recommender"
-        subtitle="Find your optimal stock/bond mix at every age — before and after retirement."
+        title="Lifetime Allocation Optimizer"
+        subtitle="Compare an optimized equity path with the best constant allocation for your circumstances."
         showHomeLink
       />
       <main>

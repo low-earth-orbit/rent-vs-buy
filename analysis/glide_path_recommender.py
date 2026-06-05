@@ -680,7 +680,7 @@ def _run_demo(out_dir):
 def _run_interactive():
     """Walk the user through their inputs and print the recommended glide path."""
     print("\n╔══════════════════════════════════════════════════╗")
-    print("║   Glide-path recommender — interactive mode      ║")
+    print("║   Lifetime Allocation Optimizer — interactive    ║")
     print("╚══════════════════════════════════════════════════╝")
     print("  Press Enter to accept the default shown in (  ).")
     print("  All dollar amounts are in today's real dollars.")

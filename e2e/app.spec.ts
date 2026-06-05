@@ -9,9 +9,9 @@ test("hub landing page lists the available tools", async ({ page }) => {
 
   // The rent-vs-buy tool is linked from the hub.
   await expect(page.getByRole("link", { name: /rent vs buy/i })).toBeVisible();
-  // The glide-path recommender is linked too.
+  // The lifetime allocation optimizer is linked too.
   await expect(
-    page.getByRole("link", { name: /glide path recommender/i }),
+    page.getByRole("link", { name: /lifetime allocation optimizer/i }),
   ).toBeVisible();
 });
 

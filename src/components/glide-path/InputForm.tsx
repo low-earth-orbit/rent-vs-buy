@@ -275,7 +275,7 @@ export default function InputForm({
         disabled={Object.keys(errors).length > 0}
         mt="sm"
       >
-        Generate glide path
+        Compare allocation paths
       </Button>
     </>
   );

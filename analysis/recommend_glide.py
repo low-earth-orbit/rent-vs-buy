@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Command-line front end for the glide-path recommender.
+Command-line front end for the Lifetime Allocation Optimizer.
 
 Optimizes (by Monte Carlo, not a lookup table) the equity weight per step for YOUR inputs and
 prints the schedule + outcome stats. Flag-driven wrapper around
