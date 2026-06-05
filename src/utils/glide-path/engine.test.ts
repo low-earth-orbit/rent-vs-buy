@@ -101,7 +101,9 @@ describe("recommendGlidePath", () => {
     // The constant-$ shape is fairly γ-invariant, but the overall equity level should not
     // increase with γ — a more cautious investor never gets a more aggressive recommendation.
     const cautious = recommendGlidePath(base({ gamma: 8, maxEquityPct: 100 }));
-    const aggressive = recommendGlidePath(base({ gamma: 1, maxEquityPct: 100 }));
+    const aggressive = recommendGlidePath(
+      base({ gamma: 1, maxEquityPct: 100 }),
+    );
     const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
     expect(avg(cautious.equityByYear)).toBeLessThanOrEqual(
       avg(aggressive.equityByYear) + 1e-9,

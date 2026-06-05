@@ -61,11 +61,11 @@ export default function Methodology() {
           can close a funding gap, lowering the failure rate comes from your
           inputs (retire later, spend less, save more), not the allocation.
           Guaranteed income (your pension) is assumed to start at retirement and
-          be paid every year — modelling a pre-pension &ldquo;bridge&rdquo; is out
-          of scope (use the retirement tool for that funding question). The result
-          separates drawdown-only depletion from full-path shortfall: the former
-          starts from the expected retirement balance, while the latter also
-          includes pre-retirement market luck.
+          be paid every year — modelling a pre-pension &ldquo;bridge&rdquo; is
+          out of scope (use the retirement tool for that funding question). The
+          result separates drawdown-only depletion from full-path shortfall: the
+          former starts from the expected retirement balance, while the latter
+          also includes pre-retirement market luck.
         </Text>
 
         <Title order={3} fz="md">
