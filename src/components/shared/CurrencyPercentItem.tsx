@@ -77,7 +77,7 @@ export default function CurrencyPercentItem({
   };
 
   return (
-    <Stack gap={4}>
+    <Stack gap={0}>
       <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
         <Input.Label htmlFor={id}>
           <FieldLabel label={label} helperText={helperText} />
@@ -87,6 +87,10 @@ export default function CurrencyPercentItem({
           value={unit}
           onChange={setUnit}
           aria-label={unitAriaLabel}
+          styles={{
+            root: { height: 22, padding: 2, flexShrink: 0 },
+            label: { padding: "0 6px", lineHeight: "18px" },
+          }}
           data={[
             { label: "$", value: "$" },
             { label: "%", value: "%" },

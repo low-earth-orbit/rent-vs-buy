@@ -143,7 +143,7 @@ export default function InputForm({
                 <CurrencyPercentItem
                   id="guaranteedIncomePct"
                   label="Pension amount"
-                  helperText="Estimated CPP + OAS + workplace (DB) pension income, starting at retirement. Toggle between a dollar amount and a % of your income."
+                  helperText="Estimated annual CPP + OAS + workplace (DB) pension. Enter a dollar amount or a % of your current/pre-retirement income; it begins at the pension start age below."
                   unitAriaLabel="Guaranteed income input unit"
                   rate={input.guaranteedIncomePct}
                   percentBase={+input.currentIncome || 0}
