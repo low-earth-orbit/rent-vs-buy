@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULTS } from "./presets";
-import { recommendGlidePath } from "./engine";
+import { buildEquityGrid, recommendGlidePath } from "./engine";
 import type { GlidePathInput } from "./types";
 
 // Fast settings for tests: few paths, coarse interval.
@@ -12,6 +12,13 @@ const base = (overrides: Partial<GlidePathInput> = {}): GlidePathInput => ({
 });
 
 describe("recommendGlidePath", () => {
+  it("stays on the 5% grid without exceeding a max-equity cap", () => {
+    const grid = Array.from(buildEquityGrid(1.18));
+
+    expect(grid.at(-1)).toBe(1.15);
+    expect(Math.max(...grid)).toBe(1.15);
+  });
+
   it("returns a coherent schedule covering the full horizon", () => {
     const input = base();
     const r = recommendGlidePath(input);
@@ -116,6 +123,15 @@ describe("recommendGlidePath", () => {
     );
     expect(r.params.maxLeverage).toBeCloseTo(1.5, 6);
     expect(Math.max(...r.equityByYear)).toBeGreaterThan(1.0);
+  });
+
+  it("never exceeds a max-equity cap between grid steps", () => {
+    const r = recommendGlidePath(
+      base({ gamma: 1.5, maxEquityPct: 118, borrowCost: 0.5 }),
+    );
+
+    expect(Math.max(...r.equityByYear)).toBeLessThanOrEqual(1.15);
+    expect(r.flatEquityPct).toBeLessThanOrEqual(115);
   });
 
   it("keeps equity at/below 100% with no leverage", () => {

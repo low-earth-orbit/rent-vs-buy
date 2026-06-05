@@ -23,6 +23,32 @@ interface ChartPoint {
   phase: "accum" | "retire";
 }
 
+export function buildGlidePathChartData(
+  input: Pick<GlidePathInput, "startAge" | "planningAge">,
+  result: Pick<GlidePathResult, "equityByYear"> & {
+    params: Pick<GlidePathResult["params"], "accumYears">;
+  },
+): ChartPoint[] {
+  const retireAge = input.startAge + result.params.accumYears;
+  const data: ChartPoint[] = result.equityByYear.map((w, i) => {
+    const age = input.startAge + i;
+    return {
+      age,
+      equity: Math.round(w * 1000) / 10,
+      phase: age < retireAge ? "accum" : "retire",
+    };
+  });
+
+  // Each weight applies to the year beginning at its age. Extend the final
+  // holding period to the planning-age boundary without simulating another year.
+  const finalPoint = data.at(-1);
+  if (finalPoint && finalPoint.age < input.planningAge) {
+    data.push({ ...finalPoint, age: input.planningAge });
+  }
+
+  return data;
+}
+
 function ChartTooltip({ payload }: { payload?: { payload: ChartPoint }[] }) {
   if (!payload || payload.length === 0) return null;
   const p = payload[0].payload;
@@ -52,14 +78,7 @@ export default function GlidePathChart({
   showConstant?: boolean;
 }) {
   const retireAge = input.startAge + result.params.accumYears;
-  const data: ChartPoint[] = result.equityByYear.map((w, i) => {
-    const age = input.startAge + i;
-    return {
-      age,
-      equity: Math.round(w * 1000) / 10,
-      phase: age < retireAge ? "accum" : "retire",
-    };
-  });
+  const data = buildGlidePathChartData(input, result);
   const lastAge = data.length ? data[data.length - 1].age : retireAge;
   const levCap = result.params.maxLeverage * 100;
   const yMax = Math.max(105, Math.ceil((levCap + 5) / 10) * 10);

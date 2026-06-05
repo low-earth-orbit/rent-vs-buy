@@ -439,6 +439,17 @@ function clampPathCount(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.round(value)));
 }
 
+/** Regular search grid that never exceeds the requested cap. */
+export function buildEquityGrid(maxLeverage: number): Float64Array {
+  const fullSteps = Math.floor((maxLeverage + 1e-9) / GRID_STEP);
+  const grid = new Float64Array(fullSteps + 1);
+
+  for (let g = 0; g <= fullSteps; g++)
+    grid[g] = Math.round(g * GRID_STEP * 1e6) / 1e6;
+
+  return grid;
+}
+
 // ── public entry point ────────────────────────────────────────────────────────
 /**
  * Recommend the welfare-maximizing equity glide path for the given inputs. Pure and
@@ -463,9 +474,8 @@ export function recommendGlidePath(
   const maxLeverage = Math.max(GRID_STEP, input.maxEquityPct / 100);
 
   // Grid of candidate equity weights 0..maxLeverage (weights > 1 are leveraged).
-  const G = Math.round(maxLeverage / GRID_STEP) + 1;
-  const grid = new Float64Array(G);
-  for (let g = 0; g < G; g++) grid[g] = Math.round(g * GRID_STEP * 1e6) / 1e6;
+  const grid = buildEquityGrid(maxLeverage);
+  const G = grid.length;
   const { gridMean, gridVol } = buildGridStats(
     grid,
     curve,
