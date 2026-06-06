@@ -8,28 +8,27 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 
-from glide_path_recommender import (
+from analysis.glide_path.recommender import (
     PWL_CURVE,
     _HistoricalMarket,
     _build_market,
     recommend_glide_path,
 )
-from jst_history import (
+from analysis.shared.jst_history import (
     ReturnHistory,
     load_world_returns,
-    real_stock_bond_returns,
     real_stock_fixed_income_returns,
     sample_indices,
     sample_return_paths,
 )
-from recommend_glide import main as cli_main
+from analysis.glide_path.cli import main as cli_main
 
 
 def synthetic_history() -> ReturnHistory:
     return ReturnHistory(
         years=np.arange(2000, 2005),
         equity=np.array([0.10, -0.20, 0.30, -0.40, 0.50]),
-        bonds=np.array([0.01, 0.02, 0.03, 0.04, 0.05]),
+        fixed_income=np.array([0.01, 0.02, 0.03, 0.04, 0.05]),
         label="synthetic world",
         country_count=2,
     )
@@ -46,23 +45,23 @@ class JstHistoryTests(unittest.TestCase):
             ],
             columns=["country", "year", "eq_tr", "bond_tr", "bill_rate", "cpi"],
         )
-        country = real_stock_bond_returns(frame[frame["country"] == "A"])
+        country = real_stock_fixed_income_returns(frame[frame["country"] == "A"], "bonds")
         self.assertAlmostEqual(country.iloc[0]["equity"], 1.2 / 1.1 - 1)
-        self.assertAlmostEqual(country.iloc[0]["bonds"], 0.0)
+        self.assertAlmostEqual(country.iloc[0]["fixed_income"], 0.0)
         bills = real_stock_fixed_income_returns(frame[frame["country"] == "A"], "bills")
-        self.assertAlmostEqual(bills.iloc[0]["bonds"], 1.05 / 1.1 - 1)
+        self.assertAlmostEqual(bills.iloc[0]["fixed_income"], 1.05 / 1.1 - 1)
 
-        with patch("jst_history.load_jst_frame", return_value=frame):
+        with patch("analysis.shared.jst_history.load_jst_frame", return_value=frame):
             world = load_world_returns()
             world_bills = load_world_returns(fixed_income="bills")
         self.assertEqual(world.country_count, 2)
         self.assertEqual(world.observations, 1)
-        self.assertEqual(world.fixed_income, "bonds")
+        self.assertEqual(world.fixed_income_asset, "bonds")
         self.assertAlmostEqual(world.equity[0], ((1.2 / 1.1 - 1) + 0.10) / 2)
-        self.assertAlmostEqual(world.bonds[0], 0.0)
-        self.assertEqual(world_bills.fixed_income, "bills")
+        self.assertAlmostEqual(world.fixed_income[0], 0.0)
+        self.assertEqual(world_bills.fixed_income_asset, "bills")
         self.assertAlmostEqual(
-            world_bills.bonds[0], ((1.05 / 1.1 - 1) + 0.02) / 2
+            world_bills.fixed_income[0], ((1.05 / 1.1 - 1) + 0.02) / 2
         )
 
         with self.assertRaisesRegex(ValueError, "fixed_income"):
@@ -88,7 +87,7 @@ class JstHistoryTests(unittest.TestCase):
             history, 6, 4, mode="historical-iid", block_years=8, seed=seed
         )
         np.testing.assert_array_equal(equity, history.equity[expected])
-        np.testing.assert_array_equal(bonds, history.bonds[expected])
+        np.testing.assert_array_equal(bonds, history.fixed_income[expected])
 
     def test_historical_block_is_stationary_preserves_pairs_and_wrap(self):
         history = synthetic_history()
@@ -129,7 +128,7 @@ class JstHistoryTests(unittest.TestCase):
             history, 8, 5, mode="historical-block", block_years=block_years, seed=seed
         )
         np.testing.assert_array_equal(equity, history.equity[indices])
-        np.testing.assert_array_equal(bonds, history.bonds[indices])
+        np.testing.assert_array_equal(bonds, history.fixed_income[indices])
         self.assertTrue(np.any((indices[:-1] == history.observations - 1) & (indices[1:] == 0)))
 
     def test_historical_block_uses_configured_average_length(self):
@@ -175,7 +174,7 @@ class GlidePathMarketTests(unittest.TestCase):
 
         mean = market.mean_returns(weights)
         eq_mean = history.equity.mean()
-        bond_mean = history.bonds.mean()
+        bond_mean = history.fixed_income.mean()
         np.testing.assert_allclose(
             mean,
             [
@@ -245,7 +244,7 @@ class GlidePathMarketTests(unittest.TestCase):
         history = synthetic_history()
         for mode in ("iid-mc", "historical-iid", "historical-block"):
             with self.subTest(mode=mode), patch(
-                "glide_path_recommender._load_world_history", return_value=history
+                "analysis.glide_path.recommender._load_world_history", return_value=history
             ):
                 first = self._recommend(return_mode=mode, block_years=2)
                 second = self._recommend(return_mode=mode, block_years=2)
@@ -270,13 +269,13 @@ class GlidePathMarketTests(unittest.TestCase):
         bill_history = ReturnHistory(
             years=np.arange(2000, 2005),
             equity=np.array([0.10, -0.20, 0.30, -0.40, 0.50]),
-            bonds=np.array([0.005, 0.006, 0.007, 0.008, 0.009]),
+            fixed_income=np.array([0.005, 0.006, 0.007, 0.008, 0.009]),
             label="synthetic world (bills)",
             country_count=2,
-            fixed_income="bills",
+            fixed_income_asset="bills",
         )
         with patch(
-            "glide_path_recommender._load_world_history", return_value=bill_history
+            "analysis.glide_path.recommender._load_world_history", return_value=bill_history
         ) as loader:
             result = self._recommend(
                 return_mode="historical-iid", historical_fixed_income="bills"

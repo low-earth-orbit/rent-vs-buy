@@ -129,7 +129,7 @@ export default function Methodology() {
         <Text size="sm" c="dimmed">
           Full methodology:{" "}
           <Anchor
-            href="https://github.com/low-earth-orbit/personal-finance/blob/main/docs/glidepath-analysis.md"
+            href="https://github.com/low-earth-orbit/personal-finance/blob/main/docs/glide-path/methodology.md"
             target="_blank"
             rel="noopener noreferrer"
           >

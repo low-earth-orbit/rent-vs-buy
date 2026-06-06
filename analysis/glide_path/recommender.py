@@ -9,8 +9,8 @@ retirement. The path is found by SIMULATION (per-interval coordinate ascent unde
 market paths), not from any hard-coded table or fitted formula — so it adapts to whatever
 return mode, guaranteed income, and flexibility you feed it.
 
-It is the productized form of the analysis in `docs/glidepath-analysis.md`
-(`analysis/glidepath_utility_mc.py`): same model (real dollars, arithmetic-normal returns,
+It is the productized form of the analysis in `docs/glide-path/methodology.md`
+(`analysis/glide_path/research.py`): same model (real dollars, arithmetic-normal returns,
 mid-year cash flow, absorbing-at-zero, CRRA utility), exposed as one function.
 
 KEY INPUTS
@@ -87,12 +87,13 @@ KEY INPUTS
 
 USAGE
 -----
-  from glide_path_recommender import recommend_glide_path
+  from analysis.glide_path.recommender import PWL_CURVE, recommend_glide_path
   rec = recommend_glide_path(accum_years=30, retire_years=30, flexibility=0.0,
                              guaranteed_income=20_000, alloc_curve=PWL_CURVE, interval=1)
   print(rec["schedule"])
 
-Run this file directly for a worked demo:  python3 analysis/glide_path_recommender.py
+Run this module directly for the interactive recommender:
+  python3 -m analysis.glide_path.recommender
 Requires numpy. Historical modes also require pandas + openpyxl and auto-download JST R6.
 """
 
@@ -212,16 +213,13 @@ class _HistoricalMarket:
             "history_end_year": history.end_year,
             "history_observations": history.observations,
             "history_country_count": history.country_count,
-            "historical_fixed_income": history.fixed_income,
+            "historical_fixed_income": history.fixed_income_asset,
             "block_method": "stationary-circular" if mode == "historical-block" else None,
             "block_years": block_years if mode == "historical-block" else None,
         }
 
     def sample(self, n_years, n_paths, seed):
-        if __package__:
-            from .jst_history import sample_return_paths
-        else:
-            from jst_history import sample_return_paths
+        from ..shared.jst_history import sample_return_paths
 
         return sample_return_paths(
             self.history,
@@ -236,35 +234,34 @@ class _HistoricalMarket:
     def path_count(sample):
         return sample[0].shape[1]
 
-    def _mix(self, weights, equity, bonds):
+    def _mix(self, weights, equity, fixed_income):
         weights = np.asarray(weights, dtype=float)
         over = weights > 1.0
         if np.ndim(equity) == 0:
-            base = weights * equity + (1.0 - weights) * bonds
+            base = weights * equity + (1.0 - weights) * fixed_income
             if not np.any(over):
                 return base
             leveraged = weights * equity - (weights - 1.0) * self.borrow_real
             return np.where(over, leveraged, base)
-        base = weights[..., None] * equity + (1.0 - weights[..., None]) * bonds
+        base = weights[..., None] * equity + (1.0 - weights[..., None]) * fixed_income
         if not np.any(over):
             return base
         leveraged = weights[..., None] * equity - (weights[..., None] - 1.0) * self.borrow_real
         return np.where(over[..., None], leveraged, base)
 
     def annual_returns(self, weights, sample, year):
-        equity, bonds = sample
-        return self._mix(weights, equity[year], bonds[year])
+        equity, fixed_income = sample
+        return self._mix(weights, equity[year], fixed_income[year])
 
     def mean_returns(self, weights):
-        return self._mix(weights, self.history.equity.mean(), self.history.bonds.mean())
+        return self._mix(
+            weights, self.history.equity.mean(), self.history.fixed_income.mean()
+        )
 
 
 def _load_world_history(fixed_income="bonds"):
     """Lazy import keeps the default iid mode numpy-only."""
-    if __package__:
-        from .jst_history import load_world_returns
-    else:
-        from jst_history import load_world_returns
+    from ..shared.jst_history import load_world_returns
 
     return load_world_returns(fixed_income=fixed_income)
 
@@ -289,7 +286,7 @@ def _build_market(
         if historical_fixed_income != "bonds":
             raise ValueError("historical_fixed_income applies only to historical modes")
         return _IidMarket(_build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost))
-    if history is not None and history.fixed_income != historical_fixed_income:
+    if history is not None and history.fixed_income_asset != historical_fixed_income:
         raise ValueError("provided history does not match historical_fixed_income")
 
     scale = 100.0 if returns_in_percent else 1.0
@@ -745,7 +742,7 @@ def plot_glide_path(recs, *, start_age=None, path=None, title=None, show=False):
 
 
 # ── formatting helpers ───────────────────────────────────────────────────────-
-def _fmt(rec):
+def format_summary(rec):
     sched = " | ".join(
         f"{e.get('age_start', 'y'+str(e['year_start']))}:{e['equity_pct']:.0f}%" for e in rec["schedule"]
     )
@@ -792,7 +789,7 @@ def _section(title):
 
 
 # ── demo (sweep mode) ─────────────────────────────────────────────────────────
-def _run_demo(out_dir):
+def run_demo(out_dir):
     """Sweep key levers across three spending rules and write plots."""
     import os
     os.makedirs(out_dir, exist_ok=True)
@@ -823,7 +820,7 @@ def _run_demo(out_dir):
             for v in values:
                 rec = one(flex, **{kwarg: v})
                 group[fmt(v)] = rec
-                print(f"   {fmt(v):<13} {_fmt(rec).splitlines()[0].strip()}")
+                print(f"   {fmt(v):<13} {format_summary(rec).splitlines()[0].strip()}")
             f = plot_glide_path(
                 group, start_age=AGE,
                 path=os.path.join(out_dir, f"glide_{slug}_by_{lslug}.png"),
@@ -894,8 +891,8 @@ def _run_interactive():
     gamma = _ask("Risk aversion γ", 4.0, float, "4 = cautious base case")
 
     beta = _ask(
-        "Time-discount factor β  (0.99 = very patient saver, 0.97 = moderate)",
-        0.985, float, "0.985 = standard, 0.99 = high saver")
+        "Time-discount factor β",
+        0.97, float, "(0.99 = very patient saver, 0.97 = moderate)")
 
     print("\n  Bequest: how large an estate to leave, in YEARS of your retirement spending.")
     print("  0 = spend it all; 10 = leave ~10 years of expenses. (The plan may already")
@@ -1037,7 +1034,7 @@ if __name__ == "__main__":
                 demo_mode = arg.split("=", 1)[1]
         if demo_mode != "iid-mc":
             raise SystemExit("demo mode is iid-mc only")
-        out_dir = os.path.join(os.path.dirname(__file__), "glidepath_figures")
-        _run_demo(out_dir)
+        out_dir = os.path.join("analysis", "artifacts", "glide_path", "demo")
+        run_demo(out_dir)
     else:
         _run_interactive()

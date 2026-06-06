@@ -1,5 +1,5 @@
 /**
- * Glide-path recommender engine — TypeScript port of `analysis/glide_path_recommender.py`.
+ * Glide-path recommender engine — TypeScript port of `analysis/glide_path/recommender.py`.
  *
  * Optimizes the equity weight at each interval step by Monte Carlo coordinate ascent under
  * common random numbers, maximizing expected discounted CRRA utility of retirement

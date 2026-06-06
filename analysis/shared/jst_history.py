@@ -15,7 +15,7 @@ import urllib.request
 import numpy as np
 import pandas as pd
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), ".data")
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".data")
 DATA_FILE = os.path.join(DATA_DIR, "JSTdatasetR6.xlsx")
 DATA_URL = "https://www.macrohistory.net/app/download/9834512569/JSTdatasetR6.xlsx"
 
@@ -26,10 +26,10 @@ class ReturnHistory:
 
     years: np.ndarray
     equity: np.ndarray
-    bonds: np.ndarray
+    fixed_income: np.ndarray
     label: str
     country_count: int
-    fixed_income: str = "bonds"
+    fixed_income_asset: str = "bonds"
 
     @property
     def observations(self) -> int:
@@ -77,28 +77,25 @@ def real_stock_fixed_income_returns(
     sub["inflation"] = sub["cpi"].pct_change(fill_method=None)
     sub["equity"] = (1 + sub["eq_tr"]) / (1 + sub["inflation"]) - 1
     nominal_fixed_income = sub["bond_tr"] if fixed_income == "bonds" else sub["bill_rate"]
-    sub["bonds"] = (1 + nominal_fixed_income) / (1 + sub["inflation"]) - 1
-    return sub.dropna(subset=["inflation", "equity", "bonds"])[["year", "equity", "bonds"]]
-
-
-def real_stock_bond_returns(sub: pd.DataFrame) -> pd.DataFrame:
-    """Backward-compatible helper for paired real stock/bond returns."""
-    return real_stock_fixed_income_returns(sub, "bonds")
+    sub["fixed_income"] = (1 + nominal_fixed_income) / (1 + sub["inflation"]) - 1
+    return sub.dropna(subset=["inflation", "equity", "fixed_income"])[
+        ["year", "equity", "fixed_income"]
+    ]
 
 
 def _as_history(
     frame: pd.DataFrame, label: str, country_count: int, fixed_income: str
 ) -> ReturnHistory:
-    frame = frame.sort_values("year").dropna(subset=["equity", "bonds"])
+    frame = frame.sort_values("year").dropna(subset=["equity", "fixed_income"])
     if frame.empty:
         raise ValueError(f"no paired stock/{fixed_income} returns available for {label}")
     return ReturnHistory(
         years=frame["year"].to_numpy(dtype=int),
         equity=frame["equity"].to_numpy(dtype=float),
-        bonds=frame["bonds"].to_numpy(dtype=float),
+        fixed_income=frame["fixed_income"].to_numpy(dtype=float),
         label=label,
         country_count=country_count,
-        fixed_income=fixed_income,
+        fixed_income_asset=fixed_income,
     )
 
 
@@ -130,7 +127,7 @@ def load_world_returns(
         raise ValueError(f"no paired stock/{fixed_income} returns available in JST dataset")
 
     panel = pd.concat(country_frames, ignore_index=True)
-    world = panel.groupby("year", as_index=False)[["equity", "bonds"]].mean()
+    world = panel.groupby("year", as_index=False)[["equity", "fixed_income"]].mean()
     label = "JST R6 equal-weight world"
     if fixed_income != "bonds":
         label += f" ({fixed_income})"
@@ -197,4 +194,4 @@ def sample_return_paths(
         block_years=block_years,
         seed=seed,
     )
-    return history.equity[indices], history.bonds[indices]
+    return history.equity[indices], history.fixed_income[indices]

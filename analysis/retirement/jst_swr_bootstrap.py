@@ -36,7 +36,7 @@ KEY FINDINGS (default run, 60/40, 90% success)
 
 USAGE
 -----
-  python3 analysis/jst_swr_bootstrap.py
+  python3 -m analysis.retirement.jst_swr_bootstrap
 Tweak the CONFIG block below (allocation, method, block length, re-centering, horizons).
 Requires: pandas, numpy, openpyxl  (pip install pandas numpy openpyxl)
 """
@@ -45,10 +45,7 @@ from __future__ import annotations
 
 import numpy as np
 
-if __package__:
-    from .jst_history import load_country_returns, load_world_returns
-else:
-    from jst_history import load_country_returns, load_world_returns
+from ..shared.jst_history import load_country_returns, load_world_returns
 
 # ───────────────────────── CONFIG ─────────────────────────
 EQUITY_WEIGHT = 0.60          # 60/40; bond weight = 1 − this
@@ -69,7 +66,7 @@ RNG = np.random.default_rng(SEED)
 
 def portfolio_returns(history, eq_w: float) -> np.ndarray:
     """Real annual return of an `eq_w`/(1-eq_w) stock/bond mix."""
-    return eq_w * history.equity + (1 - eq_w) * history.bonds
+    return eq_w * history.equity + (1 - eq_w) * history.fixed_income
 
 
 def maybe_recenter(arr: np.ndarray) -> np.ndarray:

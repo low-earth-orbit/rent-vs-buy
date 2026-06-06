@@ -1,7 +1,7 @@
 /**
  * Defaults and the capital-market curve for the glide-path recommender.
  *
- * Ported from `analysis/glide_path_recommender.py`. The engine optimizes the equity
+ * Ported from `analysis/glide_path/recommender.py`. The engine optimizes the equity
  * weight at each step by Monte Carlo; these are the editable inputs and the default
  * return/vol curve (the app's PWL / FP-Canada allocation table from presets.ts).
  */
@@ -54,10 +54,10 @@ export const DEFAULTS = {
   flexibility: 0,
   /** When spending flexibly, the % of the live balance drawn each year. */
   withdrawalRate: 3.5,
-  /** CRRA risk aversion (1 = log, 3 = base, 8 = very cautious). */
-  gamma: 3,
+  /** CRRA risk aversion */
+  gamma: 4,
   /** Annual time-discount factor. */
-  beta: 0.985,
+  beta: 0.97,
 
   // ── Leverage ──────────────────────────────────────────────
   /** Max equity weight as a % (100 = no leverage; 150 = up to 1.5×). */
@@ -78,7 +78,7 @@ export const DEFAULTS = {
 export const GRID_STEP = 0.05;
 
 /** Risk-aversion presets surfaced as quick buttons. */
-export const GAMMA_PRESETS = [1, 2, 3, 5, 8] as const;
+export const GAMMA_PRESETS = [1, 2, 3, 4, 5, 8] as const;
 
 /** Spending-flexibility presets (fraction). */
 export const FLEX_PRESETS = [

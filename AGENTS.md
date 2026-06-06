@@ -79,7 +79,7 @@ A hub landing page at `/` links to each tool, and every tool lives at its own ro
   backtesting via paired-year iid sampling and stationary circular block bootstrap. The block
   length setting is an average, not a fixed length. Historical modes use long government bonds by
   default and can substitute short-term government bills. Shared JST loading and bootstrap helpers
-  live in `analysis/jst_history.py`; downloaded data stays under
+  live in `analysis/shared/jst_history.py`; downloaded data stays under
   `analysis/.data/`.
 
 When adding a new tool: add its route under `src/app/<tool>/`, put tool-specific components in `src/components/<tool>/`, and reuse shared chrome/primitives from `src/components/shared/` and shared logic from `src/utils/`. Cross-folder imports use the `@/` alias (`@/* → ./src/*`).
@@ -184,7 +184,7 @@ Note: `maintPct` and `propertyTaxRate` are user-known starting levels and intent
 
 ### Investment returns
 
-Drawn as **lognormal** to preserve the arithmetic mean: `logMean = log(1 + μ) − σ²/2`, then `R = exp(logMean + σ·Z) − 1` with an **iid** standard-normal shock `Z` each year (no serial correlation). This avoids the volatility-drag bias of naive normal sampling. A previous version applied a mean-reverting AR(1) to `Z` to curb long-horizon fan-out, but it was removed: empirically real returns have at least as much multi-year dispersion as iid, so iid is the honest default (matching the `/retirement` engine — see `docs/retirement-swr-methodology.md`). Long-run-mean uncertainty (`investmentReturnSigma`, drawn once per sim) remains the dominant source of long-horizon spread; per-year noise is iid around that drawn mean.
+Drawn as **lognormal** to preserve the arithmetic mean: `logMean = log(1 + μ) − σ²/2`, then `R = exp(logMean + σ·Z) − 1` with an **iid** standard-normal shock `Z` each year (no serial correlation). This avoids the volatility-drag bias of naive normal sampling. A previous version applied a mean-reverting AR(1) to `Z` to curb long-horizon fan-out, but it was removed: empirically real returns have at least as much multi-year dispersion as iid, so iid is the honest default (matching the `/retirement` engine — see `docs/retirement/swr-methodology.md`). Long-run-mean uncertainty (`investmentReturnSigma`, drawn once per sim) remains the dominant source of long-horizon spread; per-year noise is iid around that drawn mean.
 
 ### Mortgage renewals
 

@@ -174,7 +174,7 @@ export default function InputForm({
               <Stack gap={4}>
                 <FieldHeader
                   label="Risk aversion (γ)"
-                  description="How well you tolerate market volatility — pick the investor that sounds like you. 1 = very aggressive, 3 = balanced, 5 = conservative, 8 = very cautious."
+                  description="How well you tolerate market volatility — pick the investor that sounds like you. 1 to 2 =  aggressive, 3 to 5 = moderate, 6 to 10 = conservative."
                 />
                 <Group gap="xs" mt="xs" role="group" aria-label="Risk aversion">
                   {GAMMA_PRESETS.map((g) => (
@@ -217,7 +217,7 @@ export default function InputForm({
               <UserInputFormItem
                 {...num("beta")}
                 label="Time preference (β)"
-                description="How much the optimizer discounts later retirement years. Pick the planner that sounds like you: 1.0 = very patient (every year counts equally), 0.98 = balanced, 0.95 = present-biased."
+                description="How much the optimizer discounts later retirement years. Pick the planner that sounds like you: 1.0 = very patient (every year counts equally), 0.97 = balanced, 0.95 = present-biased."
                 step={0.005}
               />
             </Stack>
@@ -250,12 +250,6 @@ export default function InputForm({
           <Accordion.Control>Simulation</Accordion.Control>
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <UserInputFormItem
-                {...num("interval")}
-                label="Glide step"
-                labelHelperText="How often the allocation may change. Smaller steps produce a finer path but take longer."
-                suffix=" yrs"
-              />
               <UserInputFormItem
                 {...num("numPaths")}
                 label="Monte Carlo paths"

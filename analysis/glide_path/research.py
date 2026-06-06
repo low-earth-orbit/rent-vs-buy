@@ -58,11 +58,11 @@ MODEL (real, today's dollars)
 
 OUTPUTS
 -------
-  analysis/glidepath_figures/*.png   (referenced by docs/glidepath-analysis.md)
+  analysis/artifacts/glide_path/research/*.png
   console: per-age optimal glide tables (retirement-horizon sweep & accumulation-horizon
   sweep) for each spending rule, plus a risk-aversion sweep and the SWR sanity anchor.
 
-USAGE:  python3 analysis/glidepath_utility_mc.py     (requires numpy, matplotlib)
+USAGE:  python3 -m analysis.glide_path.research     (requires numpy, matplotlib)
 """
 
 from __future__ import annotations
@@ -120,7 +120,7 @@ GRID_STEP = 0.1                   # equity-weight resolution of the per-age sear
 FLAT_BAND = 0.10                  # |Δ equity| <= this over a phase => "Flat"
 SEED = 20260602
 
-OUT_DIR = os.path.join(os.path.dirname(__file__), "glidepath_figures")
+OUT_DIR = os.path.join("analysis", "artifacts", "glide_path", "research")
 # ───────────────────────────────────────────────────────────────────
 
 _W = np.array([a[0] for a in ALLOC_ANCHORS])[::-1]
