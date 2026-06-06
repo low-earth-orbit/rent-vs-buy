@@ -123,7 +123,7 @@ export default function GlidePathChart({
   /** Hide the constant-equity reference line when that constant is itself degenerate. */
   showConstant?: boolean;
 }) {
-  const [view, setView] = useState<ChartView>("stepped");
+  const [view, setView] = useState<ChartView>("smoothed");
   const retireAge = input.startAge + result.params.accumYears;
   // Window scales with the step size so it bridges adjacent blocks without erasing the macro shape.
   const smoothWindow = Math.min(
