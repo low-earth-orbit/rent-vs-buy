@@ -6,6 +6,7 @@ import {
   localStorageColorSchemeManager,
 } from "@mantine/core";
 import type { ReactNode } from "react";
+import DisclaimerGate from "@/components/shared/DisclaimerGate";
 
 const theme = createTheme({
   primaryColor: "teal",
@@ -25,6 +26,7 @@ export default function Providers({ children }: { children: ReactNode }) {
       colorSchemeManager={colorSchemeManager}
     >
       {children}
+      <DisclaimerGate />
     </MantineProvider>
   );
 }

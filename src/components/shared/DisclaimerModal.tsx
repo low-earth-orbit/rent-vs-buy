@@ -35,8 +35,14 @@ const DisclaimerModal = ({ opened, onAccept }: DisclaimerModalProps) => {
               Before you start
             </Modal.Title>
             <Text size="sm">
-              Not financial advice. Results are estimates from your assumptions,
-              not predictions. Canada-specific and provided as-is.
+              Hi! This is a hobby project from a personal finance and FIRE
+              enthusiast — a small collection of free, Canada-focused
+              calculators built to make these numbers easier to explore.
+            </Text>
+            <Text size="sm">
+              It&apos;s not financial advice. Results are estimates based on the
+              assumptions you enter, not predictions, and provided as-is. For
+              big decisions, do your own research or talk to a professional.
             </Text>
             <Group justify="flex-end" mt="xs">
               <Button variant="default" onClick={handleLeave}>
