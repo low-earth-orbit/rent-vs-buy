@@ -174,7 +174,7 @@ export default function InputForm({
               <Stack gap={4}>
                 <FieldHeader
                   label="Risk aversion (γ)"
-                  description="Your tolerance for swings in retirement spending. 1 = aggressive; 3 = moderate; 8 = very cautious."
+                  description="How well you tolerate market volatility — pick the investor that sounds like you. 1 = very aggressive, 3 = balanced, 5 = conservative, 8 = very cautious."
                 />
                 <Group gap="xs" mt="xs" role="group" aria-label="Risk aversion">
                   {GAMMA_PRESETS.map((g) => (
@@ -217,7 +217,7 @@ export default function InputForm({
               <UserInputFormItem
                 {...num("beta")}
                 label="Time preference (β)"
-                description="How much to prioritize earlier retirement spending. 1.00 = even; lower values favor earlier years."
+                description="How much the optimizer discounts later retirement years. Pick the planner that sounds like you: 1.0 = very patient (every year counts equally), 0.98 = balanced, 0.95 = present-biased."
                 step={0.005}
               />
             </Stack>
