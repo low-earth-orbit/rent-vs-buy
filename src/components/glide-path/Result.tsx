@@ -48,8 +48,11 @@ interface ResultProps {
   onReroll?: () => void;
 }
 
-const SIMPLICITY_THRESHOLD_PCT = 5;
-const RISK_HIGHLIGHT_THRESHOLD = 0.1;
+const SIMPLICITY_CE_THRESHOLD = 0.02;
+const SIMPLICITY_DRAWDOWN_THRESHOLD = 0.01;
+const SIMPLICITY_FULLPATH_THRESHOLD = 0.01;
+const DRAWDOWN_RISK_HIGHLIGHT_THRESHOLD = 0.1;
+const FULLPATH_RISK_HIGHLIGHT_THRESHOLD = 0.2;
 
 const METRIC_HELP = {
   ce: "Certainty-equivalent income — the steady, guaranteed yearly income that would feel as good as this uncertain plan once the bad years are penalised. It sits below the simple average because shortfalls hurt more than surpluses help.",
@@ -99,19 +102,15 @@ function pickRecommendation(
   }
 
   const ceWithin =
-    result.flatCeIncome >=
-    result.ceIncome * (1 - SIMPLICITY_THRESHOLD_PCT / 100);
+    result.flatCeIncome >= result.ceIncome * (1 - SIMPLICITY_CE_THRESHOLD);
   const drawdownWithin =
     result.flatDrawdownDepletion <=
-    result.drawdownDepletion + SIMPLICITY_THRESHOLD_PCT / 100;
+    result.drawdownDepletion + SIMPLICITY_DRAWDOWN_THRESHOLD;
   const fullPathWithin =
-    result.flatDepletion <= result.depletion + SIMPLICITY_THRESHOLD_PCT / 100;
-  const constantWinsAll =
-    result.flatCeIncome >= result.ceIncome &&
-    result.flatDrawdownDepletion <= result.drawdownDepletion &&
-    result.flatDepletion <= result.depletion;
+    result.flatDepletion <= result.depletion + SIMPLICITY_FULLPATH_THRESHOLD;
+  const constantWinsCe = result.flatCeIncome > result.ceIncome;
   const preferConstant =
-    constantWinsAll || ceWithin || drawdownWithin || fullPathWithin;
+    constantWinsCe || (ceWithin && drawdownWithin && fullPathWithin);
 
   return { preferConstant, inconclusive: false, glideBad, flatBad };
 }
@@ -291,8 +290,8 @@ function OutcomeMetrics({
     : `${formatCAD(stats.ceIncome)}/yr`;
   const drawValue = `${(stats.drawdownDepletion * 100).toFixed(1)}%`;
   const fullValue = `${(stats.fullPathShortfall * 100).toFixed(1)}%`;
-  const drawFlag = stats.drawdownDepletion >= RISK_HIGHLIGHT_THRESHOLD;
-  const fullFlag = stats.fullPathShortfall >= RISK_HIGHLIGHT_THRESHOLD;
+  const drawFlag = stats.drawdownDepletion >= DRAWDOWN_RISK_HIGHLIGHT_THRESHOLD;
+  const fullFlag = stats.fullPathShortfall >= FULLPATH_RISK_HIGHLIGHT_THRESHOLD;
 
   if (compact) {
     return (
