@@ -7,11 +7,11 @@ const Footer = () => {
     <Container component="footer" size="xl" pt="xl" pb="xl">
       <Stack gap="sm">
         <Text size="sm" c="dimmed">
-          Disclaimer: The information provided on this page is as-is & not
-          financial advice.
+          Not financial advice — general educational information, provided
+          as-is.
         </Text>
         <Text size="sm" c="dimmed">
-          Copyright © 2023–{currentYear} Leo Hong ·{" "}
+          © 2023–{currentYear} Leo Hong · Source on{" "}
           <Anchor
             href="https://github.com/low-earth-orbit/personal-finance"
             target="_blank"
