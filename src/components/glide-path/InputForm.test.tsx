@@ -27,13 +27,17 @@ describe("glide-path InputForm guidance", () => {
     renderForm();
 
     expect(
-      screen.getByText(/how much retirement spending responds to markets/i),
+      screen.getByText(/How well you tolerate market volatility/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/percentage of the current portfolio drawn each year/i),
+      screen.getByText(
+        /The percentage of the current portfolio drawn each year/i,
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/how much to prioritize earlier retirement spending/i),
+      screen.getByText(
+        /How much the optimizer discounts later retirement years./i,
+      ),
     ).toBeInTheDocument();
   });
 
