@@ -147,6 +147,7 @@ export default function InputForm({
                   <Slider
                     value={flex}
                     onChange={(v) => onChange("flexibility", v)}
+                    thumbLabel="Spending flexibility"
                     min={0}
                     max={1}
                     step={0.05}

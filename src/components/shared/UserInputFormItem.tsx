@@ -36,6 +36,8 @@ interface UserInputFormItemProps {
   error?: string;
   prefix?: string;
   suffix?: string;
+  /** Accessible name, for fields whose visible heading sits outside the input. */
+  "aria-label"?: string;
   percentToggle?: PercentToggleOptions;
 }
 

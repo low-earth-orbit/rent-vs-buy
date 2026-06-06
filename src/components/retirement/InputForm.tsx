@@ -243,6 +243,7 @@ export default function InputForm({
                 <UserInputFormItem
                   {...num("spendingFlexibilityPct")}
                   label={undefined}
+                  aria-label="Max spending cut"
                   suffix="%"
                 />
                 {input.spendingFlexibilityPct > 20 && (

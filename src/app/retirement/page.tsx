@@ -20,8 +20,8 @@ export default function RetirementPage() {
       />
       <main>
         <RetirementApp />
+        <Assumptions />
       </main>
-      <Assumptions />
       <Footer />
     </>
   );
