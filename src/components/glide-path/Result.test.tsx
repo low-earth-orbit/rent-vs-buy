@@ -125,15 +125,15 @@ describe("glide-path Result", () => {
     ).toHaveLength(0);
   });
 
-  it("prefers the constant when drawdown depletion is within five points", () => {
+  it("prefers the constant when drawdown depletion is within 1 point", () => {
     renderResult(
       makeResult({
         ceIncome: 60000,
-        flatCeIncome: 50000,
+        flatCeIncome: 59000,
         drawdownDepletion: 0.05,
-        flatDrawdownDepletion: 0.1,
+        flatDrawdownDepletion: 0.06,
         depletion: 0.1,
-        flatDepletion: 0.25,
+        flatDepletion: 0.1,
       }),
     );
     expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
@@ -142,15 +142,15 @@ describe("glide-path Result", () => {
     ).toBeInTheDocument();
   });
 
-  it("prefers the constant when full-path shortfall is within five points", () => {
+  it("prefers the constant when full-path shortfall is within 2 points", () => {
     renderResult(
       makeResult({
         ceIncome: 60000,
-        flatCeIncome: 50000,
+        flatCeIncome: 59000,
         drawdownDepletion: 0.05,
-        flatDrawdownDepletion: 0.2,
+        flatDrawdownDepletion: 0.05,
         depletion: 0.1,
-        flatDepletion: 0.15,
+        flatDepletion: 0.12,
       }),
     );
     expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
