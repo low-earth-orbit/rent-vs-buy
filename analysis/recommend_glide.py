@@ -26,6 +26,9 @@ EXAMPLES
   # raw equal-weight world history, preserving sequencing in stationary circular blocks
   python3 analysis/recommend_glide.py --mode historical-block --block-years 10 --interval 5
 
+  # replace long government bonds with short-term government bills
+  python3 analysis/recommend_glide.py --mode historical-block --historical-fixed-income bills
+
   # the built-in showcase (3 spending rules × 3 levers + overview)
   python3 analysis/recommend_glide.py --demo
 
@@ -88,7 +91,8 @@ def print_rec(rec):
         )
         print(f"  history: {p['history_source']} {p['history_start_year']}-{p['history_end_year']} | "
               f"{p['history_observations']} annual observations | "
-              f"{p['history_country_count']} countries{block}")
+              f"{p['history_country_count']} countries | fixed income: "
+              f"{p['historical_fixed_income']}{block}")
     print(_fmt(rec))
     if rec.get("flat_equity_pct") is not None:
         edge = rec["ce_income"] - rec["flat_ce_income"]
@@ -137,6 +141,8 @@ def main(argv=None):
                     default="iid-mc", help="return path generation mode")
     ap.add_argument("--block-years", type=int, default=10,
                     help="average stationary circular-block length for --mode historical-block")
+    ap.add_argument("--historical-fixed-income", choices=("bonds", "bills"), default="bonds",
+                    help="fixed-income asset used by historical modes")
     # leverage
     ap.add_argument("--max-leverage", type=float, default=1.0,
                     help="cap on equity weight (1.0=none, 1.5=up to 150%% via borrowing)")
@@ -153,6 +159,8 @@ def main(argv=None):
         ap.error("--block-years must be >= 1")
     if args.curve and args.mode != "iid-mc":
         ap.error("--curve is only supported with --mode iid-mc; historical modes use raw JST returns")
+    if args.historical_fixed_income != "bonds" and args.mode == "iid-mc":
+        ap.error("--historical-fixed-income applies only to historical modes")
     if args.demo:
         if args.mode != "iid-mc":
             ap.error("--demo is iid-mc only")
@@ -170,6 +178,7 @@ def main(argv=None):
         start_age=args.start_age, current_savings=args.savings, annual_contribution=args.contrib,
         target_income=args.target_income, withdrawal_rate=args.withdrawal_rate, inflation=args.inflation,
         return_mode=args.mode, block_years=args.block_years,
+        historical_fixed_income=args.historical_fixed_income,
     )
     print_rec(rec)
     if args.plot or args.show:

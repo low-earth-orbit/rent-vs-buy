@@ -18,6 +18,7 @@ from jst_history import (
     ReturnHistory,
     load_world_returns,
     real_stock_bond_returns,
+    real_stock_fixed_income_returns,
     sample_indices,
     sample_return_paths,
 )
@@ -38,23 +39,34 @@ class JstHistoryTests(unittest.TestCase):
     def test_real_returns_and_world_aggregation(self):
         frame = pd.DataFrame(
             [
-                ("A", 2000, None, None, 100.0),
-                ("A", 2001, 0.20, 0.10, 110.0),
-                ("B", 2000, None, None, 100.0),
-                ("B", 2001, 0.10, 0.00, 100.0),
+                ("A", 2000, None, None, None, 100.0),
+                ("A", 2001, 0.20, 0.10, 0.05, 110.0),
+                ("B", 2000, None, None, None, 100.0),
+                ("B", 2001, 0.10, 0.00, 0.02, 100.0),
             ],
-            columns=["country", "year", "eq_tr", "bond_tr", "cpi"],
+            columns=["country", "year", "eq_tr", "bond_tr", "bill_rate", "cpi"],
         )
         country = real_stock_bond_returns(frame[frame["country"] == "A"])
         self.assertAlmostEqual(country.iloc[0]["equity"], 1.2 / 1.1 - 1)
         self.assertAlmostEqual(country.iloc[0]["bonds"], 0.0)
+        bills = real_stock_fixed_income_returns(frame[frame["country"] == "A"], "bills")
+        self.assertAlmostEqual(bills.iloc[0]["bonds"], 1.05 / 1.1 - 1)
 
         with patch("jst_history.load_jst_frame", return_value=frame):
             world = load_world_returns()
+            world_bills = load_world_returns(fixed_income="bills")
         self.assertEqual(world.country_count, 2)
         self.assertEqual(world.observations, 1)
+        self.assertEqual(world.fixed_income, "bonds")
         self.assertAlmostEqual(world.equity[0], ((1.2 / 1.1 - 1) + 0.10) / 2)
         self.assertAlmostEqual(world.bonds[0], 0.0)
+        self.assertEqual(world_bills.fixed_income, "bills")
+        self.assertAlmostEqual(
+            world_bills.bonds[0], ((1.05 / 1.1 - 1) + 0.02) / 2
+        )
+
+        with self.assertRaisesRegex(ValueError, "fixed_income"):
+            real_stock_fixed_income_returns(frame, "cash")
 
     def test_historical_iid_preserves_pairs(self):
         history = synthetic_history()
@@ -188,8 +200,41 @@ class GlidePathMarketTests(unittest.TestCase):
         self.assertEqual(market.metadata["history_start_year"], 2000)
         self.assertEqual(market.metadata["history_end_year"], 2004)
         self.assertEqual(market.metadata["history_observations"], 5)
+        self.assertEqual(market.metadata["historical_fixed_income"], "bonds")
         self.assertEqual(market.metadata["block_method"], "stationary-circular")
         self.assertEqual(market.metadata["block_years"], 3)
+
+        with self.assertRaisesRegex(ValueError, "historical_fixed_income"):
+            _build_market(
+                "historical-iid",
+                PWL_CURVE,
+                2.1,
+                True,
+                2.0,
+                3,
+                historical_fixed_income="cash",
+            )
+        with self.assertRaisesRegex(ValueError, "only to historical modes"):
+            _build_market(
+                "iid-mc",
+                PWL_CURVE,
+                2.1,
+                True,
+                2.0,
+                3,
+                historical_fixed_income="bills",
+            )
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            _build_market(
+                "historical-iid",
+                PWL_CURVE,
+                2.1,
+                True,
+                2.0,
+                3,
+                history,
+                historical_fixed_income="bills",
+            )
 
     def test_default_and_explicit_iid_are_identical(self):
         implicit = self._recommend()
@@ -214,6 +259,30 @@ class GlidePathMarketTests(unittest.TestCase):
         with redirect_stderr(stderr), self.assertRaises(SystemExit):
             cli_main(["--mode", "historical-iid", "--curve", "curve.csv"])
         self.assertIn("--curve is only supported", stderr.getvalue())
+
+    def test_cli_rejects_historical_fixed_income_for_iid(self):
+        stderr = io.StringIO()
+        with redirect_stderr(stderr), self.assertRaises(SystemExit):
+            cli_main(["--historical-fixed-income", "bills"])
+        self.assertIn("applies only to historical modes", stderr.getvalue())
+
+    def test_historical_bills_selects_bill_history(self):
+        bill_history = ReturnHistory(
+            years=np.arange(2000, 2005),
+            equity=np.array([0.10, -0.20, 0.30, -0.40, 0.50]),
+            bonds=np.array([0.005, 0.006, 0.007, 0.008, 0.009]),
+            label="synthetic world (bills)",
+            country_count=2,
+            fixed_income="bills",
+        )
+        with patch(
+            "glide_path_recommender._load_world_history", return_value=bill_history
+        ) as loader:
+            result = self._recommend(
+                return_mode="historical-iid", historical_fixed_income="bills"
+            )
+        loader.assert_called_once_with("bills")
+        self.assertEqual(result["params"]["historical_fixed_income"], "bills")
 
     @staticmethod
     def _recommend(**overrides):

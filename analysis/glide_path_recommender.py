@@ -39,11 +39,14 @@ KEY INPUTS
                               Used only by `iid-mc`.
   returns_in_percent        : if True (default), `alloc_curve` means/vols are in % per year.
   return_mode               : "iid-mc" (default forward-CMA normal Monte Carlo),
-                              "historical-iid" (paired world stock/bond years sampled with
-                              replacement), or "historical-block" (paired world stock/bond
-                              years sampled with a stationary circular block bootstrap).
+                              "historical-iid" (paired world stock/fixed-income years sampled
+                              with replacement), or "historical-block" (paired world
+                              stock/fixed-income years sampled with a stationary circular
+                              block bootstrap).
   block_years               : average years per historical block (default 10). Used only by
                               `historical-block`; realized block lengths are geometric.
+  historical_fixed_income   : "bonds" (default) or "bills". Used only by historical modes.
+                              Bills use JST nominal short-term bill rates deflated by CPI.
   max_leverage              : cap on the equity weight. 1.0 = no leverage (default); 1.5 = the
                               optimizer may borrow to hold up to 150% equity. A weight w>1 borrows
                               (w−1) at `borrow_cost` to hold w in the all-equity portfolio, so its
@@ -195,7 +198,7 @@ class _IidMarket:
 
 
 class _HistoricalMarket:
-    """Raw paired real stock/bond returns sampled from the JST world series."""
+    """Raw paired real stock/fixed-income returns sampled from the JST world series."""
 
     def __init__(self, history, *, mode, block_years, borrow_real):
         self.history = history
@@ -209,6 +212,7 @@ class _HistoricalMarket:
             "history_end_year": history.end_year,
             "history_observations": history.observations,
             "history_country_count": history.country_count,
+            "historical_fixed_income": history.fixed_income,
             "block_method": "stationary-circular" if mode == "historical-block" else None,
             "block_years": block_years if mode == "historical-block" else None,
         }
@@ -255,14 +259,14 @@ class _HistoricalMarket:
         return self._mix(weights, self.history.equity.mean(), self.history.bonds.mean())
 
 
-def _load_world_history():
+def _load_world_history(fixed_income="bonds"):
     """Lazy import keeps the default iid mode numpy-only."""
     if __package__:
         from .jst_history import load_world_returns
     else:
         from jst_history import load_world_returns
 
-    return load_world_returns()
+    return load_world_returns(fixed_income=fixed_income)
 
 
 def _build_market(
@@ -273,17 +277,24 @@ def _build_market(
     borrow_cost,
     block_years,
     history=None,
+    historical_fixed_income="bonds",
 ):
     if return_mode not in RETURN_MODES:
         raise ValueError(f"return_mode must be one of {', '.join(RETURN_MODES)}")
     if block_years < 1:
         raise ValueError("block_years must be >= 1")
+    if historical_fixed_income not in ("bonds", "bills"):
+        raise ValueError("historical_fixed_income must be bonds or bills")
     if return_mode == "iid-mc":
+        if historical_fixed_income != "bonds":
+            raise ValueError("historical_fixed_income applies only to historical modes")
         return _IidMarket(_build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost))
+    if history is not None and history.fixed_income != historical_fixed_income:
+        raise ValueError("provided history does not match historical_fixed_income")
 
     scale = 100.0 if returns_in_percent else 1.0
     return _HistoricalMarket(
-        history or _load_world_history(),
+        history or _load_world_history(historical_fixed_income),
         mode=return_mode,
         block_years=block_years,
         borrow_real=borrow_cost / scale,
@@ -419,6 +430,7 @@ def recommend_glide_path(
     returns_in_percent: bool = True,
     return_mode: str = "iid-mc",
     block_years: int = 10,
+    historical_fixed_income: str = "bonds",
     # leverage (borrowing to invest); 1.0 = none
     max_leverage: float = 1.0,                  # cap on equity weight (1.5 = up to 150%)
     borrow_cost: float = 2.0,                   # REAL cost of borrowing (used only when leveraged)
@@ -474,6 +486,7 @@ def recommend_glide_path(
         returns_in_percent,
         borrow_cost,
         block_years,
+        historical_fixed_income=historical_fixed_income,
     )
     # Guaranteed income is paid every retirement year (a pre-pension bridge is out of scope);
     # the portfolio funds the remaining gap.
@@ -902,8 +915,13 @@ def _run_interactive():
     # ── Return paths ──────────────────────────────────────────────────────────
     _section("Return paths")
     print("  iid-mc uses the app's forward capital-market assumptions.")
-    print("  Historical modes bootstrap raw paired stock/bond years from the JST world series.")
+    print("  Historical modes bootstrap raw paired stock/fixed-income years from the JST world series.")
     return_mode = _ask_choice("Return mode", "iid-mc", RETURN_MODES)
+    historical_fixed_income = (
+        _ask_choice("Historical fixed income", "bonds", ("bonds", "bills"))
+        if return_mode != "iid-mc"
+        else "bonds"
+    )
     block_years = (
         _ask("Average stationary-block length in years", 10, int,
              "10 approximates the paper's 120-month average")
@@ -945,6 +963,7 @@ def _run_interactive():
         alloc_curve=PWL_CURVE,
         return_mode=return_mode,
         block_years=block_years,
+        historical_fixed_income=historical_fixed_income,
     )
 
     # ── Results ───────────────────────────────────────────────────────────────
@@ -964,7 +983,8 @@ def _run_interactive():
             else ""
         )
         print(f"  History: {p['history_source']} {p['history_start_year']}–{p['history_end_year']}"
-              f" ({p['history_observations']} years{block})")
+              f" ({p['history_observations']} years, fixed income: "
+              f"{p['historical_fixed_income']}{block})")
     print()
     print(f"  Outcome stats (independent evaluation sample):")
     print(f"    CE income     : ${rec['ce_income']:>10,.0f} /yr  (certainty-equivalent spending)")

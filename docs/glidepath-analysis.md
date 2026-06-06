@@ -27,18 +27,24 @@ recommender also supports two raw-history cross-checks:
 # Existing default: forward-CMA normal iid Monte Carlo
 python3 analysis/recommend_glide.py --mode iid-mc
 
-# Raw paired world stock/bond years, sampled independently with replacement
+# Raw paired world stock/fixed-income years, sampled independently with replacement
 python3 analysis/recommend_glide.py --mode historical-iid
 
-# Raw paired world stock/bond years, sampled in stationary circular blocks
+# Raw paired world stock/fixed-income years, sampled in stationary circular blocks
 python3 analysis/recommend_glide.py --mode historical-block --block-years 10
+
+# Replace long government bonds with short-term government bills
+python3 analysis/recommend_glide.py --mode historical-block --historical-fixed-income bills
 ```
 
 Historical modes use the equal-weight-world series from the JST R6 Macrohistory workbook.
 `analysis/jst_history.py` downloads it on first use to gitignored `analysis/.data/`, deflates stock
-and bond total returns by each country's CPI, and aggregates paired real returns by year. They
-require pandas and openpyxl in addition to numpy. A custom `--curve` and `--inflation` apply only
-to `iid-mc`.
+and fixed-income returns by each country's CPI, and aggregates paired real returns by year.
+Long-government-bond total returns are the default; `--historical-fixed-income bills` substitutes
+JST short-term government bill rates. Each historical year keeps the selected fixed-income return
+paired with its stock return. The usable country composition can differ between bonds and bills
+because JST coverage differs by asset. Historical modes require pandas and openpyxl in addition
+to numpy. A custom `--curve` and `--inflation` apply only to `iid-mc`.
 
 ---
 
@@ -74,15 +80,17 @@ and independent evaluation-sample comparison:
 - **`iid-mc`** maps each allocation to the app's forward-CMA real mean and volatility, then draws
   independent normal returns. This remains the default and the only mode used by the web app and
   `glidepath_utility_mc.py`.
-- **`historical-iid`** samples raw historical years independently with replacement. Stock and bond
-  returns remain paired within a sampled year, but year-to-year ordering is removed.
-- **`historical-block`** uses a stationary circular block bootstrap of paired stock/bond years.
+- **`historical-iid`** samples raw historical years independently with replacement. Stock and the
+  selected fixed-income returns remain paired within a sampled year, but year-to-year ordering is
+  removed.
+- **`historical-block`** uses a stationary circular block bootstrap of paired stock/fixed-income
+  years.
   Each next year continues the current historical sequence with probability `1 − 1/L` or restarts
   at a random year with probability `1/L`, so block lengths are geometric and average `L` years.
   The default `L` is 10 years, an annual approximation of the 120-month average used by ACO.
 
 For historical allocations up to 100% equity, each annual portfolio return is
-`w × stock + (1−w) × bond`. Above 100%, the leveraged return is
+`w × stock + (1−w) × fixed income`. Above 100%, the leveraged return is
 `w × stock − (w−1) × real borrowing cost`. Historical modes use raw realized return levels; they
 do not re-center history to the forward CMAs. They are bootstrap backtests, not overlapping
 realized lifecycle windows. The historical-block mode bootstraps an already-diversified annual

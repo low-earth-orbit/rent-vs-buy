@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Shared JST Macrohistory loading and bootstrap helpers.
 
-Historical glide-path modes use paired real stock/bond returns from an equal-weight
-world aggregate. The source workbook is downloaded on first use and cached under the
-gitignored ``analysis/.data/`` directory.
+Historical glide-path modes use paired real stock/fixed-income returns from an
+equal-weight world aggregate. The source workbook is downloaded on first use and
+cached under the gitignored ``analysis/.data/`` directory.
 """
 
 from __future__ import annotations
@@ -22,13 +22,14 @@ DATA_URL = "https://www.macrohistory.net/app/download/9834512569/JSTdatasetR6.xl
 
 @dataclass(frozen=True)
 class ReturnHistory:
-    """Paired annual real stock and bond returns."""
+    """Paired annual real stock and selected fixed-income returns."""
 
     years: np.ndarray
     equity: np.ndarray
     bonds: np.ndarray
     label: str
     country_count: int
+    fixed_income: str = "bonds"
 
     @property
     def observations(self) -> int:
@@ -63,52 +64,82 @@ def load_jst_frame(path: str | None = None) -> pd.DataFrame:
     return pd.read_excel(ensure_data(path or DATA_FILE), sheet_name=0)
 
 
-def real_stock_bond_returns(sub: pd.DataFrame) -> pd.DataFrame:
-    """Convert one country's nominal total returns to paired real returns."""
+def real_stock_fixed_income_returns(
+    sub: pd.DataFrame, fixed_income: str = "bonds"
+) -> pd.DataFrame:
+    """Convert one country's nominal stock and fixed-income returns to real returns."""
+    if fixed_income not in ("bonds", "bills"):
+        raise ValueError("fixed_income must be bonds or bills")
+
     sub = sub.sort_values("year").copy()
     # Calculate annual CPI changes on the calendar series before filtering returns. This
     # preserves the first valid return and avoids treating gaps as one-year inflation.
     sub["inflation"] = sub["cpi"].pct_change(fill_method=None)
     sub["equity"] = (1 + sub["eq_tr"]) / (1 + sub["inflation"]) - 1
-    sub["bonds"] = (1 + sub["bond_tr"]) / (1 + sub["inflation"]) - 1
+    nominal_fixed_income = sub["bond_tr"] if fixed_income == "bonds" else sub["bill_rate"]
+    sub["bonds"] = (1 + nominal_fixed_income) / (1 + sub["inflation"]) - 1
     return sub.dropna(subset=["inflation", "equity", "bonds"])[["year", "equity", "bonds"]]
 
 
-def _as_history(frame: pd.DataFrame, label: str, country_count: int) -> ReturnHistory:
+def real_stock_bond_returns(sub: pd.DataFrame) -> pd.DataFrame:
+    """Backward-compatible helper for paired real stock/bond returns."""
+    return real_stock_fixed_income_returns(sub, "bonds")
+
+
+def _as_history(
+    frame: pd.DataFrame, label: str, country_count: int, fixed_income: str
+) -> ReturnHistory:
     frame = frame.sort_values("year").dropna(subset=["equity", "bonds"])
     if frame.empty:
-        raise ValueError(f"no paired stock/bond returns available for {label}")
+        raise ValueError(f"no paired stock/{fixed_income} returns available for {label}")
     return ReturnHistory(
         years=frame["year"].to_numpy(dtype=int),
         equity=frame["equity"].to_numpy(dtype=float),
         bonds=frame["bonds"].to_numpy(dtype=float),
         label=label,
         country_count=country_count,
+        fixed_income=fixed_income,
     )
 
 
-def load_country_returns(country: str, path: str | None = None) -> ReturnHistory:
-    """Load paired real returns for one JST country."""
+def load_country_returns(
+    country: str, path: str | None = None, fixed_income: str = "bonds"
+) -> ReturnHistory:
+    """Load paired real stock/fixed-income returns for one JST country."""
     frame = load_jst_frame(path)
-    returns = real_stock_bond_returns(frame[frame["country"] == country])
-    return _as_history(returns, country, 1)
+    returns = real_stock_fixed_income_returns(
+        frame[frame["country"] == country], fixed_income
+    )
+    return _as_history(returns, country, 1, fixed_income)
 
 
-def load_world_returns(path: str | None = None) -> ReturnHistory:
-    """Build equal-weight world real stock/bond returns from all available JST countries."""
+def load_world_returns(
+    path: str | None = None, fixed_income: str = "bonds"
+) -> ReturnHistory:
+    """Build equal-weight world real stock/fixed-income returns from JST countries."""
     frame = load_jst_frame(path)
     country_frames = []
     for country in frame["country"].dropna().unique():
-        returns = real_stock_bond_returns(frame[frame["country"] == country]).copy()
+        returns = real_stock_fixed_income_returns(
+            frame[frame["country"] == country], fixed_income
+        ).copy()
         if not returns.empty:
             returns["country"] = country
             country_frames.append(returns)
     if not country_frames:
-        raise ValueError("no paired stock/bond returns available in JST dataset")
+        raise ValueError(f"no paired stock/{fixed_income} returns available in JST dataset")
 
     panel = pd.concat(country_frames, ignore_index=True)
     world = panel.groupby("year", as_index=False)[["equity", "bonds"]].mean()
-    return _as_history(world, "JST R6 equal-weight world", len(country_frames))
+    label = "JST R6 equal-weight world"
+    if fixed_income != "bonds":
+        label += f" ({fixed_income})"
+    return _as_history(
+        world,
+        label,
+        len(country_frames),
+        fixed_income,
+    )
 
 
 def sample_indices(
@@ -157,7 +188,7 @@ def sample_return_paths(
     block_years: int,
     seed: int,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return paired stock/bond bootstrap paths with shape ``(years, paths)``."""
+    """Return paired stock/fixed-income bootstrap paths with shape ``(years, paths)``."""
     indices = sample_indices(
         history.observations,
         n_years,
