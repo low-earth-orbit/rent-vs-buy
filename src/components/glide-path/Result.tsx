@@ -49,10 +49,10 @@ interface ResultProps {
 }
 
 const SIMPLICITY_CE_THRESHOLD = 0.02;
-const SIMPLICITY_DRAWDOWN_THRESHOLD = 0.01;
+const SIMPLICITY_DRAWDOWN_THRESHOLD = 0.02;
 const SIMPLICITY_FULLPATH_THRESHOLD = 0.02;
 const DRAWDOWN_RISK_HIGHLIGHT_THRESHOLD = 0.1;
-const FULLPATH_RISK_HIGHLIGHT_THRESHOLD = 0.25;
+const FULLPATH_RISK_HIGHLIGHT_THRESHOLD = 0.2;
 
 const METRIC_HELP = {
   ce: "Certainty-equivalent income — the steady, guaranteed yearly income that would feel as good as this uncertain plan once the bad years are penalised. It sits below the simple average because shortfalls hurt more than surpluses help.",
