@@ -11,11 +11,10 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
-import { IconPlus, IconX, IconBulb } from "@tabler/icons-react";
+import { IconPlus, IconX } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
 import UserInputRangeItem from "@/components/shared/UserInputRangeItem";
-import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
 import { FIELD_CONSTRAINTS } from "@/utils/validation";
 import type {
   FieldErrors,
@@ -283,28 +282,34 @@ export default function UserInputForm({
                   "Expected annual growth in the home's market value. Long-run world historical average is 0–2% above inflation (2–4% nominal).",
               })}
 
-              <CurrencyPercentItem
+              <UserInputFormItem
                 id="propertyTaxRate"
                 label="Property tax"
-                helperText="Current annual property tax. Switch between dollar amount and rate (% of today's home value). Typical range: 0.5–1.5% depending on municipality."
-                unitAriaLabel="Property Tax input unit"
-                rate={userInput.propertyTaxRate}
-                percentBase={userInput.initialHomePrice}
+                labelHelperText="Current annual property tax. Switch between dollar amount and rate (% of today's home value). Typical range: 0.5–1.5% depending on municipality."
+                value={userInput.propertyTaxRate}
                 onChange={bind("propertyTaxRate")}
                 error={errors.propertyTaxRate}
-                defaultUnit="$"
+                {...c("propertyTaxRate")}
+                percentToggle={{
+                  base: userInput.initialHomePrice,
+                  defaultUnit: "$",
+                  unitAriaLabel: "Property Tax input unit",
+                }}
               />
 
-              <CurrencyPercentItem
+              <UserInputFormItem
                 id="maintPct"
                 label="Maintenance & insurance"
-                helperText="Annual repairs and insurance. Toggle % of today's home price or $/yr. Excludes condo fees. Typically 0.5–1% for condos and 1–2% for detached homes."
-                unitAriaLabel="Maintenance and Insurance input unit"
-                rate={userInput.maintPct}
-                percentBase={userInput.initialHomePrice}
+                labelHelperText="Annual repairs and insurance. Toggle % of today's home price or $/yr. Excludes condo fees. Typically 0.5–1% for condos and 1–2% for detached homes."
+                value={userInput.maintPct}
                 onChange={bind("maintPct")}
                 error={errors.maintPct}
-                defaultUnit="%"
+                {...c("maintPct")}
+                percentToggle={{
+                  base: userInput.initialHomePrice,
+                  defaultUnit: "%",
+                  unitAriaLabel: "Maintenance and Insurance input unit",
+                }}
               />
 
               <UserInputFormItem
@@ -343,87 +348,86 @@ export default function UserInputForm({
         <Accordion.Item value="mortgage">
           <Accordion.Control>Mortgage</Accordion.Control>
           <Accordion.Panel>
-            <Text size="xs" c="dimmed" className="mb-4">
-              {`Down payment amount ${formatCAD((userInput.downPaymentPercentage / 100) * userInput.initialHomePrice)}. Est. mortgage payment: ${monthlyMortgage} /mo.`}
-            </Text>
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <UserInputFormItem
-                id="downPaymentPercentage"
-                label="Down payment"
-                labelHelperText="Minimum is 20%. This calculator only models conventional mortgages."
-                value={userInput.downPaymentPercentage}
-                onChange={bind("downPaymentPercentage")}
-                error={errors.downPaymentPercentage}
-                suffix="%"
-                {...c("downPaymentPercentage")}
-              />
-              <UserInputFormItem
-                id="amortization"
-                label="Amortization period"
-                labelHelperText="Total length of the mortgage. This calculator caps amortization at 25 years."
-                value={userInput.amortization}
-                onChange={bind("amortization")}
-                error={errors.amortization}
-                suffix=" Years"
-                disabled={userInput.downPaymentPercentage === 100}
-                {...c("amortization")}
-              />
-              {perturbed("annualMortgageInterestRate", "mortgageRateSigma", {
-                label: "Mortgage rate",
-                helperText:
-                  "Annual mortgage interest rate. The default reflects the Bank of Canada's neutral policy rate (2.75%) plus a typical lender spread (1.75%).",
-                disabled: userInput.downPaymentPercentage === 100,
-              })}
-            </SimpleGrid>
+            <Stack gap="md">
+              <Text size="xs" c="dimmed">
+                {`Down payment amount ${formatCAD((userInput.downPaymentPercentage / 100) * userInput.initialHomePrice)}. Est. mortgage payment: ${monthlyMortgage} /mo.`}
+              </Text>
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                <UserInputFormItem
+                  id="downPaymentPercentage"
+                  label="Down payment"
+                  labelHelperText="Minimum is 20%. This calculator only models conventional mortgages."
+                  value={userInput.downPaymentPercentage}
+                  onChange={bind("downPaymentPercentage")}
+                  error={errors.downPaymentPercentage}
+                  suffix="%"
+                  {...c("downPaymentPercentage")}
+                />
+                <UserInputFormItem
+                  id="amortization"
+                  label="Amortization period"
+                  labelHelperText="Total length of the mortgage. This calculator caps amortization at 25 years."
+                  value={userInput.amortization}
+                  onChange={bind("amortization")}
+                  error={errors.amortization}
+                  suffix=" Years"
+                  disabled={userInput.downPaymentPercentage === 100}
+                  {...c("amortization")}
+                />
+                {perturbed("annualMortgageInterestRate", "mortgageRateSigma", {
+                  label: "Mortgage rate",
+                  helperText:
+                    "Annual mortgage interest rate. The default reflects the Bank of Canada's neutral policy rate (2.75%) plus a typical lender spread (1.75%).",
+                  disabled: userInput.downPaymentPercentage === 100,
+                })}
+              </SimpleGrid>
+            </Stack>
           </Accordion.Panel>
         </Accordion.Item>
 
         <Accordion.Item value="investment">
           <Accordion.Control>Investment</Accordion.Control>
           <Accordion.Panel>
-            <Alert
-              icon={<IconBulb size={16} />}
-              variant="default"
-              color="gray"
-              mb="sm"
-            >
-              Total Return is split into two parts: Annual Yield (taxed each
-              year) and deferred capital gains (taxed at sale). Use Annual Yield
-              Tax to set a blended rate that reflects your mix of interest,
-              dividends and realized capital gains.
-            </Alert>
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              {perturbed("investmentReturnRate", "investmentReturnSigma", {
-                label: "Total return",
-                helperText:
-                  "Expected pre-tax annualized return, including dividends and capital gains. The default is based on long-term capital market assumptions for a diversified growth portfolio (XGRO).",
-              })}
-              {perturbed("dividendYield", "dividendYieldSigma", {
-                label: "Annual yield",
-                helperText:
-                  "Portion of the return distributed each year, taxed annually. The remainder accrues as deferred capital gains, taxed only when the portfolio is sold. Capped at the portfolio return.",
-              })}
-              <UserInputFormItem
-                id="capitalGainTaxRate"
-                label="Capital gain tax"
-                labelHelperText="Tax rate on capital gains when the portfolio is sold. In Canada, 50% of gains are included in taxable income — multiply your marginal rate by 50% to get this number."
-                value={userInput.capitalGainTaxRate}
-                onChange={bind("capitalGainTaxRate")}
-                error={errors.capitalGainTaxRate}
-                suffix="%"
-                {...c("capitalGainTaxRate")}
-              />
-              <UserInputFormItem
-                id="dividendTaxRate"
-                label="Annual yield tax"
-                labelHelperText="Blended effective tax rate on your annual yield. Canadian eligible dividends are taxed at a lower rate than interest or foreign dividends — set this as a weighted average based on your expected yield mix."
-                value={userInput.dividendTaxRate}
-                onChange={bind("dividendTaxRate")}
-                error={errors.dividendTaxRate}
-                suffix="%"
-                {...c("dividendTaxRate")}
-              />
-            </SimpleGrid>
+            <Stack gap="md">
+              <Alert variant="default" color="gray">
+                Total Return is split into two parts: Annual Yield (taxed each
+                year) and deferred capital gains (taxed at sale). Use Annual
+                Yield Tax to set a blended rate that reflects your mix of
+                interest, dividends and realized capital gains.
+              </Alert>
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
+                {perturbed("investmentReturnRate", "investmentReturnSigma", {
+                  label: "Total return",
+                  helperText:
+                    "Expected pre-tax annualized return, including dividends and capital gains. The default is based on long-term capital market assumptions for a diversified growth portfolio (XGRO).",
+                })}
+                {perturbed("dividendYield", "dividendYieldSigma", {
+                  label: "Annual yield",
+                  helperText:
+                    "Portion of the return distributed each year, taxed annually. The remainder accrues as deferred capital gains, taxed only when the portfolio is sold. Capped at the portfolio return.",
+                })}
+                <UserInputFormItem
+                  id="capitalGainTaxRate"
+                  label="Capital gain tax"
+                  labelHelperText="Tax rate on capital gains when the portfolio is sold. In Canada, 50% of gains are included in taxable income — multiply your marginal rate by 50% to get this number."
+                  value={userInput.capitalGainTaxRate}
+                  onChange={bind("capitalGainTaxRate")}
+                  error={errors.capitalGainTaxRate}
+                  suffix="%"
+                  {...c("capitalGainTaxRate")}
+                />
+                <UserInputFormItem
+                  id="dividendTaxRate"
+                  label="Annual yield tax"
+                  labelHelperText="Blended effective tax rate on your annual yield. Canadian eligible dividends are taxed at a lower rate than interest or foreign dividends — set this as a weighted average based on your expected yield mix."
+                  value={userInput.dividendTaxRate}
+                  onChange={bind("dividendTaxRate")}
+                  error={errors.dividendTaxRate}
+                  suffix="%"
+                  {...c("dividendTaxRate")}
+                />
+              </SimpleGrid>
+            </Stack>
           </Accordion.Panel>
         </Accordion.Item>
 

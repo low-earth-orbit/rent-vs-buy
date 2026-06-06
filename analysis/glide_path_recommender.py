@@ -2,12 +2,12 @@
 """
 Glide-path RECOMMENDER — optimizes the equity weight at each step by Monte Carlo.
 
-Given a household's horizons, spending flexibility, pension level, and a capital-market
+Given a household's horizons, spending flexibility, guaranteed income, and a capital-market
 curve (equity weight → expected return + volatility), this returns the welfare-maximizing
 equity weight at each step of a chosen interval (1y, 5y, …) across accumulation and
 retirement. The path is found by SIMULATION (per-interval coordinate ascent on iid Monte
 Carlo, under common random numbers), not from any hard-coded table or fitted formula — so
-it adapts to whatever returns/vols, pension, and flexibility you feed it.
+it adapts to whatever returns/vols, guaranteed income, and flexibility you feed it.
 
 It is the productized form of the analysis in `docs/glidepath-analysis.md`
 (`analysis/glidepath_utility_mc.py`): same model (real dollars, arithmetic-normal returns,
@@ -21,14 +21,11 @@ KEY INPUTS
                               0.5 = half-and-half. Blends the two targets proportionally each year.
   withdrawal_rate           : the flexible-spending fraction of the live balance (used only when
                               flexibility > 0). E.g. 0.04 = spend 4% of current balance per year.
-  pension_level             : guaranteed real income in retirement, as a FRACTION OF
-                              `pre_retirement_income` (e.g. 0.0, 0.2, 0.5 — matches the web app's
-                              currentIncome base). Acts like a bond you own outside the portfolio:
-                              the higher it is, the less the portfolio must derisk.
-  pre_retirement_income     : the household's real pre-retirement gross income (dollars); the base
-                              for `pension_level`. Default 100k. The pension is paid every
-                              retirement year (guaranteed income starts at retirement; a pre-pension
-                              "bridge" is out of scope — model that funding question separately).
+  guaranteed_income         : guaranteed real annual income in retirement (CPP/OAS/DB, in dollars).
+                              Acts like a bond you own outside the portfolio: the higher it is, the
+                              less the portfolio must fund. It is paid every retirement year
+                              (guaranteed income starts at retirement; a pre-pension "bridge" is out
+                              of scope — model that funding question separately).
   target_income             : the household's real annual spending target in retirement (dollars).
                               "Retirement expenses" for the bequest unit below.
   annual_contribution       : real annual savings added during accumulation (dollars).
@@ -82,7 +79,7 @@ USAGE
 -----
   from glide_path_recommender import recommend_glide_path
   rec = recommend_glide_path(accum_years=30, retire_years=30, flexibility=0.0,
-                             pension_level=0.2, alloc_curve=PWL_CURVE, interval=1)
+                             guaranteed_income=20_000, alloc_curve=PWL_CURVE, interval=1)
   print(rec["schedule"])
 
 Run this file directly for a worked demo:  python3 analysis/glide_path_recommender.py
@@ -161,7 +158,7 @@ def _build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost=0.0):
 # ── core lifecycle simulator over a bundle of candidate paths (common random numbers) ──
 #
 # `gap_arr` and `guar_arr` are per-retirement-year arrays (length retire_years). Guaranteed
-# income (the pension) is paid every retirement year; the portfolio funds the remaining gap.
+# income is paid every retirement year; the portfolio funds the remaining gap.
 def _eu(W, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
         contrib, start_savings, gamma, beta, bequest, bequest_floor):
     """Return expected discounted utility for each of G candidate equity-weight paths.
@@ -280,7 +277,7 @@ def recommend_glide_path(
     accum_years: int = 30,
     retire_years: int = 30,
     flexibility: float = 0,
-    pension_level: float = 0.2,
+    guaranteed_income: float = 20_000.0,
     alloc_curve: Sequence[tuple] = PWL_CURVE,
     interval: int = 5,
     *,
@@ -295,7 +292,6 @@ def recommend_glide_path(
     annual_contribution: float = 20_000.0,
     target_income: float = 60_000.0,
     withdrawal_rate: float = 0.04,
-    pre_retirement_income: float = 100_000.0,   # base for the pension %
     # preferences
     gamma: float = 3.0,                         # CRRA risk aversion (single value; drives the glide)
     beta: float = 0.985,
@@ -326,8 +322,8 @@ def recommend_glide_path(
     """
     if not (0.0 <= flexibility <= 1.0):
         raise ValueError("flexibility must be in [0, 1]")
-    if not (0.0 <= pension_level <= 1.0):
-        raise ValueError("pension_level must be in [0, 1] (fraction of pre_retirement_income)")
+    if not math.isfinite(guaranteed_income) or guaranteed_income < 0:
+        raise ValueError("guaranteed_income must be a finite value >= 0")
     if interval < 1:
         raise ValueError("interval must be >= 1 year")
     n_years = accum_years + retire_years
@@ -337,10 +333,9 @@ def recommend_glide_path(
         raise ValueError("max_leverage must be in [grid_step, 3.0] (1.0 = no leverage)")
 
     alloc = _build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost)
-    # Pension is a fraction of PRE-RETIREMENT income (matches the web app's currentIncome base).
-    # It is paid every retirement year (guaranteed income starts at retirement; a pre-pension
-    # bridge is out of scope — see docs); the portfolio funds the remaining gap.
-    guaranteed = pension_level * pre_retirement_income
+    # Guaranteed income is paid every retirement year (a pre-pension bridge is out of scope);
+    # the portfolio funds the remaining gap.
+    guaranteed = guaranteed_income
     guar_arr = np.full(retire_years, guaranteed)
     gap_arr = np.maximum(target_income - guar_arr, 0.0)
 
@@ -514,10 +509,9 @@ def recommend_glide_path(
         "income_cv": round(st["income_cv"], 4),
         "params": {
             "accum_years": accum_years, "retire_years": retire_years,
-            "flexibility": flexibility, "pension_level": pension_level,
-            "pre_retirement_income": pre_retirement_income, "target_income": target_income,
-            "guaranteed": guaranteed,
-            "post_pension_gap": float(target_income - guaranteed), "interval": interval,
+            "flexibility": flexibility, "guaranteed_income": guaranteed_income,
+            "target_income": target_income, "guaranteed": guaranteed,
+            "portfolio_income_gap": float(target_income - guaranteed), "interval": interval,
             "gamma": gamma,
             "bequest": round(float(bequest_w), 3), "bequest_years": bequest_years,
             "max_leverage": max_leverage, "borrow_cost": borrow_cost,
@@ -643,7 +637,8 @@ def _run_demo(out_dir):
         ("flexible", 1.0, "flexible 100%"),
     ]
     SWEEPS = [
-        ("pension", "pension level",   "pension_level", lambda v: f"pension {v*100:.0f}%", (0.0, 0.2, 0.5)),
+        ("guaranteed", "guaranteed income", "guaranteed_income",
+         lambda v: f"guaranteed ${v/1000:.0f}k", (0.0, 20_000.0, 50_000.0)),
         ("bequest", "bequest motive",  "bequest",       lambda v: f"bequest {v:g}",        (0.0, 10.0, 100.0)),
         ("gamma",   "risk aversion γ", "gamma",         lambda v: f"γ = {v:g}",            (1.0, 2.0, 3.0, 5.0)),
     ]
@@ -694,7 +689,6 @@ def _run_interactive():
     current_age     = _ask("Current age",                      35,  int)
     retirement_age  = _ask("Planned retirement age",           65,  int,  "60 for early retirement")
     planning_age    = _ask("Plan until age (life expectancy)", 95,  int,  "90–100 is typical")
-    pre_ret_income  = _ask("Current pre-retirement gross income ($/yr)", 100_000, float, "120000")
     current_savings = _ask("Current portfolio balance ($)",    200_000, float, "500000")
     annual_contrib  = _ask("Annual savings / contribution ($)", 20_000, float, "30000")
 
@@ -706,11 +700,9 @@ def _run_interactive():
     target_income = _ask(
         "Target annual spending in retirement ($)",
         60_000, float, "70000  (gross, in today's dollars)")
-    pension_pct = _ask(
-        "Guaranteed income (CPP + OAS + DB pension)\n"
-        "  as a % of your PRE-RETIREMENT income",
-        20.0, float, "0 = none,  20 = typical CPP/OAS,  50 = generous DB pension")
-    pension_level = pension_pct / 100.0
+    guaranteed_income = _ask(
+        "Guaranteed annual income (CPP + OAS + DB pension, $)",
+        20_000.0, float, "0 = none,  20000 = typical CPP/OAS")
 
     # ── Spending rule ─────────────────────────────────────────────────────────
     _section("Spending rule")
@@ -771,8 +763,7 @@ def _run_interactive():
         accum_years=accum_years,
         retire_years=retire_years,
         flexibility=flexibility,
-        pension_level=pension_level,
-        pre_retirement_income=pre_ret_income,
+        guaranteed_income=guaranteed_income,
         interval=interval,
         current_savings=current_savings,
         annual_contribution=annual_contrib,
@@ -829,7 +820,8 @@ def _run_interactive():
         lev_t = f", lev≤{max_leverage:g}×" if max_leverage > 1 else ""
         out = plot_glide_path(rec, start_age=current_age, path=save,
                               title=f"Recommended glide path  (γ={gamma}, "
-                                    f"β={beta}, pension={pension_pct:.0f}%, flex={flexibility}{lev_t})")
+                                    f"β={beta}, guaranteed=${guaranteed_income:,.0f}, "
+                                    f"flex={flexibility}{lev_t})")
         print(f"  Chart saved to: {out}")
 
 

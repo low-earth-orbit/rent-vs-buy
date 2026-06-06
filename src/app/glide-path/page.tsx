@@ -19,8 +19,8 @@ export default function GlidePathPage() {
       />
       <main>
         <GlidePathApp />
+        <Methodology />
       </main>
-      <Methodology />
       <Footer />
     </>
   );

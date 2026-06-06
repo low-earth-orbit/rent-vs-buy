@@ -32,13 +32,7 @@ const Header = ({ title, subtitle, showHomeLink = false }: HeaderProps) => {
       <Group justify="space-between" align="flex-start" wrap="nowrap">
         <Stack gap={4}>
           {showHomeLink && (
-            <Anchor
-              component={Link}
-              href="/"
-              size="sm"
-              c="dimmed"
-              underline="hover"
-            >
+            <Anchor component={Link} href="/" size="sm" c="dimmed">
               <Group gap={4} wrap="nowrap" component="span">
                 <IconArrowLeft size={14} />
                 All tools

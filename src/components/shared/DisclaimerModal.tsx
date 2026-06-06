@@ -14,29 +14,40 @@ const DisclaimerModal = ({ opened, onAccept }: DisclaimerModalProps) => {
   }
 
   return (
-    <Modal
+    <Modal.Root
       opened={opened}
       onClose={onAccept}
-      title="Before you start"
       centered
       size="lg"
       closeOnClickOutside={false}
       closeOnEscape={false}
-      withCloseButton={false}
     >
-      <Stack gap="md">
-        <Text size="sm">
-          Not financial advice. Results are estimates from your assumptions, not
-          predictions. Canada-specific and provided as-is.
-        </Text>
-        <Group justify="flex-end" mt="xs">
-          <Button variant="default" onClick={handleLeave}>
-            I&apos;m not sure
-          </Button>
-          <Button onClick={onAccept}>I understand</Button>
-        </Group>
-      </Stack>
-    </Modal>
+      <Modal.Overlay />
+      {/* Render the title inside the body (not a Modal.Header) so Mantine
+          doesn't emit a <header> element — nested under the dialog's
+          role="dialog" section, axe counts it as a second banner landmark.
+          Modal.Title still registers the title id, so the dialog keeps its
+          accessible name (aria-labelledby) without the header. */}
+      <Modal.Content>
+        <Modal.Body>
+          <Stack gap="md">
+            <Modal.Title fw={700} fz="lg">
+              Before you start
+            </Modal.Title>
+            <Text size="sm">
+              Not financial advice. Results are estimates from your assumptions,
+              not predictions. Canada-specific and provided as-is.
+            </Text>
+            <Group justify="flex-end" mt="xs">
+              <Button variant="default" onClick={handleLeave}>
+                I&apos;m not sure
+              </Button>
+              <Button onClick={onAccept}>I understand</Button>
+            </Group>
+          </Stack>
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
   );
 };
 

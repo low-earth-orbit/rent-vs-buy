@@ -30,8 +30,8 @@ export default function Methodology() {
         <Text size="sm" c="dimmed">
           Most glide-path rules (e.g. &ldquo;100 minus your age&rdquo;,
           target-date funds) are heuristics — they have no explicit link to your
-          income target, risk tolerance, or pension. This tool derives an
-          allocation from first principles instead.
+          income target, risk tolerance, or guaranteed income. This tool derives
+          an allocation from first principles instead.
         </Text>
 
         <Title order={3} fz="md">
@@ -67,15 +67,14 @@ export default function Methodology() {
         <Text size="sm" c="dimmed">
           It maximizes welfare, not success rate: where no stock/bond mix can
           close a funding gap, the fix lives in your inputs (retire later, spend
-          less, save more), not the allocation. Guaranteed income (your pension)
-          is assumed to start at retirement and be paid every year — a
-          pre-pension &ldquo;bridge&rdquo; is out of scope (use the retirement
-          tool for that funding question). Income shortfall — a year the
-          portfolio can&apos;t fund your targeted spending — is reported two
-          ways: drawdown-only (from the expected retirement balance) and
-          full-path (which also includes pre-retirement market luck). See the
-          analysis note below for how γ and β enter the objective and typical
-          values for each.
+          less, save more), not the allocation. Guaranteed income is assumed to
+          start at retirement and be paid every year — a pre-pension
+          &ldquo;bridge&rdquo; is out of scope (use the retirement tool for that
+          funding question). Income shortfall — a year the portfolio can&apos;t
+          fund your targeted spending — is reported two ways: drawdown-only
+          (from the expected retirement balance) and full-path (which also
+          includes pre-retirement market luck). See the analysis note below for
+          how γ and β enter the objective and typical values for each.
         </Text>
 
         <Title order={3} fz="md">
@@ -120,14 +119,14 @@ export default function Methodology() {
           fixed allocation is far easier to hold through market swings, it is
           often the more practical choice.
         </Point>
-        <Point heading="Your pension is your bond floor.">
+        <Point heading="Guaranteed income is your bond floor.">
           A larger guaranteed income (CPP + OAS + DB) lets the portfolio take
-          more equity risk — because the pension already covers downside. Low or
-          no pension means the portfolio must be more conservative to avoid
-          falling short.
+          more equity risk because it already covers some downside. With no
+          guaranteed income, rare depleted years dominate CRRA utility, so the
+          allocation comparison is shown as inconclusive.
         </Point>
 
-        <Text size="xs" c="dimmed">
+        <Text size="sm" c="dimmed">
           Full methodology:{" "}
           <Anchor
             href="https://github.com/low-earth-orbit/personal-finance/blob/main/docs/glidepath-analysis.md"
@@ -136,9 +135,8 @@ export default function Methodology() {
           >
             glide-path analysis note
           </Anchor>
-          . Runs in your browser — nothing is sent anywhere. Identical inputs
-          give an identical result (seeded RNG). This is an illustration, not
-          financial advice.
+          . Runs in your browser — nothing is sent anywhere. This is an
+          illustration, not financial advice.
         </Text>
       </Stack>
     </Container>

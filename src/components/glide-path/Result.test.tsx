@@ -125,15 +125,15 @@ describe("glide-path Result", () => {
     ).toHaveLength(0);
   });
 
-  it("prefers the constant when drawdown depletion is within five points", () => {
+  it("prefers the constant when drawdown depletion is within 1 point", () => {
     renderResult(
       makeResult({
         ceIncome: 60000,
-        flatCeIncome: 50000,
+        flatCeIncome: 59000,
         drawdownDepletion: 0.05,
-        flatDrawdownDepletion: 0.1,
+        flatDrawdownDepletion: 0.06,
         depletion: 0.1,
-        flatDepletion: 0.25,
+        flatDepletion: 0.1,
       }),
     );
     expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
@@ -142,15 +142,15 @@ describe("glide-path Result", () => {
     ).toBeInTheDocument();
   });
 
-  it("prefers the constant when full-path shortfall is within five points", () => {
+  it("prefers the constant when full-path shortfall is within 2 points", () => {
     renderResult(
       makeResult({
         ceIncome: 60000,
-        flatCeIncome: 50000,
+        flatCeIncome: 59000,
         drawdownDepletion: 0.05,
-        flatDrawdownDepletion: 0.2,
+        flatDrawdownDepletion: 0.05,
         depletion: 0.1,
-        flatDepletion: 0.15,
+        flatDepletion: 0.12,
       }),
     );
     expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
@@ -206,26 +206,39 @@ describe("glide-path Result", () => {
     expect(
       container.querySelectorAll(".tabler-icon-alert-triangle"),
     ).toHaveLength(3);
-    expect(screen.getByText(/Tail-dominated/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Tail-dominated/i)).not.toHaveLength(0);
   });
 
-  it("prefers the glide path when the constant CE score is tail-dominated", () => {
-    renderResult(
-      makeResult({ ceIncome: 93608, flatCeIncome: 444, depletion: 0.05 }),
-    );
+  it("prefers the constant when only the glide path CE is tail-dominated", () => {
+    renderResult(makeResult({ ceIncome: 95, flatCeIncome: 50000 }));
+
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/risk-adjusted \(CE\) income is unreliable/i),
+      screen.getByText(/glide path's CE income is tail-dominated/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Tail-dominated/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Comparison inconclusive/i)).toBeNull();
   });
 
-  it("explains preferring the glide path when the constant is tail-dominated", () => {
-    renderResult(
-      makeResult({ ceIncome: 93608, flatCeIncome: 444, depletion: 0.05 }),
-    );
+  it("prefers the glide path when only the constant CE is tail-dominated", () => {
+    renderResult(makeResult({ ceIncome: 50000, flatCeIncome: 444 }));
+
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/risk-adjusted \(CE\) income is unreliable/i),
+      screen.getByText(/constant allocation's CE income is tail-dominated/i),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Comparison inconclusive/i)).toBeNull();
+  });
+
+  it("shows an inconclusive comparison when both CE scores are tail-dominated", () => {
+    renderResult(makeResult({ ceIncome: 95, flatCeIncome: 444 }));
+
+    expect(screen.getByText(/Comparison inconclusive/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/cannot reliably distinguish these allocations/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Recommended allocation/i)).toBeNull();
+    expect(screen.getAllByText("Optimized glide path")).not.toHaveLength(0);
+    expect(screen.getAllByText("Constant 60% equity")).not.toHaveLength(0);
   });
 
   it("renders an error state when the worker fails", () => {

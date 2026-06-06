@@ -20,8 +20,8 @@ export default function RentVsBuyPage() {
       />
       <main>
         <RentVsBuyApp />
+        <Methodology />
       </main>
-      <Methodology />
       <Footer />
     </>
   );

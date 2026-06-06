@@ -48,8 +48,11 @@ interface ResultProps {
   onReroll?: () => void;
 }
 
-const SIMPLICITY_THRESHOLD_PCT = 5;
-const RISK_HIGHLIGHT_THRESHOLD = 0.1;
+const SIMPLICITY_CE_THRESHOLD = 0.02;
+const SIMPLICITY_DRAWDOWN_THRESHOLD = 0.02;
+const SIMPLICITY_FULLPATH_THRESHOLD = 0.02;
+const DRAWDOWN_RISK_HIGHLIGHT_THRESHOLD = 0.1;
+const FULLPATH_RISK_HIGHLIGHT_THRESHOLD = 0.2;
 
 const METRIC_HELP = {
   ce: "Certainty-equivalent income — the steady, guaranteed yearly income that would feel as good as this uncertain plan once the bad years are penalised. It sits below the simple average because shortfalls hurt more than surpluses help.",
@@ -71,7 +74,7 @@ function ceIsDegenerate(income: number, targetIncome: number): boolean {
 
 interface Recommendation {
   preferConstant: boolean;
-  reasons: string[];
+  inconclusive: boolean;
   glideBad: boolean;
   flatBad: boolean;
 }
@@ -79,7 +82,8 @@ interface Recommendation {
 /**
  * Decide which allocation to recommend. Bias toward the simpler constant weight when it wins all
  * comparable outcomes or comes within the simplicity threshold on CE income, drawdown shortfall,
- * or full-path shortfall — but never recommend a constant whose own CE score is tail-dominated.
+ * or full-path shortfall. When both CE scores are tail-dominated, the comparison is inconclusive;
+ * when only one is, prefer the allocation that avoids the near-zero-income tail.
  */
 function pickRecommendation(
   input: GlidePathInput,
@@ -87,41 +91,28 @@ function pickRecommendation(
 ): Recommendation {
   const glideBad = ceIsDegenerate(result.ceIncome, input.targetIncome);
   const flatBad = ceIsDegenerate(result.flatCeIncome, input.targetIncome);
+  if (glideBad && flatBad) {
+    return { preferConstant: false, inconclusive: true, glideBad, flatBad };
+  }
+  if (glideBad) {
+    return { preferConstant: true, inconclusive: false, glideBad, flatBad };
+  }
+  if (flatBad) {
+    return { preferConstant: false, inconclusive: false, glideBad, flatBad };
+  }
+
   const ceWithin =
-    !flatBad &&
-    (glideBad ||
-      result.flatCeIncome >=
-        result.ceIncome * (1 - SIMPLICITY_THRESHOLD_PCT / 100));
+    result.flatCeIncome >= result.ceIncome * (1 - SIMPLICITY_CE_THRESHOLD);
   const drawdownWithin =
     result.flatDrawdownDepletion <=
-    result.drawdownDepletion + SIMPLICITY_THRESHOLD_PCT / 100;
+    result.drawdownDepletion + SIMPLICITY_DRAWDOWN_THRESHOLD;
   const fullPathWithin =
-    result.flatDepletion <= result.depletion + SIMPLICITY_THRESHOLD_PCT / 100;
-  const constantWinsAll =
-    result.flatCeIncome >= result.ceIncome &&
-    result.flatDrawdownDepletion <= result.drawdownDepletion &&
-    result.flatDepletion <= result.depletion;
+    result.flatDepletion <= result.depletion + SIMPLICITY_FULLPATH_THRESHOLD;
+  const constantWinsCe = result.flatCeIncome > result.ceIncome;
   const preferConstant =
-    !flatBad &&
-    (glideBad ||
-      constantWinsAll ||
-      ceWithin ||
-      drawdownWithin ||
-      fullPathWithin);
+    constantWinsCe || (ceWithin && drawdownWithin && fullPathWithin);
 
-  const reasons = glideBad
-    ? [
-        "the glide path's risk-adjusted (CE) income is unreliable in bad-luck tails",
-      ]
-    : constantWinsAll
-      ? ["it wins all three comparable outcomes"]
-      : ([
-          ceWithin ? "its CE income is no more than 5% lower" : null,
-          drawdownWithin ? "drawdown shortfall is within 5 points" : null,
-          fullPathWithin ? "full-path shortfall is within 5 points" : null,
-        ].filter(Boolean) as string[]);
-
-  return { preferConstant, reasons, glideBad, flatBad };
+  return { preferConstant, inconclusive: false, glideBad, flatBad };
 }
 
 const DIR_COLOR: Record<SlopeDir, string> = {
@@ -299,8 +290,8 @@ function OutcomeMetrics({
     : `${formatCAD(stats.ceIncome)}/yr`;
   const drawValue = `${(stats.drawdownDepletion * 100).toFixed(1)}%`;
   const fullValue = `${(stats.fullPathShortfall * 100).toFixed(1)}%`;
-  const drawFlag = stats.drawdownDepletion >= RISK_HIGHLIGHT_THRESHOLD;
-  const fullFlag = stats.fullPathShortfall >= RISK_HIGHLIGHT_THRESHOLD;
+  const drawFlag = stats.drawdownDepletion >= DRAWDOWN_RISK_HIGHLIGHT_THRESHOLD;
+  const fullFlag = stats.fullPathShortfall >= FULLPATH_RISK_HIGHLIGHT_THRESHOLD;
 
   if (compact) {
     return (
@@ -453,81 +444,133 @@ export default function Result({
   const secondary = reco.preferConstant ? glide : constant;
 
   const reasonText = reco.preferConstant
-    ? `The constant allocation is preferred because the optimized glide path is marginally better.`
+    ? reco.glideBad
+      ? "The constant allocation is preferred because the glide path's CE income is tail-dominated."
+      : "The constant allocation is preferred because the optimized glide path is only marginally better."
     : reco.flatBad
-      ? "The glide path is preferred because the constant allocation's risk-adjusted (CE) income is unreliable — at a single fixed weight it stays exposed to the bad-luck sequences the glide path trims."
+      ? "The glide path is preferred because the constant allocation's CE income is tail-dominated."
       : "The glide path is preferred because the constant allocation trails it by more than the simplicity threshold on every comparable outcome.";
 
   return (
     <Stack gap="lg" pos="relative">
-      {/* Primary — the recommended allocation, with its own outcomes inline. */}
-      <Card
-        withBorder
-        radius="md"
-        padding="lg"
-        style={{
-          borderColor: "var(--mantine-color-teal-5)",
-          borderWidth: 2,
-        }}
-      >
-        <Stack gap="md">
-          <Group gap="sm" wrap="nowrap" align="flex-start">
-            <ThemeIcon color="teal" size={38} radius="xl">
-              <IconCheck size={22} />
-            </ThemeIcon>
-            <Stack gap={0}>
-              <Text size="xs" fw={700} c="teal" tt="uppercase">
-                Recommended allocation
+      {reco.inconclusive ? (
+        <>
+          <Card
+            withBorder
+            radius="md"
+            padding="lg"
+            style={{
+              borderColor: "var(--mantine-color-yellow-5)",
+              borderWidth: 2,
+            }}
+          >
+            <Group gap="sm" wrap="nowrap" align="flex-start">
+              <ThemeIcon color="yellow" variant="light" size={38} radius="xl">
+                <IconAlertTriangle size={22} />
+              </ThemeIcon>
+              <Stack gap={2}>
+                <Text size="xs" fw={700} c="yellow.7" tt="uppercase">
+                  Comparison inconclusive
+                </Text>
+                <Title order={3} fz="lg">
+                  CE income is tail-dominated
+                </Title>
+                <Text size="sm" c="dimmed">
+                  Near-zero income in bad-luck paths overwhelms CE income, so it
+                  cannot reliably distinguish these allocations. Compare their
+                  shortfall rates below.
+                </Text>
+              </Stack>
+            </Group>
+          </Card>
+
+          {[glide, constant].map((option) => (
+            <Card key={option.kind} withBorder radius="md" padding="lg">
+              <Stack gap="md">
+                <Title order={3} fz="lg">
+                  {option.title}
+                </Title>
+                <ShapeSummary
+                  kind={option.kind}
+                  input={input}
+                  result={result}
+                  flatPct={flatPct}
+                />
+                <Divider />
+                <OutcomeMetrics stats={option.stats} />
+              </Stack>
+            </Card>
+          ))}
+        </>
+      ) : (
+        <>
+          {/* Primary — the recommended allocation, with its own outcomes inline. */}
+          <Card
+            withBorder
+            radius="md"
+            padding="lg"
+            style={{
+              borderColor: "var(--mantine-color-teal-5)",
+              borderWidth: 2,
+            }}
+          >
+            <Stack gap="md">
+              <Group gap="sm" wrap="nowrap" align="flex-start">
+                <ThemeIcon color="teal" size={38} radius="xl">
+                  <IconCheck size={22} />
+                </ThemeIcon>
+                <Stack gap={0}>
+                  <Text size="xs" fw={700} c="teal" tt="uppercase">
+                    Recommended allocation
+                  </Text>
+                  <Title order={3} fz="lg">
+                    {primary.title}
+                  </Title>
+                </Stack>
+              </Group>
+
+              <ShapeSummary
+                kind={primary.kind}
+                input={input}
+                result={result}
+                flatPct={flatPct}
+              />
+
+              <Divider />
+
+              <OutcomeMetrics stats={primary.stats} />
+
+              <Text size="xs" c="dimmed">
+                {reasonText}
               </Text>
-              <Title order={3} fz="lg">
-                {primary.title}
-              </Title>
             </Stack>
-          </Group>
+          </Card>
 
-          <ShapeSummary
-            kind={primary.kind}
-            input={input}
-            result={result}
-            flatPct={flatPct}
-          />
-
-          <Divider />
-
-          <OutcomeMetrics stats={primary.stats} />
-
-          <Text size="xs" c="dimmed">
-            {reasonText}
-          </Text>
-        </Stack>
-      </Card>
-
-      {/* Secondary — the alternative, compact. */}
-      <Card withBorder radius="md" padding="md">
-        <Stack gap="xs">
-          <Group justify="space-between" align="center" wrap="nowrap">
-            <Text size="sm" fw={600} c="dimmed">
-              Alternative — {secondary.title}
-            </Text>
-            <Badge variant="default" size="sm">
-              Not preferred
-            </Badge>
-          </Group>
-          <ShapeSummary
-            kind={secondary.kind}
-            input={input}
-            result={result}
-            flatPct={flatPct}
-            compact
-          />
-          <OutcomeMetrics stats={secondary.stats} compact />
-        </Stack>
-      </Card>
+          {/* Secondary — the alternative, compact. */}
+          <Card withBorder radius="md" padding="md">
+            <Stack gap="xs">
+              <Group justify="space-between" align="center" wrap="nowrap">
+                <Text size="sm" fw={600} c="dimmed">
+                  Alternative — {secondary.title}
+                </Text>
+              </Group>
+              <ShapeSummary
+                kind={secondary.kind}
+                input={input}
+                result={result}
+                flatPct={flatPct}
+                compact
+              />
+              <OutcomeMetrics stats={secondary.stats} compact />
+            </Stack>
+          </Card>
+        </>
+      )}
 
       <GlidePathChart
         input={input}
         result={result}
-        showConstant={!flatDegenerate}
+        showConstant={reco.inconclusive || !flatDegenerate}
       />
 
       {onReroll && (

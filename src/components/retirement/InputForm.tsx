@@ -11,7 +11,6 @@ import {
 } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
-import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
 import {
   RETURN_PRESETS,
   SUCCESS_RATE_PRESETS,
@@ -104,18 +103,16 @@ export default function InputForm({
                   prefix="$"
                   thousandSeparator
                 />
-                <CurrencyPercentItem
-                  id="contributionPct"
+                <UserInputFormItem
+                  {...num("contributionPct")}
                   label="Annual savings"
-                  helperText="How much you add to investments each year. Toggle between a dollar amount and a % of your income."
-                  unitAriaLabel="Annual savings input unit"
-                  rate={input.contributionPct}
-                  percentBase={+input.currentIncome || 0}
-                  onChange={bind("contributionPct")}
-                  error={errors.contributionPct}
-                  defaultUnit="%"
-                  amountStep={1000}
-                  percentStep={5}
+                  labelHelperText="How much you add to investments each year. Toggle between a dollar amount and a % of your income."
+                  percentToggle={{
+                    base: +input.currentIncome || 0,
+                    defaultUnit: "%",
+                    amountStep: 1000,
+                    unitAriaLabel: "Annual savings input unit",
+                  }}
                 />
               </SimpleGrid>
             </Stack>
@@ -127,31 +124,27 @@ export default function InputForm({
           <Accordion.Panel>
             <Stack gap="md">
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                <CurrencyPercentItem
-                  id="targetIncomePct"
+                <UserInputFormItem
+                  {...num("targetIncomePct")}
                   label="Target income"
-                  helperText="The gross income you want in retirement — as a % of your current income (a replacement ratio of 60–70% is typical) or a dollar amount. Your guaranteed income below counts toward this."
-                  unitAriaLabel="Target retirement income input unit"
-                  rate={input.targetIncomePct}
-                  percentBase={+input.currentIncome || 0}
-                  onChange={bind("targetIncomePct")}
-                  error={errors.targetIncomePct}
-                  defaultUnit="%"
-                  amountStep={1000}
-                  percentStep={5}
+                  labelHelperText="The gross income you want in retirement — as a % of your current income (a replacement ratio of 60–70% is typical) or a dollar amount. Your guaranteed income below counts toward this."
+                  percentToggle={{
+                    base: +input.currentIncome || 0,
+                    defaultUnit: "%",
+                    amountStep: 1000,
+                    unitAriaLabel: "Target retirement income input unit",
+                  }}
                 />
-                <CurrencyPercentItem
-                  id="guaranteedIncomePct"
+                <UserInputFormItem
+                  {...num("guaranteedIncomePct")}
                   label="Pension amount"
-                  helperText="Estimated CPP + OAS + workplace (DB) pension income, starting at retirement. Toggle between a dollar amount and a % of your income."
-                  unitAriaLabel="Guaranteed income input unit"
-                  rate={input.guaranteedIncomePct}
-                  percentBase={+input.currentIncome || 0}
-                  onChange={bind("guaranteedIncomePct")}
-                  error={errors.guaranteedIncomePct}
-                  defaultUnit="$"
-                  amountStep={1000}
-                  percentStep={5}
+                  labelHelperText="Estimated annual CPP + OAS + workplace (DB) pension. Enter a dollar amount or a % of your current/pre-retirement income; it begins at the pension start age below."
+                  percentToggle={{
+                    base: +input.currentIncome || 0,
+                    defaultUnit: "$",
+                    amountStep: 1000,
+                    unitAriaLabel: "Guaranteed income input unit",
+                  }}
                 />
                 <UserInputFormItem
                   {...num("pensionStartAge")}
@@ -179,7 +172,7 @@ export default function InputForm({
                   gap="xs"
                   role="group"
                   aria-label="Plan confidence target"
-                  my="xs"
+                  mt="xs"
                 >
                   {SUCCESS_RATE_PRESETS.map((rate) => (
                     <Button
@@ -250,6 +243,7 @@ export default function InputForm({
                 <UserInputFormItem
                   {...num("spendingFlexibilityPct")}
                   label={undefined}
+                  aria-label="Max spending cut"
                   suffix="%"
                 />
                 {input.spendingFlexibilityPct > 20 && (
@@ -274,123 +268,129 @@ export default function InputForm({
         <Accordion.Item value="assumptions">
           <Accordion.Control>Market assumptions</Accordion.Control>
           <Accordion.Panel>
-            <Stack gap="xs" mb="xs">
-              <Text size="sm" fw={600}>
-                Expected return
-              </Text>
-              <Text size="xs" c="dimmed">
-                Based on stock / bond mix — e.g. 80/20 is 80% stocks — before
-                and after retirement. For simplicity, two distinct allocations
-                are used, no gradual transition in-between.
-              </Text>
-              <SimpleGrid
-                cols={{ base: 2, xs: 3 }}
-                spacing="xs"
-                role="group"
-                aria-label="Portfolio return presets"
-                my="xs"
-              >
-                {RETURN_PRESETS.map((preset) => (
-                  <Button
-                    key={preset.id}
-                    variant={
-                      activeReturnPreset?.id === preset.id ? "filled" : "light"
-                    }
-                    size="xs"
-                    radius="lg"
-                    h={44}
-                    aria-pressed={activeReturnPreset?.id === preset.id}
-                    onClick={() => applyReturnPreset(preset)}
-                  >
-                    <Stack gap={0} align="center">
-                      <Text span size="xs" fw={600}>
-                        {preset.label}
-                      </Text>
-                      <Text span size="10px">
-                        {preset.accumReturn === preset.retireReturn
-                          ? `${preset.accumReturn}%`
-                          : `${preset.accumReturn}% / ${preset.retireReturn}%`}
-                      </Text>
-                    </Stack>
-                  </Button>
-                ))}
-                <Popover width={300} position="bottom" withArrow shadow="md">
-                  <Popover.Target>
+            <Stack gap="md">
+              <Stack gap={4}>
+                <Text size="sm" fw={600}>
+                  Expected return
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Based on stock / bond mix — e.g. 80/20 is 80% stocks — before
+                  and after retirement. For simplicity, two distinct allocations
+                  are used, no gradual transition in-between.
+                </Text>
+                <SimpleGrid
+                  cols={{ base: 2, xs: 3 }}
+                  spacing="xs"
+                  role="group"
+                  aria-label="Portfolio return presets"
+                  mt="xs"
+                >
+                  {RETURN_PRESETS.map((preset) => (
                     <Button
-                      variant={activeReturnPreset ? "light" : "filled"}
+                      key={preset.id}
+                      variant={
+                        activeReturnPreset?.id === preset.id
+                          ? "filled"
+                          : "light"
+                      }
                       size="xs"
                       radius="lg"
                       h={44}
-                      aria-pressed={!activeReturnPreset}
+                      aria-pressed={activeReturnPreset?.id === preset.id}
+                      onClick={() => applyReturnPreset(preset)}
                     >
                       <Stack gap={0} align="center">
                         <Text span size="xs" fw={600}>
-                          Custom
+                          {preset.label}
                         </Text>
                         <Text span size="10px">
-                          {activeReturnPreset
-                            ? ""
-                            : `${input.accumReturn}% / ${input.retireReturn}%`}
+                          {preset.accumReturn === preset.retireReturn
+                            ? `${preset.accumReturn}%`
+                            : `${preset.accumReturn}% / ${preset.retireReturn}%`}
                         </Text>
                       </Stack>
                     </Button>
-                  </Popover.Target>
-                  <Popover.Dropdown>
-                    <Stack gap="sm">
-                      <Text size="xs" c="dimmed">
-                        Custom returns are easy to overstate. The presets use
-                        long-run historical stock/bond data; higher figures make
-                        any plan look feasible. Use nominal (pre-inflation)
-                        returns.
-                      </Text>
-                      <UserInputFormItem
-                        {...num("accumReturn")}
-                        label="While working"
-                        suffix="%"
-                      />
-                      <UserInputFormItem
-                        {...num("retireReturn")}
-                        label="In retirement"
-                        suffix="%"
-                      />
-                    </Stack>
-                  </Popover.Dropdown>
-                </Popover>
-              </SimpleGrid>
-              {!activeReturnPreset && (
-                <Group gap={6} wrap="nowrap" align="flex-start">
-                  <IconAlertTriangle
-                    size={14}
-                    color="var(--mantine-color-yellow-7)"
-                    style={{ marginTop: 2, flexShrink: 0 }}
-                  />
-                  <Text size="xs" c="yellow.8">
-                    Using custom return assumptions — make sure they&apos;re
-                    reasonable.
-                  </Text>
-                </Group>
-              )}
-            </Stack>
-            <UserInputFormItem
-              {...num("inflationRate")}
-              label="Inflation"
-              suffix="%"
-            />
-            {(input.inflationRate > 2.5 || input.inflationRate < 2) && (
-              <Group gap={6} wrap="nowrap" align="flex-start">
-                <IconAlertTriangle
-                  size={14}
-                  color="var(--mantine-color-yellow-7)"
-                  style={{ marginTop: 2, flexShrink: 0 }}
+                  ))}
+                  <Popover width={300} position="bottom" withArrow shadow="md">
+                    <Popover.Target>
+                      <Button
+                        variant={activeReturnPreset ? "light" : "filled"}
+                        size="xs"
+                        radius="lg"
+                        h={44}
+                        aria-pressed={!activeReturnPreset}
+                      >
+                        <Stack gap={0} align="center">
+                          <Text span size="xs" fw={600}>
+                            Custom
+                          </Text>
+                          <Text span size="10px">
+                            {activeReturnPreset
+                              ? ""
+                              : `${input.accumReturn}% / ${input.retireReturn}%`}
+                          </Text>
+                        </Stack>
+                      </Button>
+                    </Popover.Target>
+                    <Popover.Dropdown>
+                      <Stack gap="sm">
+                        <Text size="xs" c="dimmed">
+                          Custom returns are easy to overstate. The presets use
+                          long-run historical stock/bond data; higher figures
+                          make any plan look feasible. Use nominal
+                          (pre-inflation) returns.
+                        </Text>
+                        <UserInputFormItem
+                          {...num("accumReturn")}
+                          label="While working"
+                          suffix="%"
+                        />
+                        <UserInputFormItem
+                          {...num("retireReturn")}
+                          label="In retirement"
+                          suffix="%"
+                        />
+                      </Stack>
+                    </Popover.Dropdown>
+                  </Popover>
+                </SimpleGrid>
+                {!activeReturnPreset && (
+                  <Group gap={6} wrap="nowrap" align="flex-start">
+                    <IconAlertTriangle
+                      size={14}
+                      color="var(--mantine-color-yellow-7)"
+                      style={{ marginTop: 2, flexShrink: 0 }}
+                    />
+                    <Text size="xs" c="yellow.8">
+                      Using custom return assumptions — make sure they&apos;re
+                      reasonable.
+                    </Text>
+                  </Group>
+                )}
+              </Stack>
+              <Stack gap={4}>
+                <UserInputFormItem
+                  {...num("inflationRate")}
+                  label="Inflation"
+                  suffix="%"
                 />
-                <Text size="xs" c="yellow.8">
-                  Most planners use 2–2.5% inflation assumptions.
-                  {input.inflationRate > 2.5
-                    ? " Higher rates can make your plan look more conservative."
-                    : " Lower rates can make your plan look more feasible."}
-                </Text>
-              </Group>
-            )}
+                {(input.inflationRate > 2.5 || input.inflationRate < 2) && (
+                  <Group gap={6} wrap="nowrap" align="flex-start">
+                    <IconAlertTriangle
+                      size={14}
+                      color="var(--mantine-color-yellow-7)"
+                      style={{ marginTop: 2, flexShrink: 0 }}
+                    />
+                    <Text size="xs" c="yellow.8">
+                      Most planners use 2–2.5% inflation assumptions.
+                      {input.inflationRate > 2.5
+                        ? " Higher rates can make your plan look more conservative."
+                        : " Lower rates can make your plan look more feasible."}
+                    </Text>
+                  </Group>
+                )}
+              </Stack>
+            </Stack>
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion>

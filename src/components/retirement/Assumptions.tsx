@@ -22,6 +22,7 @@ const Assumptions = () => {
           href="https://pwlcapital.com/financial-planning-assumptions-market-capitalization-weighted-portfolio/"
           target="_blank"
           rel="noreferrer"
+          c="dimmed"
         >
           PWL Capital
         </Anchor>

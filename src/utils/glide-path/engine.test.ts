@@ -52,13 +52,12 @@ describe("recommendGlidePath", () => {
   });
 
   it("reports no shortfall when guaranteed income already covers the target", () => {
-    // Pension fully funds the target, so the portfolio never has a gap to fund — there is no
+    // Guaranteed income fully funds the target, so the portfolio never has a gap to fund — there is no
     // income shortfall even with no savings. Regression: depletion used to count a zero balance
     // as failure, reporting 100% "shortfall" for a fully-funded plan.
     const r = recommendGlidePath(
       base({
-        pensionPct: 100,
-        preRetirementIncome: 100000,
+        guaranteedIncome: 60000,
         targetIncome: 60000,
         startSavings: 0,
         annualContribution: 0,
@@ -121,20 +120,18 @@ describe("recommendGlidePath", () => {
     expect(bounded.ceIncome).toBe(minimum.ceIncome);
   });
 
-  it("pays the pension every retirement year (no bridge)", () => {
+  it("pays guaranteed income every retirement year (no bridge)", () => {
     // Guaranteed income starts at retirement, so no year funds the full target alone.
     const r = recommendGlidePath(
-      base({ retirementAge: 55, planningAge: 95, pensionPct: 25 }),
+      base({ retirementAge: 55, planningAge: 95, guaranteedIncome: 25000 }),
     );
     expect(r.params.accumYears).toBe(20);
     expect(r.params.retireYears).toBe(40);
     expect(r.params.guaranteed).toBeCloseTo(25000, 0);
   });
 
-  it("computes the pension from pre-retirement income", () => {
-    const r = recommendGlidePath(
-      base({ pensionPct: 30, preRetirementIncome: 120000 }),
-    );
+  it("uses the guaranteed income amount directly", () => {
+    const r = recommendGlidePath(base({ guaranteedIncome: 36000 }));
     expect(r.params.guaranteed).toBeCloseTo(36000, 0);
   });
 

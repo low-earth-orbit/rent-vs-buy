@@ -24,7 +24,7 @@ describe("validateGlidePathInput", () => {
   });
 
   it("flags an out-of-range field", () => {
-    const errors = validateGlidePathInput(base({ pensionPct: -1 }));
-    expect(errors.pensionPct).toBeTruthy();
+    const errors = validateGlidePathInput(base({ guaranteedIncome: -1 }));
+    expect(errors.guaranteedIncome).toBeTruthy();
   });
 });

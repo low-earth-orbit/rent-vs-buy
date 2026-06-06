@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   Group,
+  Popover,
   SimpleGrid,
   Slider,
   Stack,
@@ -59,6 +60,9 @@ export default function InputForm({
   };
 
   const flex = typeof input.flexibility === "number" ? input.flexibility : 0;
+  const isCustomGamma = !GAMMA_PRESETS.some((gamma) =>
+    isSame(input.gamma, gamma),
+  );
   const leveraged =
     typeof input.maxEquityPct === "number" && input.maxEquityPct > 100;
 
@@ -79,13 +83,6 @@ export default function InputForm({
                 {...num("startAge")}
                 label="Current age"
                 suffix=" yrs"
-              />
-              <UserInputFormItem
-                {...num("preRetirementIncome")}
-                label="Annual income"
-                labelHelperText="Gross income today — the base for the pension %."
-                prefix="$"
-                thousandSeparator
               />
               <UserInputFormItem
                 {...num("startSavings")}
@@ -122,15 +119,16 @@ export default function InputForm({
               <UserInputFormItem
                 {...num("targetIncome")}
                 label="Target retirement income"
-                labelHelperText="Gross retirement income including pensions."
+                labelHelperText="Gross retirement income including guaranteed income."
                 prefix="$"
                 thousandSeparator
               />
               <UserInputFormItem
-                {...num("pensionPct")}
-                label="Pension % of pre-retirement income"
-                labelHelperText="Guaranteed income in retirement as a % of your pre-retirement income."
-                suffix="%"
+                {...num("guaranteedIncome")}
+                label="Guaranteed income"
+                labelHelperText="Annual CPP, OAS, DB pension, and other income paid every retirement year, in today's dollars."
+                prefix="$"
+                thousandSeparator
               />
             </SimpleGrid>
           </Accordion.Panel>
@@ -139,17 +137,17 @@ export default function InputForm({
         <Accordion.Item value="prefs">
           <Accordion.Control>Spending &amp; risk</Accordion.Control>
           <Accordion.Panel>
-            <Stack gap="lg">
+            <Stack gap="md">
               <Stack gap={4}>
                 <FieldHeader
                   label="Spending flexibility"
-                  description="0 = fixed real $ every year, regardless of markets. 1 = withdraw a fixed % of the portfolio, so a 20% drop cuts that withdrawal ~20% (guaranteed income is unaffected)."
+                  description="How much retirement spending responds to markets. 0 = fixed real dollars; 1 = fully follows the portfolio."
                 />
-                <Box w="85%" mx="auto">
+                <Box w="85%" mx="auto" pt="xs" pb="md">
                   <Slider
-                    my="xs"
                     value={flex}
                     onChange={(v) => onChange("flexibility", v)}
+                    thumbLabel="Spending flexibility"
                     min={0}
                     max={1}
                     step={0.05}
@@ -168,22 +166,17 @@ export default function InputForm({
                 <UserInputFormItem
                   {...num("withdrawalRate")}
                   label="Withdrawal rate"
-                  labelHelperText="When spending flexibly, the % of the current portfolio balance drawn each year. This scales with portfolio performance."
+                  description="The percentage of the current portfolio drawn each year for the flexible part of spending."
                   suffix="%"
                 />
               )}
 
               <Stack gap={4}>
                 <FieldHeader
-                  label="Retirement spending risk aversion (γ)"
+                  label="Risk aversion (γ)"
                   description="Your tolerance for swings in retirement spending. 1 = aggressive; 3 = moderate; 8 = very cautious."
                 />
-                <Group
-                  gap="xs"
-                  my="xs"
-                  role="group"
-                  aria-label="Retirement spending risk aversion"
-                >
+                <Group gap="xs" mt="xs" role="group" aria-label="Risk aversion">
                   {GAMMA_PRESETS.map((g) => (
                     <Button
                       key={g}
@@ -196,13 +189,35 @@ export default function InputForm({
                       {g}
                     </Button>
                   ))}
+                  <Popover
+                    width={220}
+                    position="bottom-start"
+                    withArrow
+                    shadow="md"
+                  >
+                    <Popover.Target>
+                      <Button
+                        variant={isCustomGamma ? "filled" : "light"}
+                        size="xs"
+                        radius="lg"
+                        aria-pressed={isCustomGamma}
+                      >
+                        Custom
+                      </Button>
+                    </Popover.Target>
+                    <Popover.Dropdown>
+                      <UserInputFormItem
+                        {...num("gamma")}
+                        label="Custom risk aversion"
+                      />
+                    </Popover.Dropdown>
+                  </Popover>
                 </Group>
-                <UserInputFormItem {...num("gamma")} label={undefined} />
               </Stack>
               <UserInputFormItem
                 {...num("beta")}
-                label="Retirement time preference (β)"
-                description="How much you want to front-load spending into your earlier, more active retirement years. 1.00 = spread evenly; 0.985 = lean slightly earlier; 0.97 = clearly favor the early years."
+                label="Time preference (β)"
+                description="How much to prioritize earlier retirement spending. 1.00 = even; lower values favor earlier years."
                 step={0.005}
               />
             </Stack>
@@ -212,11 +227,11 @@ export default function InputForm({
         <Accordion.Item value="leverage">
           <Accordion.Control>Leverage</Accordion.Control>
           <Accordion.Panel>
-            <Stack gap="md">
+            <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 {...num("maxEquityPct")}
                 label="Max equity"
-                labelHelperText="100% = no leverage. 150% lets the optimizer borrow to hold up to 1.5× equity."
+                labelHelperText="The most equity the optimizer may use. Above 100% means borrowing to invest."
                 suffix="%"
               />
               {leveraged && (
@@ -227,7 +242,7 @@ export default function InputForm({
                   suffix="%"
                 />
               )}
-            </Stack>
+            </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>
 
@@ -238,13 +253,13 @@ export default function InputForm({
               <UserInputFormItem
                 {...num("interval")}
                 label="Glide step"
-                labelHelperText="Years the equity weight is held constant. 1 = per-age (much slower); 5 = every 5 years."
+                labelHelperText="How often the allocation may change. Smaller steps produce a finer path but take longer."
                 suffix=" yrs"
               />
               <UserInputFormItem
                 {...num("numPaths")}
                 label="Monte Carlo paths"
-                labelHelperText="More paths = steadier result, slower."
+                labelHelperText="The number of simulated market histories. More paths give steadier results but take longer."
                 thousandSeparator
               />
               <UserInputFormItem
