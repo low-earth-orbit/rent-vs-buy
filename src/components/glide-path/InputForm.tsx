@@ -141,7 +141,7 @@ export default function InputForm({
               <Stack gap={4}>
                 <FieldHeader
                   label="Spending flexibility"
-                  description="How much retirement spending responds to markets. 0 = fixed real dollars; 1 = fully follows the portfolio."
+                  description="How much retirement spending responds to markets. 0 = fixed real dollars (spend the same after a crash); 1 = fully follows the portfolio (a 20% drop cuts that year's withdrawal ~20%). 0.5 sits halfway."
                 />
                 <Box w="85%" mx="auto" pt="xs" pb="md">
                   <Slider
