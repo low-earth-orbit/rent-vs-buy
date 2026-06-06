@@ -1,5 +1,13 @@
 import { test, expect } from "@playwright/test";
 
+test.beforeEach(async ({ context }) => {
+  // The first-visit disclaimer modal now mounts on every route. Pre-accept it
+  // so its overlay doesn't sit over the app during these flows.
+  await context.addInitScript(() => {
+    window.localStorage.setItem("rvb_disclaimerAccepted", "true");
+  });
+});
+
 test("hub landing page lists the available tools", async ({ page }) => {
   await page.goto("/");
 

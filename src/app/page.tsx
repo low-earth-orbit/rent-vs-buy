@@ -12,13 +12,7 @@ import {
 } from "@mantine/core";
 import Header from "@/components/shared/Header";
 import Footer from "@/components/shared/Footer";
-import DisclaimerModal from "@/components/shared/DisclaimerModal";
 import StatusBadge, { type AppStatus } from "@/components/shared/StatusBadge";
-import {
-  loadDisclaimerAccepted,
-  saveDisclaimerAccepted,
-} from "@/utils/storage";
-import { useState } from "react";
 
 type Tool = {
   emoji: string;
@@ -105,24 +99,11 @@ function ToolCard({ tool }: { tool: Tool }) {
 }
 
 export default function HomePage() {
-  const [disclaimerOpen, setDisclaimerOpen] = useState(
-    () => !loadDisclaimerAccepted(),
-  );
-
-  function acceptDisclaimer() {
-    saveDisclaimerAccepted();
-    setDisclaimerOpen(false);
-  }
-
   return (
     <>
       <Header title="Personal Finance" />
       <main>
         <Container size="xl" py="xl">
-          <DisclaimerModal
-            opened={disclaimerOpen}
-            onAccept={acceptDisclaimer}
-          />
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
             {TOOLS.map((tool) => (
               <ToolCard key={tool.title} tool={tool} />
