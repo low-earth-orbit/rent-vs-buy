@@ -1,7 +1,24 @@
-import { NumberInput, Text, Stack } from "@mantine/core";
+import { useState } from "react";
+import {
+  Group,
+  Input,
+  NumberInput,
+  SegmentedControl,
+  Stack,
+  Text,
+} from "@mantine/core";
 import type { ReactNode } from "react";
 import FieldLabel from "./FieldLabel";
 import type { FieldValue } from "@/types";
+
+interface PercentToggleOptions {
+  base: number;
+  defaultUnit?: "$" | "%";
+  dollarSuffix?: string;
+  amountStep?: number;
+  percentStep?: number;
+  unitAriaLabel: string;
+}
 
 interface UserInputFormItemProps {
   id: string;
@@ -20,6 +37,7 @@ interface UserInputFormItemProps {
   error?: string;
   prefix?: string;
   suffix?: string;
+  percentToggle?: PercentToggleOptions;
 }
 
 export default function UserInputFormItem({
@@ -37,8 +55,83 @@ export default function UserInputFormItem({
   disabled,
   allowNegative,
   error,
+  percentToggle,
   ...rest
 }: UserInputFormItemProps) {
+  const [unit, setUnit] = useState<string>(percentToggle?.defaultUnit ?? "$");
+
+  if (percentToggle) {
+    const {
+      base,
+      dollarSuffix = " /yr",
+      amountStep,
+      percentStep,
+      unitAriaLabel,
+    } = percentToggle;
+    const valueIsEmpty = value === "" || value == null;
+    const displayValue =
+      unit === "$"
+        ? valueIsEmpty
+          ? ""
+          : base > 0
+            ? Math.round((+value / 100) * base)
+            : 0
+        : value;
+
+    const handleChange = (next: FieldValue) => {
+      if (next === "" || next == null) {
+        onChange(next);
+        return;
+      }
+      if (unit === "%") {
+        onChange(next);
+        return;
+      }
+      if (!base || base <= 0) return;
+      // 4 dp avoids floating-point noise like 0.8500000000000001 while
+      // preserving $1/yr precision at a $1M base.
+      const pct = (+next / base) * 100;
+      onChange(Math.round(pct * 10000) / 10000);
+    };
+
+    return (
+      <Stack gap={0}>
+        <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
+          <Input.Label htmlFor={id}>
+            <FieldLabel label={label} helperText={labelHelperText} />
+          </Input.Label>
+          <SegmentedControl
+            size="xs"
+            value={unit}
+            onChange={setUnit}
+            aria-label={unitAriaLabel}
+            styles={{
+              root: { height: 22, padding: 2, flexShrink: 0 },
+              label: { padding: "0 6px", lineHeight: "18px" },
+            }}
+            data={[
+              { label: "$", value: "$" },
+              { label: "%", value: "%" },
+            ]}
+          />
+        </Group>
+        <NumberInput
+          id={id}
+          value={displayValue}
+          onChange={handleChange}
+          error={error}
+          prefix={unit === "$" ? "$" : undefined}
+          suffix={unit === "$" ? dollarSuffix : "%"}
+          thousandSeparator={unit === "$" ? "," : undefined}
+          min={0}
+          step={unit === "$" ? amountStep || 100 : percentStep || 0.1}
+          allowNegative={false}
+          clampBehavior="none"
+        />
+      </Stack>
+    );
+  }
+
   return (
     <Stack gap={4}>
       <NumberInput

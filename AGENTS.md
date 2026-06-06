@@ -87,12 +87,11 @@ When adding a new tool: add its route under `src/app/<tool>/`, put tool-specific
 
 ### 1. UI Layer (`src/components/`)
 
-Components are split into **`shared/`** (reusable chrome and form primitives — `Header`, `Footer`, `DisclaimerModal`, `FieldLabel`, `UserInputFormItem`, `UserInputRangeItem`, `CurrencyPercentItem`) and per-tool folders (**`rent-vs-buy/`**). `Header` takes `title`/`subtitle`/`showHomeLink` props; `Footer` is the generic site footer (disclaimer + copyright + GitHub).
+Components are split into **`shared/`** (reusable chrome and form primitives — `Header`, `Footer`, `DisclaimerModal`, `FieldLabel`, `UserInputFormItem`, `UserInputRangeItem`) and per-tool folders (**`rent-vs-buy/`**). `Header` takes `title`/`subtitle`/`showHomeLink` props; `Footer` is the generic site footer (disclaimer + copyright + GitHub).
 
 - **rent-vs-buy/Main.tsx**: Top-level state container for the rent-vs-buy tool. Holds `userInput`, `expandedFields` (which rate fields show the uncertainty input), `customPresets`, `hiddenBuiltins`, and `activePresetId`. Passes handlers to the form and result components. All state is persisted to localStorage via `storage.ts`.
 - **UserInputForm.tsx**: Form organized into Accordion sections (Rent, Property, Mortgage, Investment & Tax, Transaction Costs). Preset buttons at the top let users apply, save, or delete scenarios. Rate fields can expand inline to reveal a sigma (uncertainty) input.
-- **UserInputFormItem.tsx**: Thin wrapper around Mantine `NumberInput` with a `FieldLabel`.
-- **CurrencyPercentItem.tsx**: Recurring-cost input that toggles between a dollar amount (per year) and a percentage of today's home price. Shared by Property Tax and Maintenance (extracted to remove duplicated $/% conversion logic).
+- **UserInputFormItem.tsx**: Wrapper around Mantine `NumberInput` with a `FieldLabel`. By default a plain numeric input; pass the optional `percentToggle` config (`{ base, defaultUnit?, dollarSuffix?, amountStep?, percentStep?, unitAriaLabel }`) to add a `$`/`%` SegmentedControl on the label row. In toggle mode `value` is stored canonically as a percentage of `base` and a derived dollar amount is shown in `$` mode (used for Property Tax/Maintenance in rent-vs-buy and savings/income fields in retirement). The shrunk toggle keeps the input box aligned with adjacent plain items in a grid row.
 - **UserInputRangeItem.tsx**: Form control for rate fields that support uncertainty. Shows a base value `NumberInput` with a toggle to expand an inline `±2σ` input and a live range readout (`low% to high%`). The sigma input displays `2σ` (the full ±spread) and converts back to `σ` on change.
 - **FieldLabel.tsx**: Label with optional helper text popover.
 - **Result.tsx**: Validates input, then renders `NetWorthChart` (always with MC bands).

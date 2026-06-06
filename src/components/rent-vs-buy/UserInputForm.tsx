@@ -15,7 +15,6 @@ import { IconPlus, IconX } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
 import UserInputRangeItem from "@/components/shared/UserInputRangeItem";
-import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
 import { FIELD_CONSTRAINTS } from "@/utils/validation";
 import type {
   FieldErrors,
@@ -283,28 +282,32 @@ export default function UserInputForm({
                   "Expected annual growth in the home's market value. Long-run world historical average is 0–2% above inflation (2–4% nominal).",
               })}
 
-              <CurrencyPercentItem
+              <UserInputFormItem
                 id="propertyTaxRate"
                 label="Property tax"
-                helperText="Current annual property tax. Switch between dollar amount and rate (% of today's home value). Typical range: 0.5–1.5% depending on municipality."
-                unitAriaLabel="Property Tax input unit"
-                rate={userInput.propertyTaxRate}
-                percentBase={userInput.initialHomePrice}
+                labelHelperText="Current annual property tax. Switch between dollar amount and rate (% of today's home value). Typical range: 0.5–1.5% depending on municipality."
+                value={userInput.propertyTaxRate}
                 onChange={bind("propertyTaxRate")}
                 error={errors.propertyTaxRate}
-                defaultUnit="$"
+                percentToggle={{
+                  base: userInput.initialHomePrice,
+                  defaultUnit: "$",
+                  unitAriaLabel: "Property Tax input unit",
+                }}
               />
 
-              <CurrencyPercentItem
+              <UserInputFormItem
                 id="maintPct"
                 label="Maintenance & insurance"
-                helperText="Annual repairs and insurance. Toggle % of today's home price or $/yr. Excludes condo fees. Typically 0.5–1% for condos and 1–2% for detached homes."
-                unitAriaLabel="Maintenance and Insurance input unit"
-                rate={userInput.maintPct}
-                percentBase={userInput.initialHomePrice}
+                labelHelperText="Annual repairs and insurance. Toggle % of today's home price or $/yr. Excludes condo fees. Typically 0.5–1% for condos and 1–2% for detached homes."
+                value={userInput.maintPct}
                 onChange={bind("maintPct")}
                 error={errors.maintPct}
-                defaultUnit="%"
+                percentToggle={{
+                  base: userInput.initialHomePrice,
+                  defaultUnit: "%",
+                  unitAriaLabel: "Maintenance and Insurance input unit",
+                }}
               />
 
               <UserInputFormItem

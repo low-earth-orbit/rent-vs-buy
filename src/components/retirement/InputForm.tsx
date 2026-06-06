@@ -11,7 +11,6 @@ import {
 } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import UserInputFormItem from "@/components/shared/UserInputFormItem";
-import CurrencyPercentItem from "@/components/shared/CurrencyPercentItem";
 import {
   RETURN_PRESETS,
   SUCCESS_RATE_PRESETS,
@@ -104,18 +103,20 @@ export default function InputForm({
                   prefix="$"
                   thousandSeparator
                 />
-                <CurrencyPercentItem
+                <UserInputFormItem
                   id="contributionPct"
                   label="Annual savings"
-                  helperText="How much you add to investments each year. Toggle between a dollar amount and a % of your income."
-                  unitAriaLabel="Annual savings input unit"
-                  rate={input.contributionPct}
-                  percentBase={+input.currentIncome || 0}
+                  labelHelperText="How much you add to investments each year. Toggle between a dollar amount and a % of your income."
+                  value={input.contributionPct}
                   onChange={bind("contributionPct")}
                   error={errors.contributionPct}
-                  defaultUnit="%"
-                  amountStep={1000}
-                  percentStep={5}
+                  percentToggle={{
+                    base: +input.currentIncome || 0,
+                    defaultUnit: "%",
+                    amountStep: 1000,
+                    percentStep: 5,
+                    unitAriaLabel: "Annual savings input unit",
+                  }}
                 />
               </SimpleGrid>
             </Stack>
@@ -127,31 +128,35 @@ export default function InputForm({
           <Accordion.Panel>
             <Stack gap="md">
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
-                <CurrencyPercentItem
+                <UserInputFormItem
                   id="targetIncomePct"
                   label="Target income"
-                  helperText="The gross income you want in retirement — as a % of your current income (a replacement ratio of 60–70% is typical) or a dollar amount. Your guaranteed income below counts toward this."
-                  unitAriaLabel="Target retirement income input unit"
-                  rate={input.targetIncomePct}
-                  percentBase={+input.currentIncome || 0}
+                  labelHelperText="The gross income you want in retirement — as a % of your current income (a replacement ratio of 60–70% is typical) or a dollar amount. Your guaranteed income below counts toward this."
+                  value={input.targetIncomePct}
                   onChange={bind("targetIncomePct")}
                   error={errors.targetIncomePct}
-                  defaultUnit="%"
-                  amountStep={1000}
-                  percentStep={5}
+                  percentToggle={{
+                    base: +input.currentIncome || 0,
+                    defaultUnit: "%",
+                    amountStep: 1000,
+                    percentStep: 5,
+                    unitAriaLabel: "Target retirement income input unit",
+                  }}
                 />
-                <CurrencyPercentItem
+                <UserInputFormItem
                   id="guaranteedIncomePct"
                   label="Pension amount"
-                  helperText="Estimated annual CPP + OAS + workplace (DB) pension. Enter a dollar amount or a % of your current/pre-retirement income; it begins at the pension start age below."
-                  unitAriaLabel="Guaranteed income input unit"
-                  rate={input.guaranteedIncomePct}
-                  percentBase={+input.currentIncome || 0}
+                  labelHelperText="Estimated annual CPP + OAS + workplace (DB) pension. Enter a dollar amount or a % of your current/pre-retirement income; it begins at the pension start age below."
+                  value={input.guaranteedIncomePct}
                   onChange={bind("guaranteedIncomePct")}
                   error={errors.guaranteedIncomePct}
-                  defaultUnit="$"
-                  amountStep={1000}
-                  percentStep={5}
+                  percentToggle={{
+                    base: +input.currentIncome || 0,
+                    defaultUnit: "$",
+                    amountStep: 1000,
+                    percentStep: 5,
+                    unitAriaLabel: "Guaranteed income input unit",
+                  }}
                 />
                 <UserInputFormItem
                   {...num("pensionStartAge")}

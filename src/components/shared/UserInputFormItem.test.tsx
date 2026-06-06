@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { renderWithMantine, screen } from "@/test-utils";
+import { fireEvent, renderWithMantine, screen } from "@/test-utils";
 import UserInputFormItem from "./UserInputFormItem";
 
 describe("UserInputFormItem", () => {
@@ -29,5 +29,34 @@ describe("UserInputFormItem", () => {
       "aria-live",
       "polite",
     );
+  });
+
+  it("keeps the field label associated with the input when switching units", () => {
+    const onChange = vi.fn();
+
+    renderWithMantine(
+      <UserInputFormItem
+        id="annualSavings"
+        label="Annual savings"
+        labelHelperText="Amount saved each year."
+        value={20}
+        onChange={onChange}
+        percentToggle={{
+          base: 100_000,
+          defaultUnit: "%",
+          unitAriaLabel: "Annual savings input unit",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByLabelText("Annual savings", { selector: "input" }),
+    ).toHaveValue("20%");
+
+    fireEvent.click(screen.getByRole("radio", { name: "$" }));
+
+    expect(
+      screen.getByLabelText("Annual savings", { selector: "input" }),
+    ).toHaveValue("$20,000 /yr");
   });
 });
