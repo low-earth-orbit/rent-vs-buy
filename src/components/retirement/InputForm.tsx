@@ -336,7 +336,7 @@ export default function InputForm({
                       <Stack gap="sm">
                         <Text size="xs" c="dimmed">
                           Custom returns are easy to overstate. The presets use
-                          long-run historical stock/bond data; higher figures
+                          long-term capital market assumptions; higher figures
                           make any plan look feasible. Use nominal
                           (pre-inflation) returns.
                         </Text>
