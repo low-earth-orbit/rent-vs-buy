@@ -22,8 +22,8 @@ KEY FINDINGS (default run, 60/40, 90% success)
 ----------------------------------------------
                          30y     40y     50y
   USA, overlapping       4.5%    4.0%    3.7%   ← reproduces the literature floor; flat after 40y
-  World, overlapping     3.6%    3.1%    2.7%   ← honest cost of dropping US-exceptionalism
-  World, block bootstrap 3.6%    3.0%    2.7%
+  World, overlapping     3.8%    3.2%    2.8%   ← honest cost of dropping US-exceptionalism
+  World, block bootstrap 3.7%    3.2%    2.9%
   App parametric model   3.9%    3.2%    2.8%   (for reference)
 
   * The floor is a property of ACTUAL multi-decade paths: real markets mean-revert over
@@ -32,7 +32,7 @@ KEY FINDINGS (default run, 60/40, 90% success)
     ≤block_len, dependence) — so it does NOT reliably reproduce the floor and can even fall
     below an iid draw of the same mean/vol. Use METHOD="overlap" to see the true floor.
   * Global diversification cuts single-country vol (~15.5%, war/hyperinflation tails) down
-    to ~9.7% for an equal-weight world aggregate — the right object for a diversified retiree.
+    to ~9.6% for an equal-weight world aggregate — the right object for a diversified retiree.
 
 USAGE
 -----
@@ -42,10 +42,13 @@ Requires: pandas, numpy, openpyxl  (pip install pandas numpy openpyxl)
 """
 
 from __future__ import annotations
-import os
-import urllib.request
+
 import numpy as np
-import pandas as pd
+
+if __package__:
+    from .jst_history import load_country_returns, load_world_returns
+else:
+    from jst_history import load_country_returns, load_world_returns
 
 # ───────────────────────── CONFIG ─────────────────────────
 EQUITY_WEIGHT = 0.60          # 60/40; bond weight = 1 − this
@@ -61,32 +64,12 @@ SEED = 12345
 RECENTER: tuple[float, float] | None = None
 # ───────────────────────────────────────────────────────────
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), ".data")
-DATA_FILE = os.path.join(DATA_DIR, "JSTdatasetR6.xlsx")
-DATA_URL = "https://www.macrohistory.net/app/download/9834512569/JSTdatasetR6.xlsx"
-
 RNG = np.random.default_rng(SEED)
 
 
-def ensure_data() -> str:
-    if not os.path.exists(DATA_FILE):
-        os.makedirs(DATA_DIR, exist_ok=True)
-        print(f"Downloading JST dataset → {DATA_FILE} ...")
-        req = urllib.request.Request(DATA_URL, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req) as r, open(DATA_FILE, "wb") as f:
-            f.write(r.read())
-    return DATA_FILE
-
-
-def real_returns(sub: pd.DataFrame, eq_w: float) -> pd.DataFrame:
-    """Real (CPI-deflated) annual total return of an `eq_w`/(1−eq_w) stock/bond mix."""
-    bond_w = 1 - eq_w
-    sub = sub.sort_values("year").dropna(subset=["eq_tr", "bond_tr", "cpi"]).copy()
-    sub["infl"] = sub["cpi"].pct_change()
-    real_eq = (1 + sub["eq_tr"]) / (1 + sub["infl"]) - 1
-    real_bd = (1 + sub["bond_tr"]) / (1 + sub["infl"]) - 1
-    sub["r"] = eq_w * real_eq + bond_w * real_bd
-    return sub.dropna(subset=["infl", "r"])[["year", "r"]]
+def portfolio_returns(history, eq_w: float) -> np.ndarray:
+    """Real annual return of an `eq_w`/(1-eq_w) stock/bond mix."""
+    return eq_w * history.equity + (1 - eq_w) * history.bonds
 
 
 def maybe_recenter(arr: np.ndarray) -> np.ndarray:
@@ -160,27 +143,16 @@ def describe(arr: np.ndarray) -> str:
 
 
 def main() -> None:
-    df = pd.read_excel(ensure_data(), sheet_name=0)
-    countries = [
-        c for c in df["country"].unique()
-        if len(real_returns(df[df["country"] == c], EQUITY_WEIGHT)) > 0
-    ]
-
-    # Per-country real series, and an equal-weight world aggregate (a diversified investor).
-    panel_rows = []
-    for c in countries:
-        t = real_returns(df[df["country"] == c], EQUITY_WEIGHT)
-        for y, r in zip(t["year"].astype(int), t["r"]):
-            panel_rows.append((y, c, r))
-    panel = pd.DataFrame(panel_rows, columns=["year", "country", "r"])
-    world = maybe_recenter(panel.groupby("year")["r"].mean().sort_index().values)
-    usa = maybe_recenter(real_returns(df[df["country"] == "USA"], EQUITY_WEIGHT)["r"].values)
+    world_history = load_world_returns()
+    usa_history = load_country_returns("USA")
+    world = maybe_recenter(portfolio_returns(world_history, EQUITY_WEIGHT))
+    usa = maybe_recenter(portfolio_returns(usa_history, EQUITY_WEIGHT))
 
     eqp = int(EQUITY_WEIGHT * 100)
     rc = "" if RECENTER is None else f"  [re-centered to mean={RECENTER[0]*100:.1f}% vol={RECENTER[1]*100:.1f}%]"
     print(f"JST R6 · {eqp}/{100-eqp} portfolio · {int(TARGET*100)}% success{rc}")
     print(f"  USA   ({len(usa)} yrs): {describe(usa)}")
-    print(f"  World ({len(world)} yrs, equal-wt {len(countries)} countries): {describe(world)}")
+    print(f"  World ({len(world)} yrs, equal-wt {world_history.country_count} countries): {describe(world)}")
     print()
     print("SWR @ {}% by horizon:".format(int(TARGET * 100)))
     print("Horizon | USA overlap | World overlap | World block-bs(bl={}) | lit".format(BLOCK_LEN))

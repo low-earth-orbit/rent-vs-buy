@@ -12,6 +12,7 @@ npm run typecheck    # tsc --noEmit
 npm run format       # Prettier (format:check to verify only)
 npm test             # Vitest unit + React Testing Library component tests
 npm run test:e2e     # Playwright end-to-end tests (auto-starts the dev server)
+python3 -m unittest discover -s analysis -p 'test_*.py' -v  # Python analysis tests
 ```
 
 `dev` and `build` set `NODE_OPTIONS=--max-old-space-size=8192`. A one-shot build only needs
@@ -72,6 +73,13 @@ A hub landing page at `/` links to each tool, and every tool lives at its own ro
 - **Rent vs Buy** (`/rent-vs-buy`): compares the financial outcomes of renting versus buying a home. Users input assumptions, and the app generates a year-by-year net worth comparison over 50 years with Monte Carlo confidence bands and a probability-based summary of which option is more likely to win.
 - **When can I retire?** (`/retirement`): a quick retirement reality check. Projects a single combined portfolio in real (today's) dollars, grows savings until retirement, then draws from the portfolio to top up guaranteed income (CPP/OAS/DB, entered as a flat taxable amount) to a target gross income (a % of current income). Reports the earliest feasible retirement age. Deterministic single-return for now; Monte Carlo planned. Engine in `src/utils/retirement/`, components in `src/components/retirement/`.
 - **Lifetime Allocation Optimizer** (`/glide-path`): compares the welfare-maximizing equity allocation curve across the accumulation and decumulation phases with the best constant allocation. Uses Monte Carlo coordinate ascent to maximize expected discounted CRRA utility of retirement consumption, and separately scores the best constant allocation out of sample as a robust comparator. The raw optimized glide remains the returned/charted schedule; the UI lists both choices and applies a simplicity bias toward the constant comparator when its CE income is within 5%, either depletion rate is within 5 percentage points, or it wins all three comparable outcomes. Reports both full-path and drawdown-only income shortfall (the share of paths with a year the portfolio can't fund the targeted draw) — the latter from the expected retirement balance, matching the `/retirement` headline semantics. Guaranteed income is entered as a flat real annual amount and paid every retirement year — a pre-pension bridge is intentionally out of scope (that funding-feasibility question belongs to `/retirement`). Supports leverage (equity weight > 1). Engine in `src/utils/glide-path/`, components in `src/components/glide-path/`.
+
+  The web/TypeScript optimizer remains forward-CMA iid Monte Carlo. The Python recommender
+  (`analysis/recommend_glide.py`) additionally supports raw equal-weight-world JST historical
+  backtesting via paired-year iid sampling and stationary circular block bootstrap. The block
+  length setting is an average, not a fixed length. Shared JST loading and bootstrap helpers live
+  in `analysis/jst_history.py`; downloaded data stays under
+  `analysis/.data/`.
 
 When adding a new tool: add its route under `src/app/<tool>/`, put tool-specific components in `src/components/<tool>/`, and reuse shared chrome/primitives from `src/components/shared/` and shared logic from `src/utils/`. Cross-folder imports use the `@/` alias (`@/* → ./src/*`).
 

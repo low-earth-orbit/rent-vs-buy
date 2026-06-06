@@ -20,6 +20,26 @@ Simulation: [`analysis/glidepath_utility_mc.py`](../analysis/glidepath_utility_m
 (`python3 analysis/glidepath_utility_mc.py`; needs numpy + matplotlib). Figures it writes are in
 [`analysis/glidepath_figures/`](../analysis/glidepath_figures/).
 
+The research sweep and web app remain forward-CMA iid Monte Carlo. The productized Python
+recommender also supports two raw-history cross-checks:
+
+```bash
+# Existing default: forward-CMA normal iid Monte Carlo
+python3 analysis/recommend_glide.py --mode iid-mc
+
+# Raw paired world stock/bond years, sampled independently with replacement
+python3 analysis/recommend_glide.py --mode historical-iid
+
+# Raw paired world stock/bond years, sampled in stationary circular blocks
+python3 analysis/recommend_glide.py --mode historical-block --block-years 10
+```
+
+Historical modes use the equal-weight-world series from the JST R6 Macrohistory workbook.
+`analysis/jst_history.py` downloads it on first use to gitignored `analysis/.data/`, deflates stock
+and bond total returns by each country's CPI, and aggregates paired real returns by year. They
+require pandas and openpyxl in addition to numpy. A custom `--curve` and `--inflation` apply only
+to `iid-mc`.
+
 ---
 
 ## TL;DR
@@ -42,7 +62,32 @@ Simulation: [`analysis/glidepath_utility_mc.py`](../analysis/glidepath_utility_m
 
 ## 1. Method
 
-Real (today's) dollars throughout. iid normal returns, drawn each year — **no** serial correlation, **no** valuation signal — so anything the optimizer likes here is robust to the absence of mean reversion, by construction.
+Real (today's) dollars throughout. The documented research results below use iid normal returns,
+drawn each year — **no** serial correlation, **no** valuation signal — so anything the optimizer
+likes here is robust to the absence of mean reversion, by construction.
+
+### Python recommender return modes
+
+All three modes feed the same lifecycle cash flows, utility objective, coordinate-ascent optimizer,
+and independent evaluation-sample comparison:
+
+- **`iid-mc`** maps each allocation to the app's forward-CMA real mean and volatility, then draws
+  independent normal returns. This remains the default and the only mode used by the web app and
+  `glidepath_utility_mc.py`.
+- **`historical-iid`** samples raw historical years independently with replacement. Stock and bond
+  returns remain paired within a sampled year, but year-to-year ordering is removed.
+- **`historical-block`** uses a stationary circular block bootstrap of paired stock/bond years.
+  Each next year continues the current historical sequence with probability `1 − 1/L` or restarts
+  at a random year with probability `1/L`, so block lengths are geometric and average `L` years.
+  The default `L` is 10 years, an annual approximation of the 120-month average used by ACO.
+
+For historical allocations up to 100% equity, each annual portfolio return is
+`w × stock + (1−w) × bond`. Above 100%, the leveraged return is
+`w × stock − (w−1) × real borrowing cost`. Historical modes use raw realized return levels; they
+do not re-center history to the forward CMAs. They are bootstrap backtests, not overlapping
+realized lifecycle windows. The historical-block mode bootstraps an already-diversified annual
+equal-weight-world series; unlike ACO, it does not bootstrap a monthly country-level four-asset
+panel, so it is a sequencing sensitivity check rather than an ACO replication.
 
 ### Returns — our own assumptions, no history
 
@@ -312,19 +357,20 @@ The same model is exposed as a one-call recommender —
 [`analysis/glide_path_recommender.py`](../analysis/glide_path_recommender.py),
 `recommend_glide_path(...)` — that **optimizes** (does not look up) the equity weight per
 chosen step (`interval` = 1y, 5y, …) given your horizons, spending flexibility, guaranteed income,
-risk aversion, bequest motive, and an arbitrary return/vol curve passed in as a variable. It first
-finds a coordinate-ascent glide, then scores both that glide and the best single constant allocation
-out of sample. It always returns the raw optimized glide as the schedule, plus the robust constant
-comparator (`flat_equity_pct` / `flat_ce_income`) so callers can recommend the flat path when it is
-materially better. It returns the per-step schedule plus out-of-sample CE income, income CV, the
-median estate, and two depletion views: full-path depletion (`depletion`), which includes
-pre-retirement market luck from today, and drawdown-only depletion (`drawdown_depletion`), which
-starts from the deterministic expected retirement balance and matches the `/retirement` headline
-semantics. It also returns the **best single constant equity weight** — the simpler alternative whose
-CE the glide path usually beats by only a hair (§2e) — and ships a `plot_glide_path()` helper.
+risk aversion, bequest motive, and selected return mode (including an arbitrary return/vol curve
+under `iid-mc`). It first finds a coordinate-ascent glide, then scores both that glide and the best
+single constant allocation on an independent evaluation sample. It always returns the raw optimized
+glide as the schedule, plus the robust constant comparator (`flat_equity_pct` / `flat_ce_income`) so
+callers can recommend the flat path when it is materially better. It returns the per-step schedule
+plus independent-evaluation CE income, income CV, the median estate, and two depletion views:
+full-path depletion (`depletion`), which includes pre-retirement market luck from today, and
+drawdown-only depletion (`drawdown_depletion`), which starts from the deterministic expected
+retirement balance and matches the `/retirement` headline semantics. It also returns the **best
+single constant equity weight** — the simpler alternative whose CE the glide path usually beats by
+only a hair (§2e) — and ships a `plot_glide_path()` helper.
 
 `python3 analysis/glide_path_recommender.py --demo` sweeps **each lever across all three spending
-rules** — a 3×3 matrix, holding every other input at its default — and writes
+rules** under `iid-mc` — a 3×3 matrix, holding every other input at its default — and writes
 `glide_<spending>_by_<lever>.png` (spending ∈ {`constant`, `semiflex`, `flexible`}; lever ∈
 {`guaranteed`, `bequest`, `gamma`}) plus a `glide_by_spending.png` overview to
 [`analysis/glidepath_figures/`](../analysis/glidepath_figures/). What each lever does — and how the
@@ -355,9 +401,9 @@ the `recommend_glide.py` flag CLI:
 - **Leverage.** `max_leverage` (1.0 = none; 1.5 = up to 150% equity) lets the optimizer borrow at a
   **real** `borrow_cost` to hold w>1 in the all-equity portfolio (real return `w·eq − (w−1)·borrow`,
   vol `w·eq_vol`; a wipeout is treated as ruin). It leverages only where the risk-adjusted gain beats
-  the borrowing drag and survives the out-of-sample CE guard — typically early accumulation under a
-  low γ ("lifecycle investing"). Recommendations therefore use leverage less often than the raw
-  coordinate-ascent path when the leveraged upside comes with a fragile left tail.
+  the borrowing drag and survives the independent-evaluation CE guard — typically early accumulation
+  under a low γ ("lifecycle investing"). Recommendations therefore use leverage less often than the
+  raw coordinate-ascent path when the leveraged upside comes with a fragile left tail.
 - **Retirement-consumption γ, by design.** Risk aversion is applied to retirement consumption, not
   directly to accumulation wealth. The user's chosen γ is their preference for _stable retirement
   spending_ — "how hard should the optimizer avoid low spending in bad market draws?" rather than

@@ -2,8 +2,9 @@
 """
 Command-line front end for the Lifetime Allocation Optimizer.
 
-Optimizes (by Monte Carlo, not a lookup table) the equity weight per step for YOUR inputs and
-prints the schedule + outcome stats. Flag-driven wrapper around
+Optimizes (by simulation, not a lookup table) the equity weight per step for YOUR inputs and
+prints the schedule + outcome stats. Supports forward-CMA iid Monte Carlo and raw-history iid
+or block bootstrap. Flag-driven wrapper around
 `glide_path_recommender.recommend_glide_path` (the engine, which also has its own interactive
 prompt mode: `python3 analysis/glide_path_recommender.py`).
 
@@ -21,6 +22,9 @@ EXAMPLES
 
   # use your own capital-market curve (CSV rows: equity_weight,mean,vol  — nominal %, deflated by --inflation)
   python3 analysis/recommend_glide.py --curve mycurve.csv --flex 1 --guaranteed-income 40000
+
+  # raw equal-weight world history, preserving sequencing in stationary circular blocks
+  python3 analysis/recommend_glide.py --mode historical-block --block-years 10 --interval 5
 
   # the built-in showcase (3 spending rules × 3 levers + overview)
   python3 analysis/recommend_glide.py --demo
@@ -75,6 +79,16 @@ def print_rec(rec):
     print(f"  {p['accum_years']}y accumulation + {p['retire_years']}y retirement | {spend} | "
           f"guaranteed income ${p['guaranteed_income']:,.0f}/yr | γ {p['gamma']:g}{lev} | "
           f"{p['interval']}y steps")
+    print(f"  return mode: {p['return_mode']}")
+    if p["return_mode"] != "iid-mc":
+        block = (
+            f" | stationary circular blocks averaging {p['block_years']}y"
+            if p["block_years"]
+            else ""
+        )
+        print(f"  history: {p['history_source']} {p['history_start_year']}-{p['history_end_year']} | "
+              f"{p['history_observations']} annual observations | "
+              f"{p['history_country_count']} countries{block}")
     print(_fmt(rec))
     if rec.get("flat_equity_pct") is not None:
         edge = rec["ce_income"] - rec["flat_ce_income"]
@@ -96,7 +110,7 @@ def print_rec(rec):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        description="Recommend a Monte-Carlo-optimized equity glide path for your inputs.",
+        description="Recommend a simulation-optimized equity glide path for your inputs.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     ap.add_argument("--demo", action="store_true", help="run the built-in showcase (writes figures) and exit")
@@ -117,7 +131,12 @@ def main(argv=None):
     ap.add_argument("--contrib", type=float, default=20_000.0, help="annual contribution ($/yr, accumulation)")
     ap.add_argument("--target-income", type=float, default=60_000.0, help="target real retirement income ($/yr)")
     ap.add_argument("--withdrawal-rate", type=float, default=0.04, help="rate for the flexible spending part")
-    ap.add_argument("--inflation", type=float, default=2.1, help="inflation %% used to deflate the curve to real")
+    ap.add_argument("--inflation", type=float, default=2.1,
+                    help="inflation %% used to deflate the iid-mc curve to real")
+    ap.add_argument("--mode", choices=("iid-mc", "historical-iid", "historical-block"),
+                    default="iid-mc", help="return path generation mode")
+    ap.add_argument("--block-years", type=int, default=10,
+                    help="average stationary circular-block length for --mode historical-block")
     # leverage
     ap.add_argument("--max-leverage", type=float, default=1.0,
                     help="cap on equity weight (1.0=none, 1.5=up to 150%% via borrowing)")
@@ -125,12 +144,18 @@ def main(argv=None):
                     help="real cost of borrowing %%/yr (used only when --max-leverage > 1)")
     # capital-market curve + outputs
     ap.add_argument("--curve", type=str, default=None,
-                    help="CSV file of 'equity_weight,mean,vol' rows (default: built-in PWL curve)")
+                    help="iid-mc CSV of 'equity_weight,mean,vol' rows (default: built-in PWL curve)")
     ap.add_argument("--plot", type=str, default=None, help="save a step-plot of the recommendation to this PNG")
     ap.add_argument("--show", action="store_true", help="display the plot interactively")
     args = ap.parse_args(argv)
 
+    if args.block_years < 1:
+        ap.error("--block-years must be >= 1")
+    if args.curve and args.mode != "iid-mc":
+        ap.error("--curve is only supported with --mode iid-mc; historical modes use raw JST returns")
     if args.demo:
+        if args.mode != "iid-mc":
+            ap.error("--demo is iid-mc only")
         import runpy
         engine = os.path.join(os.path.dirname(os.path.abspath(__file__)), "glide_path_recommender.py")
         runpy.run_path(engine, run_name="__main__")  # runs the engine's built-in showcase
@@ -144,6 +169,7 @@ def main(argv=None):
         max_leverage=args.max_leverage, borrow_cost=args.borrow_cost,
         start_age=args.start_age, current_savings=args.savings, annual_contribution=args.contrib,
         target_income=args.target_income, withdrawal_rate=args.withdrawal_rate, inflation=args.inflation,
+        return_mode=args.mode, block_years=args.block_years,
     )
     print_rec(rec)
     if args.plot or args.show:
