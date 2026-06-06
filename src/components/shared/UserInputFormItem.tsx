@@ -16,7 +16,6 @@ interface PercentToggleOptions {
   defaultUnit?: "$" | "%";
   dollarSuffix?: string;
   amountStep?: number;
-  percentStep?: number;
   unitAriaLabel: string;
 }
 
@@ -65,7 +64,6 @@ export default function UserInputFormItem({
       base,
       dollarSuffix = " /yr",
       amountStep,
-      percentStep,
       unitAriaLabel,
     } = percentToggle;
     const valueIsEmpty = value === "" || value == null;
@@ -123,8 +121,21 @@ export default function UserInputFormItem({
           prefix={unit === "$" ? "$" : undefined}
           suffix={unit === "$" ? dollarSuffix : "%"}
           thousandSeparator={unit === "$" ? "," : undefined}
-          min={0}
-          step={unit === "$" ? amountStep || 100 : percentStep || 0.1}
+          min={
+            unit === "$"
+              ? base > 0
+                ? Math.round(((min ?? 0) / 100) * base)
+                : 0
+              : (min ?? 0)
+          }
+          max={
+            unit === "$"
+              ? max != null && base > 0
+                ? Math.round((max / 100) * base)
+                : undefined
+              : max
+          }
+          step={unit === "$" ? amountStep || 100 : (step ?? 0.1)}
           allowNegative={false}
           clampBehavior="none"
         />

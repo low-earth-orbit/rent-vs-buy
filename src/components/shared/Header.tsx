@@ -37,7 +37,6 @@ const Header = ({ title, subtitle, showHomeLink = false }: HeaderProps) => {
               href="/"
               size="sm"
               c="dimmed"
-              underline="hover"
             >
               <Group gap={4} wrap="nowrap" component="span">
                 <IconArrowLeft size={14} />

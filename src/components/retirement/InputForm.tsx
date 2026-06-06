@@ -104,17 +104,13 @@ export default function InputForm({
                   thousandSeparator
                 />
                 <UserInputFormItem
-                  id="contributionPct"
+                  {...num("contributionPct")}
                   label="Annual savings"
                   labelHelperText="How much you add to investments each year. Toggle between a dollar amount and a % of your income."
-                  value={input.contributionPct}
-                  onChange={bind("contributionPct")}
-                  error={errors.contributionPct}
                   percentToggle={{
                     base: +input.currentIncome || 0,
                     defaultUnit: "%",
                     amountStep: 1000,
-                    percentStep: 5,
                     unitAriaLabel: "Annual savings input unit",
                   }}
                 />
@@ -129,32 +125,24 @@ export default function InputForm({
             <Stack gap="md">
               <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <UserInputFormItem
-                  id="targetIncomePct"
+                  {...num("targetIncomePct")}
                   label="Target income"
                   labelHelperText="The gross income you want in retirement — as a % of your current income (a replacement ratio of 60–70% is typical) or a dollar amount. Your guaranteed income below counts toward this."
-                  value={input.targetIncomePct}
-                  onChange={bind("targetIncomePct")}
-                  error={errors.targetIncomePct}
                   percentToggle={{
                     base: +input.currentIncome || 0,
                     defaultUnit: "%",
                     amountStep: 1000,
-                    percentStep: 5,
                     unitAriaLabel: "Target retirement income input unit",
                   }}
                 />
                 <UserInputFormItem
-                  id="guaranteedIncomePct"
+                  {...num("guaranteedIncomePct")}
                   label="Pension amount"
                   labelHelperText="Estimated annual CPP + OAS + workplace (DB) pension. Enter a dollar amount or a % of your current/pre-retirement income; it begins at the pension start age below."
-                  value={input.guaranteedIncomePct}
-                  onChange={bind("guaranteedIncomePct")}
-                  error={errors.guaranteedIncomePct}
                   percentToggle={{
                     base: +input.currentIncome || 0,
                     defaultUnit: "$",
                     amountStep: 1000,
-                    percentStep: 5,
                     unitAriaLabel: "Guaranteed income input unit",
                   }}
                 />

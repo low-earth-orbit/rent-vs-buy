@@ -289,6 +289,7 @@ export default function UserInputForm({
                 value={userInput.propertyTaxRate}
                 onChange={bind("propertyTaxRate")}
                 error={errors.propertyTaxRate}
+                {...c("propertyTaxRate")}
                 percentToggle={{
                   base: userInput.initialHomePrice,
                   defaultUnit: "$",
@@ -303,6 +304,7 @@ export default function UserInputForm({
                 value={userInput.maintPct}
                 onChange={bind("maintPct")}
                 error={errors.maintPct}
+                {...c("maintPct")}
                 percentToggle={{
                   base: userInput.initialHomePrice,
                   defaultUnit: "%",
