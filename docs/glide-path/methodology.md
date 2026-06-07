@@ -249,7 +249,7 @@ CAPE/mean-reversion phenomenon absent from an iid world. (See `swr_anchor.png`.)
 
 γ = 4, 30y accumulation. All columns are **equity %**. `tent` = lowest equity within 15y of
 retirement (the retirement-date tent bottom) and the age it hits; `end` = terminal-year equity (a
-no-bequest horizon artifact, not advice). BEFORE/AFTER = slope of accumulation / of the retirement
+no-bequest horizon artifact, not real). BEFORE/AFTER = slope of accumulation / of the retirement
 approach into the tent.
 
 | Spending      | Ret. horizon | start | acc. avg | pre-ret | @ret | tent (age) | end | BEFORE  | AFTER  | CE income | Deplete |
@@ -389,7 +389,7 @@ retirement**; the precise curve is worth ~0.5%.
   (§3a). A bequest motive pushes every cell toward higher equity.
 - **End-of-horizon artifact.** With no bequest the optimizer collapses equity toward 0 in the final
   retirement years — reported as the `end` column and excluded from the `tent`. It is a property of
-  a fixed terminal date, not advice.
+  a fixed terminal date, not real.
 - **CRRA utility, fixed contributions, no taxes/fees, annual rebalancing, 10pp grid.** Standard
   simplifications. **Read shape direction and rough magnitude, not basis points** — with CE gains of
   tenths of a percent, do not over-read a 40% vs 50% retirement-date knot.

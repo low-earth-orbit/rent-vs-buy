@@ -70,8 +70,8 @@ function renderResult(result: GlidePathResult | null, extra = {}) {
 }
 
 describe("glide-path Result", () => {
-  it("prefers the constant allocation when CE income is within 5%", () => {
-    renderResult(makeResult());
+  it("prefers the constant allocation when CE income is within 1%", () => {
+    renderResult(makeResult({ flatCeIncome: 49500 }));
     expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
       screen.getByText(/The constant allocation is preferred/i),
@@ -129,7 +129,7 @@ describe("glide-path Result", () => {
     renderResult(
       makeResult({
         ceIncome: 60000,
-        flatCeIncome: 59000,
+        flatCeIncome: 59400,
         drawdownDepletion: 0.05,
         flatDrawdownDepletion: 0.06,
         depletion: 0.1,
@@ -142,15 +142,15 @@ describe("glide-path Result", () => {
     ).toBeInTheDocument();
   });
 
-  it("prefers the constant when full-path shortfall is within 2 points", () => {
+  it("prefers the constant when full-path shortfall is within 2.5 points", () => {
     renderResult(
       makeResult({
         ceIncome: 60000,
-        flatCeIncome: 59000,
+        flatCeIncome: 59400,
         drawdownDepletion: 0.05,
         flatDrawdownDepletion: 0.05,
         depletion: 0.1,
-        flatDepletion: 0.12,
+        flatDepletion: 0.125,
       }),
     );
     expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
@@ -191,12 +191,141 @@ describe("glide-path Result", () => {
     expect(screen.getByText(/trails it by more than/i)).toBeInTheDocument();
   });
 
+  it("suggests retiring earlier or spending more below 5% drawdown shortfall", () => {
+    renderResult(
+      makeResult({
+        ceIncome: 60000,
+        flatCeIncome: 50000,
+        drawdownDepletion: 0.049,
+        flatDrawdownDepletion: 0.2,
+        depletion: 0.1,
+        flatDepletion: 0.3,
+      }),
+    );
+
+    const guidance = screen.getByText(/You may have room to adjust your plan/i);
+    const recommendation = screen.getByText(/Recommended allocation/i);
+
+    expect(
+      screen.getByText(/may be able to retire earlier or increase/i),
+    ).toBeInTheDocument();
+    expect(
+      guidance.compareDocumentPosition(recommendation) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("does not show plan-adjustment guidance at exactly 5% drawdown shortfall", () => {
+    renderResult(
+      makeResult({
+        ceIncome: 60000,
+        flatCeIncome: 50000,
+        drawdownDepletion: 0.05,
+        flatDrawdownDepletion: 0.2,
+        depletion: 0.1,
+        flatDepletion: 0.3,
+      }),
+    );
+
+    expect(
+      screen.queryByText(/may be able to retire earlier or increase/i),
+    ).toBeNull();
+  });
+
+  it("does not show plan-adjustment guidance for an inconclusive comparison", () => {
+    renderResult(
+      makeResult({
+        ceIncome: 95,
+        flatCeIncome: 444,
+        drawdownDepletion: 0.04,
+        flatDrawdownDepletion: 0.03,
+      }),
+    );
+
+    expect(
+      screen.queryByText(/may be able to retire earlier or increase/i),
+    ).toBeNull();
+  });
+
+  it("warns when recommended drawdown shortfall is at least 15%", () => {
+    renderResult(
+      makeResult({
+        ceIncome: 60000,
+        flatCeIncome: 50000,
+        drawdownDepletion: 0.15,
+        flatDrawdownDepletion: 0.2,
+        depletion: 0.1,
+        flatDepletion: 0.3,
+      }),
+    );
+
+    const warning = screen.getByText(/Your plan may need adjustment/i);
+    const glide = screen.getByRole("heading", { name: "Optimized glide path" });
+
+    expect(
+      screen.getByText(/Drawdown shortfall is 15% or higher/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Recommended allocation/i)).toBeNull();
+    expect(screen.queryByText(/Alternative —/i)).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: "Constant 60% equity" }),
+    ).toBeInTheDocument();
+    expect(
+      warning.compareDocumentPosition(glide) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("warns when recommended full-path shortfall is at least 50%", () => {
+    renderResult(
+      makeResult({
+        ceIncome: 60000,
+        flatCeIncome: 50000,
+        drawdownDepletion: 0.08,
+        flatDrawdownDepletion: 0.2,
+        depletion: 0.55,
+        flatDepletion: 0.55,
+      }),
+    );
+
+    expect(
+      screen.getByText(/Full-path shortfall is 50% or higher/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Recommended allocation/i)).toBeNull();
+    expect(screen.queryByText(/Alternative —/i)).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: "Optimized glide path" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Constant 60% equity" }),
+    ).toBeInTheDocument();
+  });
+
+  it("suppresses positive guidance when full-path risk is high", () => {
+    renderResult(
+      makeResult({
+        ceIncome: 60000,
+        flatCeIncome: 50000,
+        drawdownDepletion: 0.04,
+        flatDrawdownDepletion: 0.2,
+        depletion: 0.55,
+        flatDepletion: 0.55,
+      }),
+    );
+
+    expect(
+      screen.queryByText(/may be able to retire earlier or increase/i),
+    ).toBeNull();
+    expect(
+      screen.getByText(/Full-path shortfall is 50% or higher/i),
+    ).toBeInTheDocument();
+  });
+
   it("uses inline warning icons instead of planner-style alerts", () => {
     const { container } = renderResult(
       makeResult({
         ceIncome: 95,
         flatCeIncome: 50000,
-        depletion: 0.3,
+        depletion: 0.55,
         drawdownDepletion: 0.25,
         flatDepletion: 0.08,
         flatDrawdownDepletion: 0.04,

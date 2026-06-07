@@ -578,7 +578,7 @@ export function recommendGlidePath(
   let tentI = 0;
   for (let i = 1; i < twin; i++) if (ret[i] < ret[tentI]) tentI = i;
   // Classify a phase by its first-to-last change. The retirement phase drops its final year(s):
-  // the optimizer drives equity toward 0 at the fixed horizon (an artifact, not advice) that would
+  // the optimizer drives equity toward 0 at the fixed horizon (an artifact, not real) that would
   // otherwise skew the read. Accumulation has no such artifact and is classified over its full span.
   const slope = (w: number[], trimLast: boolean): SlopeDir => {
     const eff = trimLast && w.length >= 3 ? w.slice(0, -1) : w;
