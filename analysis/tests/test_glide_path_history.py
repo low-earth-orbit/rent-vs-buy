@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from contextlib import redirect_stderr
 import io
+import os
+import runpy
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -34,6 +37,18 @@ def synthetic_history() -> ReturnHistory:
     )
 
 
+def synthetic_bills_and_bonds_history() -> ReturnHistory:
+    return ReturnHistory(
+        years=np.arange(2000, 2005),
+        equity=np.array([0.10, -0.20, 0.30, -0.40, 0.50]),
+        fixed_income=np.array([0.01, 0.02, 0.03, 0.04, 0.05]),
+        bills=np.array([0.005, 0.006, 0.007, 0.008, 0.009]),
+        label="synthetic world (bills+bonds)",
+        country_count=2,
+        fixed_income_asset="bills+bonds",
+    )
+
+
 class JstHistoryTests(unittest.TestCase):
     def test_real_returns_and_world_aggregation(self):
         frame = pd.DataFrame(
@@ -48,24 +63,30 @@ class JstHistoryTests(unittest.TestCase):
         country = real_stock_fixed_income_returns(frame[frame["country"] == "A"], "bonds")
         self.assertAlmostEqual(country.iloc[0]["equity"], 1.2 / 1.1 - 1)
         self.assertAlmostEqual(country.iloc[0]["fixed_income"], 0.0)
-        bills = real_stock_fixed_income_returns(frame[frame["country"] == "A"], "bills")
-        self.assertAlmostEqual(bills.iloc[0]["fixed_income"], 1.05 / 1.1 - 1)
+        bills_and_bonds = real_stock_fixed_income_returns(
+            frame[frame["country"] == "A"], "bills+bonds"
+        )
+        self.assertAlmostEqual(bills_and_bonds.iloc[0]["fixed_income"], 0.0)
+        self.assertAlmostEqual(bills_and_bonds.iloc[0]["bills"], 1.05 / 1.1 - 1)
 
         with patch("analysis.shared.jst_history.load_jst_frame", return_value=frame):
             world = load_world_returns()
-            world_bills = load_world_returns(fixed_income="bills")
+            world_bills_and_bonds = load_world_returns(fixed_income="bills+bonds")
         self.assertEqual(world.country_count, 2)
         self.assertEqual(world.observations, 1)
         self.assertEqual(world.fixed_income_asset, "bonds")
         self.assertAlmostEqual(world.equity[0], ((1.2 / 1.1 - 1) + 0.10) / 2)
         self.assertAlmostEqual(world.fixed_income[0], 0.0)
-        self.assertEqual(world_bills.fixed_income_asset, "bills")
+        self.assertEqual(world_bills_and_bonds.fixed_income_asset, "bills+bonds")
+        self.assertAlmostEqual(world_bills_and_bonds.fixed_income[0], 0.0)
         self.assertAlmostEqual(
-            world_bills.fixed_income[0], ((1.05 / 1.1 - 1) + 0.02) / 2
+            world_bills_and_bonds.bills[0], ((1.05 / 1.1 - 1) + 0.02) / 2
         )
 
         with self.assertRaisesRegex(ValueError, "fixed_income"):
             real_stock_fixed_income_returns(frame, "cash")
+        with self.assertRaisesRegex(ValueError, "fixed_income"):
+            real_stock_fixed_income_returns(frame, "bills")
 
     def test_historical_iid_preserves_pairs(self):
         history = synthetic_history()
@@ -88,6 +109,14 @@ class JstHistoryTests(unittest.TestCase):
         )
         np.testing.assert_array_equal(equity, history.equity[expected])
         np.testing.assert_array_equal(bonds, history.fixed_income[expected])
+
+        bills_and_bonds = synthetic_bills_and_bonds_history()
+        equity, bonds, bills = sample_return_paths(
+            bills_and_bonds, 6, 4, mode="historical-iid", block_years=8, seed=seed
+        )
+        np.testing.assert_array_equal(equity, bills_and_bonds.equity[expected])
+        np.testing.assert_array_equal(bonds, bills_and_bonds.fixed_income[expected])
+        np.testing.assert_array_equal(bills, bills_and_bonds.bills[expected])
 
     def test_historical_block_is_stationary_preserves_pairs_and_wrap(self):
         history = synthetic_history()
@@ -151,6 +180,32 @@ class JstHistoryTests(unittest.TestCase):
 
 
 class GlidePathMarketTests(unittest.TestCase):
+    def test_direct_script_historical_imports_resolve(self):
+        script = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "glide_path",
+            "recommender.py",
+        )
+        original_path = sys.path.copy()
+        try:
+            namespace = runpy.run_path(script)
+            history = synthetic_history()
+            with patch(
+                "analysis.shared.jst_history.load_world_returns", return_value=history
+            ) as loader:
+                loaded = namespace["_load_world_history"]("bonds")
+            loader.assert_called_once_with(fixed_income="bonds")
+            self.assertIs(loaded, history)
+
+            market = namespace["_HistoricalMarket"](
+                history, mode="historical-iid", block_years=2, borrow_real=0.02
+            )
+            sample = market.sample(2, 3, seed=7)
+            self.assertEqual(sample[0].shape, (2, 3))
+            self.assertEqual(sample[1].shape, (2, 3))
+        finally:
+            sys.path[:] = original_path
+
     def test_historical_mix_and_leverage(self):
         history = synthetic_history()
         market = _HistoricalMarket(
@@ -184,6 +239,52 @@ class GlidePathMarketTests(unittest.TestCase):
                 1.5 * eq_mean - 0.5 * 0.02,
             ],
         )
+
+    def test_historical_bills_and_bonds_are_separate_candidate_assets(self):
+        history = synthetic_bills_and_bonds_history()
+        market = _HistoricalMarket(
+            history, mode="historical-iid", block_years=8, borrow_real=0.02
+        )
+        sample = (
+            np.array([[0.10, -0.20]]),
+            np.array([[0.04, 0.06]]),
+            np.array([[0.01, 0.02]]),
+        )
+        allocations = np.array([[0.5, 0.3, 0.2], [1.5, 0.0, 0.0]])
+        actual = market.annual_returns(allocations, sample, 0)
+        expected = np.array([[0.064, -0.078], [0.14, -0.31]])
+        np.testing.assert_allclose(actual, expected)
+
+        candidates = market.candidate_allocations(
+            np.array([0.0, 0.5, 1.0, 1.5]), grid_step=0.5
+        )
+        self.assertTrue(any(np.array_equal(c, [0.5, 0.5, 0.0]) for c in candidates))
+        self.assertTrue(any(np.array_equal(c, [0.5, 0.0, 0.5]) for c in candidates))
+        self.assertTrue(any(np.array_equal(c, [1.5, 0.0, 0.0]) for c in candidates))
+        unleveraged = candidates[candidates[:, 0] <= 1.0]
+        np.testing.assert_allclose(unleveraged.sum(axis=1), 1.0)
+
+    def test_historical_optimizer_can_recommend_bills(self):
+        history = ReturnHistory(
+            years=np.arange(2000, 2020),
+            equity=np.full(20, -0.10),
+            fixed_income=np.full(20, -0.05),
+            bills=np.full(20, 0.03),
+            label="synthetic bills winner",
+            country_count=1,
+            fixed_income_asset="bills+bonds",
+        )
+        with patch(
+            "analysis.glide_path.recommender._load_world_history", return_value=history
+        ):
+            result = self._recommend(
+                return_mode="historical-block",
+                historical_fixed_income="bills+bonds",
+                block_years=3,
+            )
+
+        self.assertEqual(result["flat_bill_pct"], 100.0)
+        self.assertTrue(all(entry["bill_pct"] == 100.0 for entry in result["schedule"]))
 
     def test_market_validation_and_metadata(self):
         history = synthetic_history()
@@ -221,7 +322,7 @@ class GlidePathMarketTests(unittest.TestCase):
                 True,
                 2.0,
                 3,
-                historical_fixed_income="bills",
+                historical_fixed_income="bills+bonds",
             )
         with self.assertRaisesRegex(ValueError, "does not match"):
             _build_market(
@@ -232,7 +333,7 @@ class GlidePathMarketTests(unittest.TestCase):
                 2.0,
                 3,
                 history,
-                historical_fixed_income="bills",
+                historical_fixed_income="bills+bonds",
             )
 
     def test_default_and_explicit_iid_are_identical(self):
@@ -262,26 +363,29 @@ class GlidePathMarketTests(unittest.TestCase):
     def test_cli_rejects_historical_fixed_income_for_iid(self):
         stderr = io.StringIO()
         with redirect_stderr(stderr), self.assertRaises(SystemExit):
-            cli_main(["--historical-fixed-income", "bills"])
+            cli_main(["--historical-fixed-income", "bills+bonds"])
         self.assertIn("applies only to historical modes", stderr.getvalue())
 
-    def test_historical_bills_selects_bill_history(self):
-        bill_history = ReturnHistory(
-            years=np.arange(2000, 2005),
-            equity=np.array([0.10, -0.20, 0.30, -0.40, 0.50]),
-            fixed_income=np.array([0.005, 0.006, 0.007, 0.008, 0.009]),
-            label="synthetic world (bills)",
-            country_count=2,
-            fixed_income_asset="bills",
-        )
+    def test_historical_bonds_and_bills_selects_mixed_history(self):
+        mixed_history = synthetic_bills_and_bonds_history()
         with patch(
-            "analysis.glide_path.recommender._load_world_history", return_value=bill_history
+            "analysis.glide_path.recommender._load_world_history", return_value=mixed_history
         ) as loader:
             result = self._recommend(
-                return_mode="historical-iid", historical_fixed_income="bills"
+                return_mode="historical-iid", historical_fixed_income="bills+bonds"
             )
-        loader.assert_called_once_with("bills")
-        self.assertEqual(result["params"]["historical_fixed_income"], "bills")
+        loader.assert_called_once_with("bills+bonds")
+        self.assertEqual(result["params"]["historical_fixed_income"], "bills+bonds")
+        for entry in result["schedule"]:
+            self.assertAlmostEqual(
+                entry["equity_pct"] + entry["bond_pct"] + entry["bill_pct"], 100.0
+            )
+        self.assertAlmostEqual(
+            result["flat_equity_pct"]
+            + result["flat_bond_pct"]
+            + result["flat_bill_pct"],
+            100.0,
+        )
 
     @staticmethod
     def _recommend(**overrides):

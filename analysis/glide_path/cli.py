@@ -2,7 +2,7 @@
 """
 Command-line front end for the Lifetime Allocation Optimizer.
 
-Optimizes (by simulation, not a lookup table) the equity weight per step for YOUR inputs and
+Optimizes (by simulation, not a lookup table) the portfolio allocation per step for YOUR inputs and
 prints the schedule + outcome stats. Supports forward-CMA iid Monte Carlo and raw-history iid
 or block bootstrap. Flag-driven wrapper around
 `analysis.glide_path.recommender.recommend_glide_path` (the engine, which also has an
@@ -26,8 +26,8 @@ EXAMPLES
   # raw equal-weight world history, preserving sequencing in stationary circular blocks
   python3 analysis/recommend_glide.py --mode historical-block --block-years 10 --interval 5
 
-  # replace long government bonds with short-term government bills
-  python3 analysis/recommend_glide.py --mode historical-block --historical-fixed-income bills
+  # let the optimizer allocate separately among stocks, bonds, and bills
+  python3 analysis/recommend_glide.py --mode historical-block --historical-fixed-income bills+bonds
 
   # the built-in showcase (3 spending rules × 3 levers + overview)
   python3 analysis/recommend_glide.py --demo
@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 from .recommender import (
+    HISTORICAL_FIXED_INCOME_OPTIONS,
     PWL_CURVE,
     format_summary,
     plot_glide_path,
@@ -74,7 +75,8 @@ def print_rec(rec):
     by_age = "age_start" in rec["schedule"][0]
     lev = (f" | leverage≤{p['max_leverage']:g}× @{p['borrow_cost']:g}% real"
            if p.get("max_leverage", 1.0) > 1 else "")
-    print("Optimized equity glide path")
+    title_asset = "allocation" if p.get("historical_fixed_income") == "bills+bonds" else "equity"
+    print(f"Optimized {title_asset} glide path")
     print(f"  {p['accum_years']}y accumulation + {p['retire_years']}y retirement | {spend} | "
           f"guaranteed income ${p['guaranteed_income']:,.0f}/yr | γ {p['gamma']:g}{lev} | "
           f"{p['interval']}y steps")
@@ -87,30 +89,45 @@ def print_rec(rec):
         )
         print(f"  history: {p['history_source']} {p['history_start_year']}-{p['history_end_year']} | "
               f"{p['history_observations']} annual observations | "
-              f"{p['history_country_count']} countries | fixed income: "
+              f"{p['history_country_count']} countries | asset set: "
               f"{p['historical_fixed_income']}{block}")
     print(format_summary(rec))
     if rec.get("flat_equity_pct") is not None:
         edge = rec["ce_income"] - rec["flat_ce_income"]
+        flat_allocation = f"{rec['flat_equity_pct']:.0f}% equity"
+        if "flat_bond_pct" in rec:
+            flat_allocation += (
+                f" / {rec['flat_bond_pct']:.0f}% bonds / {rec['flat_bill_pct']:.0f}% bills"
+            )
         if rec["flat_ce_income"] > rec["ce_income"] * 1.05:
-            print(f"  robust recommendation: constant {rec['flat_equity_pct']:.0f}% equity "
+            print(f"  robust recommendation: constant {flat_allocation} "
                   f"(CE ${rec['flat_ce_income']:,.0f}/yr)")
         edge_label = f"+${edge:,.0f}" if edge >= 0 else f"-${abs(edge):,.0f}"
-        print(f"  best constant {rec['flat_equity_pct']:.0f}% equity → CE "
+        print(f"  best constant {flat_allocation} → CE "
               f"${rec['flat_ce_income']:,.0f}/yr (glide {edge_label}/yr)")
     if rec.get("median_estate_years") is not None:
         warn = (" (target unreachable — most the plan can leave)"
                 if rec.get("bequest_target_reached") is False else "")
         print(f"  estate ≈ {rec['median_estate_years']} yrs of spending{warn}")
-    print(f"\n  {'age' if by_age else 'year':>5}  equity%  phase")
+    has_bills = "bill_pct" in rec["schedule"][0]
+    if has_bills:
+        print(f"\n  {'age' if by_age else 'year':>5}  equity%  bonds%  bills%  phase")
+    else:
+        print(f"\n  {'age' if by_age else 'year':>5}  equity%  phase")
     for e in rec["schedule"]:
         x = e["age_start"] if by_age else e["year_start"]
-        print(f"  {x:>5}   {e['equity_pct']:>5.0f}   {e['phase']}")
+        if has_bills:
+            print(
+                f"  {x:>5}   {e['equity_pct']:>5.0f}   {e['bond_pct']:>5.0f}   "
+                f"{e['bill_pct']:>5.0f}   {e['phase']}"
+            )
+        else:
+            print(f"  {x:>5}   {e['equity_pct']:>5.0f}   {e['phase']}")
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(
-        description="Recommend a simulation-optimized equity glide path for your inputs.",
+        description="Recommend a simulation-optimized allocation glide path for your inputs.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     ap.add_argument("--demo", action="store_true", help="run the built-in showcase (writes figures) and exit")
@@ -137,8 +154,9 @@ def main(argv=None):
                     default="iid-mc", help="return path generation mode")
     ap.add_argument("--block-years", type=int, default=10,
                     help="average stationary circular-block length for --mode historical-block")
-    ap.add_argument("--historical-fixed-income", choices=("bonds", "bills"), default="bonds",
-                    help="fixed-income asset used by historical modes")
+    ap.add_argument("--historical-fixed-income", choices=HISTORICAL_FIXED_INCOME_OPTIONS,
+                    default="bonds",
+                    help="historical asset set; bills+bonds lets the optimizer choose both")
     # leverage
     ap.add_argument("--max-leverage", type=float, default=1.0,
                     help="cap on equity weight (1.0=none, 1.5=up to 150%% via borrowing)")

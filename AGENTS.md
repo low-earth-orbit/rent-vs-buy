@@ -77,10 +77,10 @@ A hub landing page at `/` links to each tool, and every tool lives at its own ro
   The web/TypeScript optimizer remains forward-CMA iid Monte Carlo. The Python recommender
   (`analysis/recommend_glide.py`) additionally supports raw equal-weight-world JST historical
   backtesting via paired-year iid sampling and stationary circular block bootstrap. The block
-  length setting is an average, not a fixed length. Historical modes use long government bonds by
-  default and can substitute short-term government bills. Shared JST loading and bootstrap helpers
-  live in `analysis/shared/jst_history.py`; downloaded data stays under
-  `analysis/.data/`.
+  length setting is an average, not a fixed length. Historical modes use stocks plus long
+  government bonds by default; the `bills+bonds` asset set lets the optimizer choose separate
+  stock, bond, and bill weights at each glide step. Shared JST loading and bootstrap helpers live
+  in `analysis/shared/jst_history.py`; downloaded data stays under `analysis/.data/`.
 
 When adding a new tool: add its route under `src/app/<tool>/`, put tool-specific components in `src/components/<tool>/`, and reuse shared chrome/primitives from `src/components/shared/` and shared logic from `src/utils/`. Cross-folder imports use the `@/` alias (`@/* → ./src/*`).
 

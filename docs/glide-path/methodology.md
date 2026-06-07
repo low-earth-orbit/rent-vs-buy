@@ -45,18 +45,28 @@ python3 analysis/recommend_glide.py --mode historical-iid
 # Raw paired world stock/fixed-income years, sampled in stationary circular blocks
 python3 analysis/recommend_glide.py --mode historical-block --block-years 10
 
-# Replace long government bonds with short-term government bills
-python3 analysis/recommend_glide.py --mode historical-block --historical-fixed-income bills
+# Let the optimizer allocate separately among stocks, long government bonds, and bills
+python3 analysis/recommend_glide.py --mode historical-block --historical-fixed-income bills+bonds
 ```
 
 Historical modes use the equal-weight-world series from the JST R6 Macrohistory workbook.
-`analysis/shared/jst_history.py` downloads it on first use to gitignored `analysis/.data/`, deflates stock
-and fixed-income returns by each country's CPI, and aggregates paired real returns by year.
-Long-government-bond total returns are the default; `--historical-fixed-income bills` substitutes
-JST short-term government bill rates. Each historical year keeps the selected fixed-income return
-paired with its stock return. The usable country composition can differ between bonds and bills
-because JST coverage differs by asset. Historical modes require pandas and openpyxl in addition
-to numpy. A custom `--curve` and `--inflation` apply only to `iid-mc`.
+`analysis/shared/jst_history.py` downloads it on first use to gitignored `analysis/.data/`, deflates
+the selected asset returns by each country's CPI, and aggregates paired real returns by year.
+Long-government-bond total returns are the default. With `--historical-fixed-income bills+bonds`,
+the optimizer chooses stock, long-government-bond, and short-term-government-bill weights
+separately at each glide step; it does not force an equal-weight fixed-income mix. Each sampled
+historical year keeps all available asset returns paired. The usable country composition can
+differ between the two asset sets because JST coverage differs by asset. Historical modes require
+pandas and openpyxl in addition to numpy. A custom `--curve` and `--inflation` apply only to
+`iid-mc`.
+
+The expanded asset set makes bills available; it does not force the optimizer to use them. In the
+full 1871–2020 equal-weight-world series, bills have a much lower average real return than bonds or
+stocks, and the block bootstrap preserves long inflation-damaged bond and bill regimes. The same
+world series has no negative 20- or 30-year circular stock window. Longer average blocks can
+therefore make a 100% stock result optimal under this model, even when `bills+bonds` is selected.
+That result is a property of bootstrapping the already-diversified world series, not evidence that
+bills were omitted from the candidate allocations.
 
 ---
 
@@ -100,21 +110,21 @@ and independent evaluation-sample comparison:
   independent normal returns. This remains the default and the only mode used by the web app and
   `analysis/glide_path/research.py`.
 - **`historical-iid`** samples raw historical years independently with replacement. Stock and the
-  selected fixed-income returns remain paired within a sampled year, but year-to-year ordering is
-  removed.
-- **`historical-block`** uses a stationary circular block bootstrap of paired stock/fixed-income
-  years.
+  selected asset returns remain paired within a sampled year, but year-to-year ordering is removed.
+- **`historical-block`** uses a stationary circular block bootstrap of paired asset-return years.
   Each next year continues the current historical sequence with probability `1 − 1/L` or restarts
   at a random year with probability `1/L`, so block lengths are geometric and average `L` years.
   The default `L` is 10 years, an annual approximation of the 120-month average used by ACO.
 
-For historical allocations up to 100% equity, each annual portfolio return is
-`w × stock + (1−w) × fixed income`. Above 100%, the leveraged return is
-`w × stock − (w−1) × real borrowing cost`. Historical modes use raw realized return levels; they
-do not re-center history to the forward CMAs. They are bootstrap backtests, not overlapping
-realized lifecycle windows. The historical-block mode bootstraps an already-diversified annual
-equal-weight-world series; unlike ACO, it does not bootstrap a monthly country-level four-asset
-panel, so it is a sequencing sensitivity check rather than an ACO replication.
+For the default bonds asset set and allocations up to 100% equity, each annual portfolio return is
+`w × stock + (1−w) × bonds`. With `bills+bonds`, the optimizer searches feasible stock/bond/bill
+weights that sum to 100% at the configured grid step. Above 100% equity, the leveraged return is
+`w × stock − (w−1) × real borrowing cost`, with no bond or bill position. Historical modes use raw
+realized return levels; they do not re-center history to the forward CMAs. They are bootstrap
+backtests, not overlapping realized lifecycle windows. The historical-block mode bootstraps an
+already-diversified annual equal-weight-world series; unlike ACO, it does not bootstrap a monthly
+country-level four-asset panel, so it is a sequencing sensitivity check rather than an ACO
+replication.
 
 ### Returns — our own assumptions, no history
 
@@ -382,18 +392,19 @@ retirement**; the precise curve is worth ~0.5%.
 
 The same model is exposed as a one-call recommender —
 [`analysis/glide_path/recommender.py`](../../analysis/glide_path/recommender.py),
-`recommend_glide_path(...)` — that **optimizes** (does not look up) the equity weight per
-chosen step (`interval` = 1y, 5y, …) given your horizons, spending flexibility, guaranteed income,
-risk aversion, bequest motive, and selected return mode (including an arbitrary return/vol curve
-under `iid-mc`). It first finds a coordinate-ascent glide, then scores both that glide and the best
-single constant allocation on an independent evaluation sample. It always returns the raw optimized
-glide as the schedule, plus the robust constant comparator (`flat_equity_pct` / `flat_ce_income`) so
-callers can recommend the flat path when it is materially better. It returns the per-step schedule
+`recommend_glide_path(...)` — that **optimizes** (does not look up) the allocation per chosen step
+(`interval` = 1y, 5y, …) given your horizons, spending flexibility, guaranteed income, risk
+aversion, bequest motive, and selected return mode (including an arbitrary return/vol curve under
+`iid-mc`). The usual modes vary equity against bonds; `bills+bonds` historical mode chooses all
+three asset weights. It first finds a coordinate-ascent glide, then scores both that glide and the
+best single constant allocation on an independent evaluation sample. It always returns the raw
+optimized glide as the schedule, plus the robust constant comparator (`flat_equity_pct` /
+`flat_ce_income`) so callers can recommend the flat path when it is materially better. It returns the per-step schedule
 plus independent-evaluation CE income, income CV, the median estate, and two depletion views:
 full-path depletion (`depletion`), which includes pre-retirement market luck from today, and
 drawdown-only depletion (`drawdown_depletion`), which starts from the deterministic expected
 retirement balance and matches the `/retirement` headline semantics. It also returns the **best
-single constant equity weight** — the simpler alternative whose CE the glide path usually beats by
+single constant allocation** — the simpler alternative whose CE the glide path usually beats by
 only a hair (§2e) — and ships a `plot_glide_path()` helper.
 
 `python3 analysis/recommend_glide.py --demo` sweeps **each lever across all three spending
