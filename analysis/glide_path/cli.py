@@ -137,7 +137,7 @@ def main(argv=None):
     ap.add_argument("--flex", type=float, default=0.0, help="spending flexibility 0..1 (0=constant $, 1=flexible)")
     ap.add_argument("--guaranteed-income", type=float, default=20_000.0,
                     help="guaranteed retirement income ($/yr, paid every retirement year)")
-    ap.add_argument("--interval", type=int, default=1, help="years per glide step (1=per-age, 5=every 5y)")
+    ap.add_argument("--interval", type=int, default=5, help="years per glide step (1=per-age, 5=every 5y)")
     ap.add_argument("--gamma", type=float, default=4.0, help="CRRA risk aversion (1 log, 4 base, 8 cautious)")
     ap.add_argument("--beta", type=float, default=0.985, help="annual retirement-consumption discount factor")
     ap.add_argument("--bequest", type=float, default=0.0, help="raw estate-motive weight (advanced; prefer --bequest-years)")

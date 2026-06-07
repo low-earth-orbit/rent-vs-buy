@@ -28,8 +28,8 @@ export const DEFAULT_ALLOC_CURVE: AllocAnchor[] = [
 ];
 
 /**
- * Default inputs. Rates are percentages; dollars are today's (real) dollars. The
- * engine-quality fields (interval, numPaths) are exposed because this is a nerds tool.
+ * Default inputs. Rates are percentages; dollars are today's (real) dollars.
+ * `numPaths` is exposed because this is a nerds tool; the web glide interval is fixed below.
  */
 export const DEFAULTS = {
   // ── About you ─────────────────────────────────────────────
@@ -53,32 +53,33 @@ export const DEFAULTS = {
   /** 0 = constant real $; 1 = fully proportional to the balance; blends between. */
   flexibility: 0,
   /** When spending flexibly, the % of the live balance drawn each year. */
-  withdrawalRate: 3.5,
+  withdrawalRate: 4,
   /** CRRA risk aversion */
   gamma: 4,
   /** Annual time-discount factor. */
-  beta: 0.97,
+  beta: 0.985,
 
   // ── Leverage ──────────────────────────────────────────────
   /** Max equity weight as a % (100 = no leverage; 150 = up to 1.5×). */
   maxEquityPct: 100,
   /** Real annual cost of borrowing (used only when maxEquityPct > 100). */
-  borrowCost: 1,
+  borrowCost: 2,
 
   // ── Engine / Monte Carlo ──────────────────────────────────
-  /** Years per glide step (1 = per-age, 5 = every 5y; smaller = slower). */
-  interval: 5,
   /** Monte Carlo paths (more = steadier, slower). */
   numPaths: 10000,
   /** Inflation used to deflate the curve to real. */
   inflation: 2.1,
 } as const;
 
+/** Fixed browser cadence; Python exposes this as the configurable `interval` input. */
+export const WEB_GLIDE_INTERVAL = 5;
+
 /** Discrete grid step for the equity-weight search (fraction of equity). */
 export const GRID_STEP = 0.05;
 
 /** Risk-aversion presets surfaced as quick buttons. */
-export const GAMMA_PRESETS = [1, 2, 3, 4, 5, 8] as const;
+export const GAMMA_PRESETS = [2, 3, 4, 5] as const;
 
 /** Spending-flexibility presets (fraction). */
 export const FLEX_PRESETS = [

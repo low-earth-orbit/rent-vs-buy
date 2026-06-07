@@ -1082,7 +1082,7 @@ def _run_interactive():
 
     beta = _ask(
         "Time-discount factor β",
-        0.97, float, "(0.99 = very patient saver, 0.97 = moderate)")
+        0.985, float, "(1.0 = equal weight, 0.985 = balanced, 0.97 = stronger early-years tilt)")
 
     print("\n  Bequest: how large an estate to leave, in YEARS of your retirement spending.")
     print("  0 = spend it all; 10 = leave ~10 years of expenses. (The plan may already")

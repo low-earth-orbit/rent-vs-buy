@@ -3,11 +3,10 @@ import { DEFAULTS, DEFAULT_ALLOC_CURVE } from "./presets";
 import { buildEquityGrid, recommendGlidePath } from "./engine";
 import type { GlidePathInput } from "./types";
 
-// Fast settings for tests: few paths, coarse interval.
+// Fast settings for tests: few paths; the browser interval is fixed at 5 years.
 const base = (overrides: Partial<GlidePathInput> = {}): GlidePathInput => ({
   ...DEFAULTS,
-  numPaths: 600,
-  interval: 10,
+  numPaths: 200,
   ...overrides,
 });
 
@@ -30,6 +29,7 @@ describe("recommendGlidePath", () => {
     // Phases labelled by the block's first year.
     expect(r.schedule[0].phase).toBe("accum");
     expect(r.schedule.at(-1)!.phase).toBe("retire");
+    expect(r.params.interval).toBe(5);
     // Every weight is on the grid and within [0, maxLeverage].
     for (const w of r.equityByYear) {
       expect(w).toBeGreaterThanOrEqual(0);

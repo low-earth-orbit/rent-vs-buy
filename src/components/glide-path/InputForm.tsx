@@ -174,7 +174,7 @@ export default function InputForm({
               <Stack gap={4}>
                 <FieldHeader
                   label="Risk aversion (γ)"
-                  description="How well you tolerate market volatility — pick the investor that sounds like you. 1 to 2 =  aggressive, 3 to 5 = moderate, 6 to 10 = conservative."
+                  description="How well you tolerate market volatility — pick the investor that sounds like you. 1 to 2 = very aggressive, 3 to 5 = moderate, 6 to 10 = very cautious."
                 />
                 <Group gap="xs" mt="xs" role="group" aria-label="Risk aversion">
                   {GAMMA_PRESETS.map((g) => (
@@ -217,32 +217,10 @@ export default function InputForm({
               <UserInputFormItem
                 {...num("beta")}
                 label="Time preference (β)"
-                description="How much the optimizer discounts later retirement years. Pick the planner that sounds like you: 1.0 = very patient (every year counts equally), 0.97 = balanced, 0.95 = present-biased."
+                description="How much you value spending later in retirement compared with earlier years. 1.0 = value every year equally, 0.985 = balanced, 0.97 = strongly favour earlier years."
                 step={0.005}
               />
             </Stack>
-          </Accordion.Panel>
-        </Accordion.Item>
-
-        <Accordion.Item value="leverage">
-          <Accordion.Control>Leverage</Accordion.Control>
-          <Accordion.Panel>
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <UserInputFormItem
-                {...num("maxEquityPct")}
-                label="Max equity"
-                labelHelperText="The most equity the optimizer may use. Above 100% means borrowing to invest."
-                suffix="%"
-              />
-              {leveraged && (
-                <UserInputFormItem
-                  {...num("borrowCost")}
-                  label="Real cost of borrowing"
-                  labelHelperText="Your real (after-inflation) borrowing rate."
-                  suffix="%"
-                />
-              )}
-            </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>
 
@@ -262,6 +240,20 @@ export default function InputForm({
                 labelHelperText="Used to deflate the return curve to real terms."
                 suffix="%"
               />
+              <UserInputFormItem
+                {...num("maxEquityPct")}
+                label="Max equity"
+                labelHelperText="The most equity the optimizer may use. Above 100% means borrowing to invest."
+                suffix="%"
+              />
+              {leveraged && (
+                <UserInputFormItem
+                  {...num("borrowCost")}
+                  label="Real cost of borrowing"
+                  labelHelperText="Your real (after-inflation) borrowing rate."
+                  suffix="%"
+                />
+              )}
             </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>

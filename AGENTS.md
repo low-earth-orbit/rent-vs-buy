@@ -80,7 +80,10 @@ A hub landing page at `/` links to each tool, and every tool lives at its own ro
   length setting is an average, not a fixed length. Historical modes use stocks plus long
   government bonds by default; the `bills+bonds` asset set lets the optimizer choose separate
   stock, bond, and bill weights at each glide step. Shared JST loading and bootstrap helpers live
-  in `analysis/shared/jst_history.py`; downloaded data stays under `analysis/.data/`.
+  in `analysis/shared/jst_history.py`; downloaded data stays under `analysis/.data/`. The web app
+  intentionally fixes the glide interval at 5 years, uses browser-sized path/pass caps, exposes
+  fewer controls, and requires at least $10,000 of guaranteed income; Python keeps those research
+  controls configurable and accepts zero guaranteed income.
 
 When adding a new tool: add its route under `src/app/<tool>/`, put tool-specific components in `src/components/<tool>/`, and reuse shared chrome/primitives from `src/components/shared/` and shared logic from `src/utils/`. Cross-folder imports use the `@/` alias (`@/* → ./src/*`).
 

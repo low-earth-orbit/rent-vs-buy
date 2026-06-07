@@ -12,7 +12,12 @@
  */
 
 import { fillNormals } from "./rng";
-import { DEFAULT_ALLOC_CURVE, GRID_STEP, type AllocAnchor } from "./presets";
+import {
+  DEFAULT_ALLOC_CURVE,
+  GRID_STEP,
+  WEB_GLIDE_INTERVAL,
+  type AllocAnchor,
+} from "./presets";
 import type {
   GlidePathInput,
   GlidePathResult,
@@ -443,7 +448,7 @@ export function recommendGlidePath(
     Math.round(input.planningAge - input.retirementAge),
   );
   const nYears = accumYears + retireYears;
-  const interval = Math.max(1, Math.round(input.interval));
+  const interval = WEB_GLIDE_INTERVAL;
   const gamma = input.gamma;
   const maxLeverage = Math.max(GRID_STEP, input.maxEquityPct / 100);
 

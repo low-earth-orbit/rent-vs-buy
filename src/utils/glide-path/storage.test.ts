@@ -32,4 +32,13 @@ describe("glide-path storage", () => {
     expect(input).not.toHaveProperty("pensionPct");
     expect(input).not.toHaveProperty("preRetirementIncome");
   });
+
+  it("drops a legacy web interval instead of silently changing the engine cadence", () => {
+    window.localStorage.setItem(
+      "glide_input",
+      JSON.stringify({ ...DEFAULTS, interval: 10 }),
+    );
+
+    expect(loadInput()).not.toHaveProperty("interval");
+  });
 });

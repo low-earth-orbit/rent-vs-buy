@@ -8,6 +8,13 @@ The research sweep and reported results in Sections 2–4 use our forward Canadi
 assumptions and plain **iid Monte Carlo**. The productized Python recommender additionally supports
 historical iid and stationary-block sensitivity checks. The web app remains iid-only.
 
+The web and Python recommender share the baseline household/model defaults: flexibility 0,
+γ = 4, β = 0.985, a 4% flexible withdrawal rate, and a 2% real borrowing cost. Their product
+surfaces intentionally differ: the web app fixes the glide cadence at 5-year steps, uses
+browser-sized path/pass caps, exposes fewer controls, and requires at least $10,000 of guaranteed
+income. Python exposes the interval, historical return modes, and bequest controls, and accepts
+zero guaranteed income for research and CLI sensitivity cases.
+
 This work is a deliberate cross-check on two influential backtest-based studies:
 
 - **ACO** — Anarkulova, Cederburg, O'Doherty, _Beyond the Status Quo_ ([SSRN 4590406](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4590406)):
@@ -90,8 +97,9 @@ bills were omitted from the candidate allocations.
 
 5. **A CRRA allocation recommendation requires some guaranteed retirement income.** If guaranteed
    income is zero, even a rare depleted year drives consumption to the numerical floor and makes CE
-   tail-dominated. The app can still report depletion and the two candidate paths, but it treats
-   their allocation comparison as inconclusive rather than recommending either one.
+   tail-dominated. The web app therefore requires at least $10,000 of guaranteed annual income.
+   Python accepts zero for sensitivity work and can still report depletion and the two candidate
+   paths, but their allocation comparison is tail-dominated.
 
 ---
 

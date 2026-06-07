@@ -260,6 +260,20 @@ class GlidePathMarketTests(unittest.TestCase):
         self.assertEqual(recommend.call_args.kwargs["beta"], 0.97)
         self.assertEqual(recommend.call_args.kwargs["n_paths"], 1234)
 
+    def test_cli_uses_shared_baseline_model_defaults(self):
+        with patch(
+            "analysis.glide_path.cli.recommend_glide_path", return_value={}
+        ) as recommend, patch("analysis.glide_path.cli.print_rec"):
+            cli_main([])
+
+        defaults = recommend.call_args.kwargs
+        self.assertEqual(defaults["flexibility"], 0.0)
+        self.assertEqual(defaults["withdrawal_rate"], 0.04)
+        self.assertEqual(defaults["interval"], 5)
+        self.assertEqual(defaults["gamma"], 4.0)
+        self.assertEqual(defaults["beta"], 0.985)
+        self.assertEqual(defaults["borrow_cost"], 2.0)
+
     def test_direct_script_historical_imports_resolve(self):
         script = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
