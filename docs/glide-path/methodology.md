@@ -481,6 +481,10 @@ python3 analysis/recommend_glide.py --demo          # recommender showcase: 3×3
 python3 analysis/recommend_glide.py --help          # scriptable flag CLI for a single custom recommendation
 ```
 
+After an interactive run, the recommender prints a copy-pasteable `analysis/recommend_glide.py`
+command containing the resolved inputs. The flag CLI exposes the interactive optimizer settings,
+including `--beta` and `--paths`, so that command reruns the same simulation and is easy to modify.
+
 Tweak `analysis/glide_path/research.py`'s CONFIG block: `SPENDING_REGIMES` (FLEX levels), `RETIRE_HORIZONS`,
 `ACCUM_HORIZONS`, `GAMMA`, `BEQUEST`, `WITHDRAWAL_RATE`, `GRID_STEP`, `OPT_N`/`N_FINAL`/`OPT_PASSES`.
 Returns/vol come straight from the `ALLOC_ANCHORS` mirror of

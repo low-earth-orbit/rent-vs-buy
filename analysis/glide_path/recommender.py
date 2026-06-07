@@ -103,6 +103,7 @@ from __future__ import annotations
 
 import math
 import os
+import shlex
 import sys
 from typing import Sequence
 
@@ -905,6 +906,78 @@ def _section(title):
     print(f"{'─' * 50}")
 
 
+def format_reproduction_command(
+    *,
+    accum_years,
+    retire_years,
+    flexibility,
+    guaranteed_income,
+    interval,
+    gamma,
+    beta,
+    bequest_years,
+    max_leverage,
+    borrow_cost,
+    current_savings,
+    annual_contribution,
+    target_income,
+    withdrawal_rate,
+    start_age,
+    return_mode,
+    block_years,
+    historical_fixed_income,
+    n_paths,
+):
+    """Build a shell-safe flag-CLI command matching an interactive run."""
+
+    def value(x):
+        return f"{x:g}" if isinstance(x, float) else str(x)
+
+    args = [
+        "python3",
+        "analysis/recommend_glide.py",
+        "--accum",
+        value(accum_years),
+        "--retire",
+        value(retire_years),
+        "--flex",
+        value(flexibility),
+        "--guaranteed-income",
+        value(guaranteed_income),
+        "--interval",
+        value(interval),
+        "--gamma",
+        value(gamma),
+        "--beta",
+        value(beta),
+        "--start-age",
+        value(start_age),
+        "--savings",
+        value(current_savings),
+        "--contrib",
+        value(annual_contribution),
+        "--target-income",
+        value(target_income),
+        "--withdrawal-rate",
+        value(withdrawal_rate),
+        "--mode",
+        return_mode,
+        "--max-leverage",
+        value(max_leverage),
+        "--paths",
+        value(int(n_paths)),
+    ]
+    if bequest_years is not None and bequest_years > 0:
+        args.extend(["--bequest-years", value(bequest_years)])
+    if max_leverage > 1:
+        args.extend(["--borrow-cost", value(borrow_cost)])
+    if return_mode == "historical-block":
+        args.extend(["--block-years", value(block_years)])
+    if return_mode != "iid-mc":
+        args.extend(["--historical-fixed-income", historical_fixed_income])
+    return shlex.join(args)
+
+
 # ── demo (sweep mode) ─────────────────────────────────────────────────────────
 def run_demo(out_dir):
     """Sweep key levers across three spending rules and write plots."""
@@ -1148,6 +1221,30 @@ def _run_interactive():
                                     f"β={beta}, guaranteed=${guaranteed_income:,.0f}, "
                                     f"flex={flexibility}{lev_t})")
         print(f"  Chart saved to: {out}")
+
+    command = format_reproduction_command(
+        accum_years=accum_years,
+        retire_years=retire_years,
+        flexibility=flexibility,
+        guaranteed_income=guaranteed_income,
+        interval=interval,
+        gamma=gamma,
+        beta=beta,
+        bequest_years=bequest_years,
+        max_leverage=max_leverage,
+        borrow_cost=borrow_cost,
+        current_savings=current_savings,
+        annual_contribution=annual_contrib,
+        target_income=target_income,
+        withdrawal_rate=withdrawal_rate,
+        start_age=current_age,
+        return_mode=return_mode,
+        block_years=block_years,
+        historical_fixed_income=historical_fixed_income,
+        n_paths=n_paths,
+    )
+    print("\n  Run this simulation again or modify it with:")
+    print(f"  {command}")
 
 
 # ── entry point ───────────────────────────────────────────────────────────────

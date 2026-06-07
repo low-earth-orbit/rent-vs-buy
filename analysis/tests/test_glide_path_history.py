@@ -4,6 +4,7 @@ from contextlib import redirect_stderr
 import io
 import os
 import runpy
+import shlex
 import sys
 import unittest
 from unittest.mock import patch
@@ -15,6 +16,7 @@ from analysis.glide_path.recommender import (
     PWL_CURVE,
     _HistoricalMarket,
     _build_market,
+    format_reproduction_command,
     recommend_glide_path,
 )
 from analysis.shared.jst_history import (
@@ -180,6 +182,84 @@ class JstHistoryTests(unittest.TestCase):
 
 
 class GlidePathMarketTests(unittest.TestCase):
+    def test_reproduction_command_includes_resolved_interactive_inputs(self):
+        command = format_reproduction_command(
+            accum_years=25,
+            retire_years=35,
+            flexibility=0.5,
+            guaranteed_income=30_000.0,
+            interval=5,
+            gamma=6.0,
+            beta=0.97,
+            bequest_years=10.0,
+            max_leverage=1.5,
+            borrow_cost=1.5,
+            current_savings=500_000.0,
+            annual_contribution=30_000.0,
+            target_income=70_000.0,
+            withdrawal_rate=0.04,
+            start_age=40,
+            return_mode="historical-block",
+            block_years=8,
+            historical_fixed_income="bills+bonds",
+            n_paths=30_000,
+        )
+
+        self.assertEqual(
+            shlex.split(command),
+            [
+                "python3",
+                "analysis/recommend_glide.py",
+                "--accum",
+                "25",
+                "--retire",
+                "35",
+                "--flex",
+                "0.5",
+                "--guaranteed-income",
+                "30000",
+                "--interval",
+                "5",
+                "--gamma",
+                "6",
+                "--beta",
+                "0.97",
+                "--start-age",
+                "40",
+                "--savings",
+                "500000",
+                "--contrib",
+                "30000",
+                "--target-income",
+                "70000",
+                "--withdrawal-rate",
+                "0.04",
+                "--mode",
+                "historical-block",
+                "--max-leverage",
+                "1.5",
+                "--paths",
+                "30000",
+                "--bequest-years",
+                "10",
+                "--borrow-cost",
+                "1.5",
+                "--block-years",
+                "8",
+                "--historical-fixed-income",
+                "bills+bonds",
+            ],
+        )
+
+    def test_cli_forwards_beta_and_path_count(self):
+        with patch(
+            "analysis.glide_path.cli.recommend_glide_path", return_value={}
+        ) as recommend, patch("analysis.glide_path.cli.print_rec"):
+            cli_main(["--beta", "0.97", "--paths", "1234"])
+
+        self.assertEqual(recommend.call_args.kwargs["beta"], 0.97)
+        self.assertEqual(recommend.call_args.kwargs["n_paths"], 1234)
+
     def test_direct_script_historical_imports_resolve(self):
         script = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),

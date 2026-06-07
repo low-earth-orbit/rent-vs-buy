@@ -139,6 +139,7 @@ def main(argv=None):
                     help="guaranteed retirement income ($/yr, paid every retirement year)")
     ap.add_argument("--interval", type=int, default=1, help="years per glide step (1=per-age, 5=every 5y)")
     ap.add_argument("--gamma", type=float, default=4.0, help="CRRA risk aversion (1 log, 4 base, 8 cautious)")
+    ap.add_argument("--beta", type=float, default=0.985, help="annual retirement-consumption discount factor")
     ap.add_argument("--bequest", type=float, default=0.0, help="raw estate-motive weight (advanced; prefer --bequest-years)")
     ap.add_argument("--bequest-years", type=float, default=None,
                     help="target estate in YEARS of retirement spending (calibrated; overrides --bequest)")
@@ -162,6 +163,8 @@ def main(argv=None):
                     help="cap on equity weight (1.0=none, 1.5=up to 150%% via borrowing)")
     ap.add_argument("--borrow-cost", type=float, default=2.0,
                     help="real cost of borrowing %%/yr (used only when --max-leverage > 1)")
+    ap.add_argument("--paths", "--n-paths", dest="n_paths", type=int, default=15_000,
+                    help="number of simulation paths used by the optimizer")
     # capital-market curve + outputs
     ap.add_argument("--curve", type=str, default=None,
                     help="iid-mc CSV of 'equity_weight,mean,vol' rows (default: built-in PWL curve)")
@@ -184,13 +187,14 @@ def main(argv=None):
     curve = load_curve(args.curve) if args.curve else PWL_CURVE
     rec = recommend_glide_path(
         args.accum, args.retire, flexibility=args.flex, guaranteed_income=args.guaranteed_income,
-        alloc_curve=curve, interval=args.interval, gamma=args.gamma,
+        alloc_curve=curve, interval=args.interval, gamma=args.gamma, beta=args.beta,
         bequest=args.bequest, bequest_years=args.bequest_years,
         max_leverage=args.max_leverage, borrow_cost=args.borrow_cost,
         start_age=args.start_age, current_savings=args.savings, annual_contribution=args.contrib,
         target_income=args.target_income, withdrawal_rate=args.withdrawal_rate, inflation=args.inflation,
         return_mode=args.mode, block_years=args.block_years,
         historical_fixed_income=args.historical_fixed_income,
+        n_paths=args.n_paths,
     )
     print_rec(rec)
     if args.plot or args.show:
