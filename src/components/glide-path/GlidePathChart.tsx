@@ -270,7 +270,7 @@ export default function GlidePathChart({
           <Text span fw={600}>
             Note:
           </Text>{" "}
-          the dip in the final years is a fixed-horizon artifact, not advice.
+          the dip in the final years is a fixed-horizon artifact, not real.
           Because the model plans to a fixed age with nothing set aside to leave
           behind, holding stocks in the last years only adds risk with no upside
           (you can&apos;t spend a final-year windfall), so the optimizer derisks

@@ -5,9 +5,20 @@ Monte Carlo engine works, where the return assumptions come from, why the long-h
 withdrawal rate (SWR) looks low, and the empirical work behind the `RETURN_AUTOCORRELATION = 0`
 decision. Read this before "fixing" a SWR that seems too low.
 
-Engine: [`src/utils/retirement/monteCarlo.ts`](../src/utils/retirement/monteCarlo.ts).
-Presets: [`src/utils/retirement/presets.ts`](../src/utils/retirement/presets.ts).
-Validation prototype: [`analysis/jst_swr_bootstrap.py`](../analysis/jst_swr_bootstrap.py).
+Engine: [`src/utils/retirement/monteCarlo.ts`](../../src/utils/retirement/monteCarlo.ts).
+Presets: [`src/utils/retirement/presets.ts`](../../src/utils/retirement/presets.ts).
+Validation prototype:
+[`analysis/retirement/jst_swr_bootstrap.py`](../../analysis/retirement/jst_swr_bootstrap.py).
+
+## Contents
+
+1. [How the engine works](#1-how-the-engine-works)
+2. [Why the long-horizon SWR is low](#2-why-the-long-horizon-swr-is-low-and-correct)
+3. [The autocorrelation decision](#3-the-return_autocorrelation-decision-02--0)
+4. [JST empirical validation](#4-empirical-validation--jst-macrohistory)
+5. [Return-assumption sensitivity](#5-sensitivity--what-raising-returns-would-do-path-b)
+6. [UI technical note](#6-ui--the-technical-note)
+7. [Guidance for future changes](#7-guidance-for-future-changes)
 
 ---
 
@@ -57,7 +68,7 @@ volatility drag (geometric ≈ arithmetic − σ²/2). Fixed PRNG seed ⇒ deter
 | 40/60                      | 5.01%          | 7.17%      | ~2.8%       | ~2.6%     |
 
 Inflation 2.1%. Source: **PWL Capital** capital-market assumptions (linked in
-[`Assumptions.tsx`](../src/components/retirement/Assumptions.tsx)). Cross-checked against
+[`Assumptions.tsx`](../../src/components/retirement/Assumptions.tsx)). Cross-checked against
 **FP Canada Projection Assumption Guidelines 2025/26**: inflation 2.1%, fixed income ~3.2–3.4%,
 equities ~6.3–6.6% nominal CAD. The presets are at or slightly above these — **not conservative.**
 
@@ -104,7 +115,7 @@ Cost of the change (60/40): 30y 3.89→3.67%, 40y 3.23→3.02%, 50y 2.83→~2.61
 
 ## 4. Empirical validation — JST Macrohistory
 
-Prototype: [`analysis/jst_swr_bootstrap.py`](../analysis/jst_swr_bootstrap.py) (Python; pandas +
+Prototype: [`analysis/retirement/jst_swr_bootstrap.py`](../../analysis/retirement/jst_swr_bootstrap.py) (Python; pandas +
 numpy + openpyxl). Auto-downloads the **Jordà–Schularick–Taylor "Rate of Return on Everything"**
 dataset (R6, 1870–2020, 16 advanced economies, equity + bond + CPI) to a gitignored
 `analysis/.data/`. Builds real 60/40 total returns and computes SWR two ways:
@@ -118,20 +129,20 @@ dataset (R6, 1870–2020, 16 advanced economies, equity + bond + CPI) to a gitig
 
 | Method / universe                                            | 30y   | 40y   | 50y    |
 | ------------------------------------------------------------ | ----- | ----- | ------ |
-| **USA, overlapping**                                         | 4.54% | 3.99% | 3.72%  |
-| **World (eq-wt 16c), overlapping**                           | 3.58% | 3.05% | 2.67%  |
-| World, block bootstrap (bl=8)                                | 3.59% | 3.03% | 2.76%  |
-| World, re-centered to **3.5% real / 8.79% vol**, overlapping | 3.21% | 2.54% | 2.12%  |
+| **USA, overlapping**                                         | 4.54% | 4.08% | 3.74%  |
+| **World (eq-wt 16c), overlapping**                           | 3.77% | 3.20% | 2.83%  |
+| World, block bootstrap (bl=8)                                | 3.72% | 3.17% | 2.90%  |
+| World, re-centered to **3.5% real / 8.79% vol**, overlapping | 3.25% | 2.60% | 2.19%  |
 | **App parametric (φ=0)**                                     | 3.67% | 3.02% | ~2.61% |
 
-Real-return context: USA mean 6.16% / vol 12.1% / **geo 5.44%**; World mean 4.99% / vol 9.7% /
-**geo 4.53%**; app preset ~3.5% / 8.79% / geo ~3.1%.
+Real-return context: USA mean 6.19% / vol 12.1% / **geo 5.47%**; World mean 5.14% / vol 9.6% /
+**geo 4.69%**; app preset ~3.5% / 8.79% / geo ~3.1%.
 
 ### What it taught us
 
 1. **The US floor is US-exceptionalism.** USA overlapping floors ~3.7% at 50y and matches the
    literature; dropping US bias (World) costs ~0.9pp at every horizon.
-2. **At the app's own 3.5%-real assumption, real historical sequencing gives ~3.2%/2.5%/2.1%
+2. **At the app's own 3.5%-real assumption, real historical sequencing gives ~3.3%/2.6%/2.2%
    (30/40/50y)** — _lower_ than the app's parametric output. So the parametric model is, if
    anything, slightly generous; it is not too harsh.
 3. **Block bootstrap destroys the multi-decade mean reversion** that creates the empirical
@@ -139,7 +150,7 @@ Real-return context: USA mean 6.16% / vol 12.1% / **geo 5.44%**; World mean 4.99
    and can fall below iid. The floor is a property of _actual realized long paths_; reshuffling
    breaks it. Use the **overlapping** method to see the true historical floor.
 4. **Diversification matters:** single-country real-return vol is ~15.5% (war/hyperinflation
-   tails: Germany/Japan worst years −80% to −90%); an equal-weight world aggregate is ~9.7%.
+   tails: Germany/Japan worst years −80% to −90%); an equal-weight world aggregate is ~9.6%.
 
 ---
 
@@ -163,9 +174,9 @@ CMAs, accept the long-horizon SWR they imply.
 
 ## 6. UI — the technical note
 
-[`SwrTechnicalNote.tsx`](../src/components/retirement/SwrTechnicalNote.tsx) renders a
+[`SwrTechnicalNote.tsx`](../../src/components/retirement/SwrTechnicalNote.tsx) renders a
 "Why this figure?" link beside the headline SWR (in
-[`InputForm.tsx`](../src/components/retirement/InputForm.tsx), Plan-confidence section). The
+[`InputForm.tsx`](../../src/components/retirement/InputForm.tsx), Plan-confidence section). The
 modal explains the two reasons the rate is below the 4% rule and shows a **live** SWR table by
 allocation (`SWR_TABLE_ALLOCATIONS`) × horizon (`SWR_TABLE_HORIZONS`), computed via
 `safeWithdrawalRate` at the user's current confidence. That table is a _pure-portfolio_ benchmark
@@ -180,7 +191,8 @@ allocation (`SWR_TABLE_ALLOCATIONS`) × horizon (`SWR_TABLE_HORIZONS`), computed
 - **Keep `RETURN_AUTOCORRELATION = 0`** unless you have a _separately justified, disclosed_
   mean-reversion view (and remember real data argues the effect is the wrong sign at long
   horizons). Do not re-introduce it to backfill a target number.
-- To revisit the empirical basis, re-run `analysis/jst_swr_bootstrap.py` (tweak the CONFIG block:
+- To revisit the empirical basis, re-run `python3 -m analysis.retirement.jst_swr_bootstrap`
+  (tweak the CONFIG block:
   allocation, method, block length, `RECENTER` to a target mean/vol).
 
 ---

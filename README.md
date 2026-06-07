@@ -52,6 +52,13 @@ src/
     glide-path/           # Lifetime Allocation Optimizer components
   utils/                  # math, formatting, Monte Carlo (shared) + tool-specific logic
   types.ts                # shared domain types
+analysis/                 # Python research, validation, and recommender tools
+docs/                     # calculator methodology notes, grouped by domain
 ```
 
 Cross-folder imports use the `@/` path alias (`@/* → ./src/*`).
+
+Research and methodology:
+
+- [`analysis/README.md`](./analysis/README.md) — Python commands and folder ownership
+- [`docs/README.md`](./docs/README.md) — methodology index

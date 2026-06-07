@@ -48,11 +48,12 @@ interface ResultProps {
   onReroll?: () => void;
 }
 
-const SIMPLICITY_CE_THRESHOLD = 0.02;
-const SIMPLICITY_DRAWDOWN_THRESHOLD = 0.02;
-const SIMPLICITY_FULLPATH_THRESHOLD = 0.02;
-const DRAWDOWN_RISK_HIGHLIGHT_THRESHOLD = 0.1;
-const FULLPATH_RISK_HIGHLIGHT_THRESHOLD = 0.2;
+const SIMPLICITY_CE_THRESHOLD = 0.01;
+const SIMPLICITY_DRAWDOWN_THRESHOLD = 0.01;
+const SIMPLICITY_FULLPATH_THRESHOLD = 0.01;
+const DRAWDOWN_RISK_HIGHLIGHT_THRESHOLD = 0.15;
+const FULLPATH_RISK_HIGHLIGHT_THRESHOLD = 0.3;
+const LOW_DRAWDOWN_SHORTFALL_THRESHOLD = 0.05;
 
 const METRIC_HELP = {
   ce: "Certainty-equivalent income — the steady, guaranteed yearly income that would feel as good as this uncertain plan once the bad years are penalised. It sits below the simple average because shortfalls hurt more than surpluses help.",
@@ -442,6 +443,18 @@ export default function Result({
   };
   const primary = reco.preferConstant ? constant : glide;
   const secondary = reco.preferConstant ? glide : constant;
+  const hasHighDrawdownRisk =
+    !reco.inconclusive &&
+    primary.stats.drawdownDepletion >= DRAWDOWN_RISK_HIGHLIGHT_THRESHOLD;
+  const hasHighFullPathRisk =
+    !reco.inconclusive &&
+    primary.stats.fullPathShortfall >= FULLPATH_RISK_HIGHLIGHT_THRESHOLD;
+  const planNeedsAdjustment = hasHighDrawdownRisk || hasHighFullPathRisk;
+  const hasRoomToAdjustPlan =
+    !reco.inconclusive &&
+    primary.stats.drawdownDepletion < LOW_DRAWDOWN_SHORTFALL_THRESHOLD &&
+    !hasHighFullPathRisk;
+  const showNeutralOptions = reco.inconclusive || planNeedsAdjustment;
 
   const reasonText = reco.preferConstant
     ? reco.glideBad
@@ -449,59 +462,87 @@ export default function Result({
       : "The constant allocation is preferred because the optimized glide path is only marginally better."
     : reco.flatBad
       ? "The glide path is preferred because the constant allocation's CE income is tail-dominated."
-      : "The glide path is preferred because the constant allocation trails it by more than the simplicity threshold on every comparable outcome.";
+      : "The glide path is preferred because the constant allocation trails it.";
 
   return (
     <Stack gap="lg" pos="relative">
-      {reco.inconclusive ? (
-        <>
-          <Card
-            withBorder
-            radius="md"
-            padding="lg"
-            style={{
-              borderColor: "var(--mantine-color-yellow-5)",
-              borderWidth: 2,
-            }}
-          >
-            <Group gap="sm" wrap="nowrap" align="flex-start">
-              <ThemeIcon color="yellow" variant="light" size={38} radius="xl">
-                <IconAlertTriangle size={22} />
-              </ThemeIcon>
-              <Stack gap={2}>
-                <Text size="xs" fw={700} c="yellow.7" tt="uppercase">
-                  Comparison inconclusive
-                </Text>
-                <Title order={3} fz="lg">
-                  CE income is tail-dominated
-                </Title>
+      {planNeedsAdjustment && (
+        <Card withBorder radius="md" padding="md">
+          <Group gap="sm" wrap="nowrap" align="flex-start">
+            <ThemeIcon color="yellow" variant="light" size={34} radius="xl">
+              <IconAlertTriangle size={19} />
+            </ThemeIcon>
+            <Stack gap={2}>
+              <Text fw={600}>Your plan may need adjustment</Text>
+              {hasHighDrawdownRisk && (
                 <Text size="sm" c="dimmed">
-                  Near-zero income in bad-luck paths overwhelms CE income, so it
-                  cannot reliably distinguish these allocations. Compare their
-                  shortfall rates below.
+                  Drawdown shortfall is{" "}
+                  {DRAWDOWN_RISK_HIGHLIGHT_THRESHOLD * 100}% or higher. Consider
+                  retiring later, reducing retirement spending, or saving more.
                 </Text>
-              </Stack>
-            </Group>
-          </Card>
+              )}
+              {hasHighFullPathRisk && (
+                <Text size="sm" c="dimmed">
+                  Full-path shortfall is{" "}
+                  {FULLPATH_RISK_HIGHLIGHT_THRESHOLD * 100}% or higher, so
+                  pre-retirement market luck has a meaningful effect. Consider
+                  saving more or retiring later.
+                </Text>
+              )}
+            </Stack>
+          </Group>
+        </Card>
+      )}
 
-          {[glide, constant].map((option) => (
-            <Card key={option.kind} withBorder radius="md" padding="lg">
-              <Stack gap="md">
-                <Title order={3} fz="lg">
-                  {option.title}
-                </Title>
-                <ShapeSummary
-                  kind={option.kind}
-                  input={input}
-                  result={result}
-                  flatPct={flatPct}
-                />
-                <Divider />
-                <OutcomeMetrics stats={option.stats} />
-              </Stack>
-            </Card>
-          ))}
-        </>
+      {reco.inconclusive && (
+        <Card
+          withBorder
+          radius="md"
+          padding="lg"
+          style={{
+            borderColor: "var(--mantine-color-yellow-5)",
+            borderWidth: 2,
+          }}
+        >
+          <Group gap="sm" wrap="nowrap" align="flex-start">
+            <ThemeIcon color="yellow" variant="light" size={38} radius="xl">
+              <IconAlertTriangle size={22} />
+            </ThemeIcon>
+            <Stack gap={2}>
+              <Text size="xs" fw={700} c="yellow.7" tt="uppercase">
+                Comparison inconclusive
+              </Text>
+              <Title order={3} fz="lg">
+                CE income is tail-dominated
+              </Title>
+              <Text size="sm" c="dimmed">
+                Near-zero income in bad-luck paths overwhelms CE income, so it
+                cannot reliably distinguish these allocations. Compare their
+                shortfall rates below.
+              </Text>
+            </Stack>
+          </Group>
+        </Card>
+      )}
+
+      {showNeutralOptions ? (
+        [glide, constant].map((option) => (
+          <Card key={option.kind} withBorder radius="md" padding="lg">
+            <Stack gap="md">
+              <Title order={3} fz="lg">
+                {option.title}
+              </Title>
+              <ShapeSummary
+                kind={option.kind}
+                input={input}
+                result={result}
+                flatPct={flatPct}
+              />
+              <Divider />
+              <OutcomeMetrics stats={option.stats} />
+            </Stack>
+          </Card>
+        ))
       ) : (
         <>
           {/* Primary — the recommended allocation, with its own outcomes inline. */}
@@ -567,10 +608,24 @@ export default function Result({
         </>
       )}
 
+      {hasRoomToAdjustPlan && (
+        <Card withBorder radius="md" padding="md">
+          <Group gap="sm" wrap="nowrap" align="flex-start">
+            <Stack gap={2}>
+              <Text fw={600}>You may have room to adjust your plan</Text>
+              <Text size="sm" c="dimmed">
+                This plan&apos;s drawdown shortfall is below 5%. You may be able
+                to retire earlier or increase your retirement spending.
+              </Text>
+            </Stack>
+          </Group>
+        </Card>
+      )}
+
       <GlidePathChart
         input={input}
         result={result}
-        showConstant={reco.inconclusive || !flatDegenerate}
+        showConstant={showNeutralOptions || !flatDegenerate}
       />
 
       {onReroll && (

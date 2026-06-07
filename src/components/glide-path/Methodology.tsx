@@ -85,15 +85,15 @@ export default function Methodology() {
           <Text span fw={600}>
             Monte Carlo coordinate ascent
           </Text>
-          : it holds every age&apos;s weight fixed but one, scans all candidate
-          equity weights for that age on a shared set of simulated market paths
-          (common random numbers), keeps the best, then repeats for every other
-          age — cycling until nothing improves. No parametric shape (flat,
-          rising, falling) is assumed; the shape emerges from the math. Returns
-          are drawn from our PWL / FP-Canada capital-market curve in real
-          (today&apos;s) dollars, with no historical data and no mean reversion
-          — so any shape the optimizer prefers is robust to the absence of a
-          valuation signal.
+          : it holds every 5-year step&apos;s weight fixed but one, scans all
+          candidate equity weights for that step on a shared set of simulated
+          market paths (common random numbers), keeps the best, then repeats for
+          every other step — cycling until nothing improves. No parametric shape
+          (flat, rising, falling) is assumed; the shape emerges from the math.
+          Returns are drawn from our PWL / FP-Canada capital-market curve in
+          real (today&apos;s) dollars, with no historical data and no mean
+          reversion — so any shape the optimizer prefers is robust to the
+          absence of a valuation signal.
         </Text>
 
         <Title order={3} fz="md">
@@ -123,13 +123,14 @@ export default function Methodology() {
           A larger guaranteed income (CPP + OAS + DB) lets the portfolio take
           more equity risk because it already covers some downside. With no
           guaranteed income, rare depleted years dominate CRRA utility, so the
-          allocation comparison is shown as inconclusive.
+          web app requires at least $10,000 per year for a meaningful
+          recommendation.
         </Point>
 
         <Text size="sm" c="dimmed">
           Full methodology:{" "}
           <Anchor
-            href="https://github.com/low-earth-orbit/personal-finance/blob/main/docs/glidepath-analysis.md"
+            href="https://github.com/low-earth-orbit/personal-finance/blob/main/docs/glide-path/methodology.md"
             target="_blank"
             rel="noopener noreferrer"
           >

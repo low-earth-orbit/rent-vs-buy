@@ -27,7 +27,7 @@ describe("glide-path InputForm guidance", () => {
     renderForm();
 
     expect(
-      screen.getByText(/How well you tolerate market volatility/i),
+      screen.getByRole("group", { name: "Risk aversion" }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -35,10 +35,8 @@ describe("glide-path InputForm guidance", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /How much the optimizer discounts later retirement years./i,
-      ),
-    ).toBeInTheDocument();
+      screen.getByRole("textbox", { name: "Time preference (β)" }),
+    ).toHaveValue("0.985");
   });
 
   it("keeps optional and advanced detail in helper popovers", async () => {
@@ -50,7 +48,6 @@ describe("glide-path InputForm guidance", () => {
       }),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Leverage" }));
     fireEvent.click(screen.getByRole("button", { name: "Simulation" }));
 
     expect(
@@ -59,10 +56,10 @@ describe("glide-path InputForm guidance", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole("button", {
+      screen.queryByRole("button", {
         name: /more information about glide step/i,
       }),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
     expect(
       await screen.findByRole("button", {
         name: /more information about monte carlo paths/i,
@@ -71,7 +68,7 @@ describe("glide-path InputForm guidance", () => {
   });
 
   it("places a custom risk-aversion input in a selected popover", async () => {
-    renderForm({ gamma: 4 });
+    renderForm({ gamma: 4.5 });
 
     const custom = screen.getByRole("button", { name: "Custom" });
     expect(custom).toHaveAttribute("aria-pressed", "true");
@@ -80,6 +77,6 @@ describe("glide-path InputForm guidance", () => {
 
     expect(
       await screen.findByRole("textbox", { name: "Custom risk aversion" }),
-    ).toHaveValue("4");
+    ).toHaveValue("4.5");
   });
 });

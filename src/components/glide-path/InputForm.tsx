@@ -174,7 +174,7 @@ export default function InputForm({
               <Stack gap={4}>
                 <FieldHeader
                   label="Risk aversion (γ)"
-                  description="How well you tolerate market volatility — pick the investor that sounds like you. 1 = very aggressive, 3 = balanced, 5 = conservative, 8 = very cautious."
+                  description="How well you tolerate market volatility — pick the investor that sounds like you. 1 to 2 = very aggressive, 3 to 5 = moderate, 6 to 10 = very cautious."
                 />
                 <Group gap="xs" mt="xs" role="group" aria-label="Risk aversion">
                   {GAMMA_PRESETS.map((g) => (
@@ -217,17 +217,29 @@ export default function InputForm({
               <UserInputFormItem
                 {...num("beta")}
                 label="Time preference (β)"
-                description="How much the optimizer discounts later retirement years. Pick the planner that sounds like you: 1.0 = very patient (every year counts equally), 0.98 = balanced, 0.95 = present-biased."
+                description="How much you value spending later in retirement compared with earlier years. 1.0 = value every year equally, 0.985 = balanced, 0.97 = strongly favour earlier years."
                 step={0.005}
               />
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
 
-        <Accordion.Item value="leverage">
-          <Accordion.Control>Leverage</Accordion.Control>
+        <Accordion.Item value="engine">
+          <Accordion.Control>Simulation</Accordion.Control>
           <Accordion.Panel>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
+              <UserInputFormItem
+                {...num("numPaths")}
+                label="Monte Carlo paths"
+                labelHelperText="The number of simulated market histories. More paths give steadier results but take longer."
+                thousandSeparator
+              />
+              <UserInputFormItem
+                {...num("inflation")}
+                label="Inflation"
+                labelHelperText="Used to deflate the return curve to real terms."
+                suffix="%"
+              />
               <UserInputFormItem
                 {...num("maxEquityPct")}
                 label="Max equity"
@@ -242,32 +254,6 @@ export default function InputForm({
                   suffix="%"
                 />
               )}
-            </SimpleGrid>
-          </Accordion.Panel>
-        </Accordion.Item>
-
-        <Accordion.Item value="engine">
-          <Accordion.Control>Simulation</Accordion.Control>
-          <Accordion.Panel>
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <UserInputFormItem
-                {...num("interval")}
-                label="Glide step"
-                labelHelperText="How often the allocation may change. Smaller steps produce a finer path but take longer."
-                suffix=" yrs"
-              />
-              <UserInputFormItem
-                {...num("numPaths")}
-                label="Monte Carlo paths"
-                labelHelperText="The number of simulated market histories. More paths give steadier results but take longer."
-                thousandSeparator
-              />
-              <UserInputFormItem
-                {...num("inflation")}
-                label="Inflation"
-                labelHelperText="Used to deflate the return curve to real terms."
-                suffix="%"
-              />
             </SimpleGrid>
           </Accordion.Panel>
         </Accordion.Item>

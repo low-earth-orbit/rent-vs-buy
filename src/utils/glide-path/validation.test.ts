@@ -9,6 +9,16 @@ const base = (o: Partial<GlidePathInput> = {}): GlidePathInput => ({
 });
 
 describe("validateGlidePathInput", () => {
+  it("uses the shared baseline model defaults", () => {
+    expect(DEFAULTS).toMatchObject({
+      flexibility: 0,
+      withdrawalRate: 4,
+      gamma: 4,
+      beta: 0.985,
+      borrowCost: 2,
+    });
+  });
+
   it("accepts the defaults", () => {
     expect(validateGlidePathInput(base())).toEqual({});
   });

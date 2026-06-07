@@ -56,8 +56,7 @@ export const FIELD_CONSTRAINTS: Record<GlidePathInputKey, Constraint> = {
   },
   maxEquityPct: { min: 100, max: 200, step: 5, label: "Max equity %" },
   borrowCost: { min: 0, max: 10, step: 0.25, label: "Borrow cost" },
-  interval: { min: 5, max: 10, step: 5, label: "Glide step" },
-  numPaths: { min: 5000, max: 30000, step: 5000, label: "Monte Carlo paths" },
+  numPaths: { min: 5000, max: 50000, step: 5000, label: "Monte Carlo paths" },
   inflation: { min: 0, max: 5, step: 0.1, label: "Inflation" },
 };
 

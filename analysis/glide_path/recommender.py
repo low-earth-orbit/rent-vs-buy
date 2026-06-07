@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Glide-path RECOMMENDER — optimizes the equity weight at each step by Monte Carlo.
+Glide-path RECOMMENDER — optimizes the equity weight at each step by simulation.
 
 Given a household's horizons, spending flexibility, guaranteed income, and a capital-market
 curve (equity weight → expected return + volatility), this returns the welfare-maximizing
 equity weight at each step of a chosen interval (1y, 5y, …) across accumulation and
-retirement. The path is found by SIMULATION (per-interval coordinate ascent on iid Monte
-Carlo, under common random numbers), not from any hard-coded table or fitted formula — so
-it adapts to whatever returns/vols, guaranteed income, and flexibility you feed it.
+retirement. The path is found by SIMULATION (per-interval coordinate ascent under common
+market paths), not from any hard-coded table or fitted formula — so it adapts to whatever
+return mode, guaranteed income, and flexibility you feed it.
 
-It is the productized form of the analysis in `docs/glidepath-analysis.md`
-(`analysis/glidepath_utility_mc.py`): same model (real dollars, arithmetic-normal returns,
+It is the productized form of the analysis in `docs/glide-path/methodology.md`
+(`analysis/glide_path/research.py`): same model (real dollars, arithmetic-normal returns,
 mid-year cash flow, absorbing-at-zero, CRRA utility), exposed as one function.
 
 KEY INPUTS
@@ -33,10 +33,21 @@ KEY INPUTS
   alloc_curve               : the capital-market assumptions, as anchors
                               [(equity_weight, mean_return, volatility), …] spanning w∈[0,1].
                               Interpolated to any weight. Units controlled by `returns_in_percent`
-                              and deflated to real with `inflation`.
+                              and deflated to real with `inflation`. Used only by `iid-mc`.
   inflation                 : annual inflation rate used to convert nominal returns to real.
                               Must match the units of `alloc_curve` (default: percent, i.e. 2.1).
+                              Used only by `iid-mc`.
   returns_in_percent        : if True (default), `alloc_curve` means/vols are in % per year.
+  return_mode               : "iid-mc" (default forward-CMA normal Monte Carlo),
+                              "historical-iid" (paired world stock/fixed-income years sampled
+                              with replacement), or "historical-block" (paired world
+                              stock/fixed-income years sampled with a stationary circular
+                              block bootstrap).
+  block_years               : average years per historical block (default 10). Used only by
+                              `historical-block`; realized block lengths are geometric.
+  historical_fixed_income   : "bonds" (default) or "bills+bonds". Used only by historical
+                              modes. The latter lets the optimizer choose separate allocations
+                              to JST long-government bonds and short-term bills at each step.
   max_leverage              : cap on the equity weight. 1.0 = no leverage (default); 1.5 = the
                               optimizer may borrow to hold up to 150% equity. A weight w>1 borrows
                               (w−1) at `borrow_cost` to hold w in the all-equity portfolio, so its
@@ -51,7 +62,7 @@ KEY INPUTS
   interval                  : years per glide step (1 = per-age, 5 = change allocation every 5y…).
                               Equity weight is held constant within each interval block.
   gamma                     : CRRA risk aversion applied to RETIREMENT CONSUMPTION. Higher = more
-                              averse to consumption swings → lower equity. 1 ≈ log, 3 = base (default),
+                              averse to consumption swings → lower equity. 1 ≈ log, 4 = base (default),
                               8 = very cautious. The user's chosen γ is their retirement-spending risk
                               aversion: higher γ penalizes low retirement-spending outcomes more
                               heavily across simulated market scenarios. This is distinct from
@@ -77,21 +88,32 @@ KEY INPUTS
 
 USAGE
 -----
-  from glide_path_recommender import recommend_glide_path
+  from analysis.glide_path.recommender import PWL_CURVE, recommend_glide_path
   rec = recommend_glide_path(accum_years=30, retire_years=30, flexibility=0.0,
                              guaranteed_income=20_000, alloc_curve=PWL_CURVE, interval=1)
   print(rec["schedule"])
 
-Run this file directly for a worked demo:  python3 analysis/glide_path_recommender.py
-Requires numpy.
+Run this module directly for the interactive recommender:
+  python3 -m analysis.glide_path.recommender
+  python3 analysis/glide_path/recommender.py
+Requires numpy. Historical modes also require pandas + openpyxl and auto-download JST R6.
 """
 
 from __future__ import annotations
 
 import math
+import os
+import shlex
+import sys
 from typing import Sequence
 
 import numpy as np
+
+# Direct file execution has no package context and puts only this directory on
+# sys.path. Add the repository root so deferred historical imports still resolve.
+if __package__ in (None, ""):
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(0, repo_root)
 
 # Example curve: the app's PWL/FP-Canada allocation table (presets.ts), nominal % + 2.1% inflation.
 PWL_CURVE = [
@@ -100,6 +122,9 @@ PWL_CURVE = [
     (0.40, 5.01, 7.17), (0.30, 4.66, 6.49), (0.20, 4.30, 5.94),
     (0.10, 3.93, 5.56), (0.00, 3.55, 5.38),
 ]
+
+RETURN_MODES = ("iid-mc", "historical-iid", "historical-block")
+HISTORICAL_FIXED_INCOME_OPTIONS = ("bonds", "bills+bonds")
 
 
 # ── utility ─────────────────────────────────────────────────────────────────--
@@ -155,26 +180,223 @@ def _build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost=0.0):
     return alloc
 
 
+class _IidMarket:
+    """Forward-CMA normal returns; preserves the original recommender behavior."""
+
+    def __init__(self, alloc):
+        self.alloc = alloc
+        self.metadata = {
+            "return_mode": "iid-mc",
+            "block_method": None,
+            "block_years": None,
+        }
+
+    def sample(self, n_years, n_paths, seed):
+        return np.random.default_rng(seed).standard_normal((n_years, n_paths))
+
+    @staticmethod
+    def path_count(sample):
+        return sample.shape[1]
+
+    def annual_returns(self, weights, sample, year):
+        means, vols = self.alloc(weights)
+        weights = np.asarray(weights)
+        if weights.ndim == 0:
+            return means + vols * sample[year]
+        return means[:, None] + vols[:, None] * sample[year][None, :]
+
+    def mean_returns(self, weights):
+        means, _ = self.alloc(weights)
+        return means
+
+    @staticmethod
+    def candidate_allocations(equity_grid, grid_step):
+        return equity_grid
+
+    @staticmethod
+    def equity_weights(allocations):
+        return np.asarray(allocations)
+
+    @staticmethod
+    def allocation_weights(allocation):
+        equity = float(allocation)
+        return equity, max(1.0 - equity, 0.0), 0.0
+
+
+class _HistoricalMarket:
+    """Raw paired real asset returns sampled from the JST world series."""
+
+    def __init__(self, history, *, mode, block_years, borrow_real):
+        if history.fixed_income_asset == "bills+bonds" and history.bills is None:
+            raise ValueError("bills+bonds history must include bill returns")
+        self.history = history
+        self.mode = mode
+        self.block_years = block_years
+        self.borrow_real = borrow_real
+        self.has_bills = history.fixed_income_asset == "bills+bonds"
+        self.metadata = {
+            "return_mode": mode,
+            "history_source": history.label,
+            "history_start_year": history.start_year,
+            "history_end_year": history.end_year,
+            "history_observations": history.observations,
+            "history_country_count": history.country_count,
+            "historical_fixed_income": history.fixed_income_asset,
+            "block_method": "stationary-circular" if mode == "historical-block" else None,
+            "block_years": block_years if mode == "historical-block" else None,
+        }
+
+    def sample(self, n_years, n_paths, seed):
+        from analysis.shared.jst_history import sample_return_paths
+
+        return sample_return_paths(
+            self.history,
+            n_years,
+            n_paths,
+            mode=self.mode,
+            block_years=self.block_years,
+            seed=seed,
+        )
+
+    @staticmethod
+    def path_count(sample):
+        return sample[0].shape[1]
+
+    def _mix(self, weights, equity, fixed_income, bills=None):
+        weights = np.asarray(weights, dtype=float)
+        if self.has_bills:
+            equity_w = weights[..., 0]
+            bond_w = weights[..., 1]
+            bill_w = weights[..., 2]
+            over = equity_w > 1.0
+            if np.ndim(equity) == 0:
+                base = equity_w * equity + bond_w * fixed_income + bill_w * bills
+                if not np.any(over):
+                    return base
+                leveraged = equity_w * equity - (equity_w - 1.0) * self.borrow_real
+                return np.where(over, leveraged, base)
+            base = (
+                equity_w[..., None] * equity
+                + bond_w[..., None] * fixed_income
+                + bill_w[..., None] * bills
+            )
+            if not np.any(over):
+                return base
+            leveraged = (
+                equity_w[..., None] * equity
+                - (equity_w[..., None] - 1.0) * self.borrow_real
+            )
+            return np.where(over[..., None], leveraged, base)
+
+        over = weights > 1.0
+        if np.ndim(equity) == 0:
+            base = weights * equity + (1.0 - weights) * fixed_income
+            if not np.any(over):
+                return base
+            leveraged = weights * equity - (weights - 1.0) * self.borrow_real
+            return np.where(over, leveraged, base)
+        base = weights[..., None] * equity + (1.0 - weights[..., None]) * fixed_income
+        if not np.any(over):
+            return base
+        leveraged = weights[..., None] * equity - (weights[..., None] - 1.0) * self.borrow_real
+        return np.where(over[..., None], leveraged, base)
+
+    def annual_returns(self, weights, sample, year):
+        equity, fixed_income = sample[:2]
+        bills = sample[2] if len(sample) == 3 else None
+        bill_year = bills[year] if bills is not None else None
+        return self._mix(weights, equity[year], fixed_income[year], bill_year)
+
+    def mean_returns(self, weights):
+        return self._mix(
+            weights,
+            self.history.equity.mean(),
+            self.history.fixed_income.mean(),
+            self.history.bills.mean() if self.history.bills is not None else None,
+        )
+
+    def candidate_allocations(self, equity_grid, grid_step):
+        if not self.has_bills:
+            return equity_grid
+
+        candidates = []
+        for equity in equity_grid:
+            if equity > 1.0:
+                candidates.append((equity, 0.0, 0.0))
+                continue
+            for bonds in np.arange(0.0, 1.0 - equity + 1e-9, grid_step):
+                candidates.append((equity, bonds, 1.0 - equity - bonds))
+        return np.round(np.asarray(candidates), 6)
+
+    def equity_weights(self, allocations):
+        allocations = np.asarray(allocations)
+        return allocations[..., 0] if self.has_bills else allocations
+
+    def allocation_weights(self, allocation):
+        if self.has_bills:
+            equity, bonds, bills = allocation
+            return float(equity), float(bonds), float(bills)
+        equity = float(allocation)
+        return equity, max(1.0 - equity, 0.0), 0.0
+
+
+def _load_world_history(fixed_income="bonds"):
+    """Lazy import keeps the default iid mode numpy-only."""
+    from analysis.shared.jst_history import load_world_returns
+
+    return load_world_returns(fixed_income=fixed_income)
+
+
+def _build_market(
+    return_mode,
+    alloc_curve,
+    inflation,
+    returns_in_percent,
+    borrow_cost,
+    block_years,
+    history=None,
+    historical_fixed_income="bonds",
+):
+    if return_mode not in RETURN_MODES:
+        raise ValueError(f"return_mode must be one of {', '.join(RETURN_MODES)}")
+    if block_years < 1:
+        raise ValueError("block_years must be >= 1")
+    if historical_fixed_income not in HISTORICAL_FIXED_INCOME_OPTIONS:
+        raise ValueError("historical_fixed_income must be bonds or bills+bonds")
+    if return_mode == "iid-mc":
+        if historical_fixed_income != "bonds":
+            raise ValueError("historical_fixed_income applies only to historical modes")
+        return _IidMarket(_build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost))
+    if history is not None and history.fixed_income_asset != historical_fixed_income:
+        raise ValueError("provided history does not match historical_fixed_income")
+
+    scale = 100.0 if returns_in_percent else 1.0
+    return _HistoricalMarket(
+        history or _load_world_history(historical_fixed_income),
+        mode=return_mode,
+        block_years=block_years,
+        borrow_real=borrow_cost / scale,
+    )
+
+
 # ── core lifecycle simulator over a bundle of candidate paths (common random numbers) ──
 #
 # `gap_arr` and `guar_arr` are per-retirement-year arrays (length retire_years). Guaranteed
 # income is paid every retirement year; the portfolio funds the remaining gap.
-def _eu(W, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
+def _eu(W, sample, accum_years, retire_years, market, *, flex, gap_arr, guar_arr, wr,
         contrib, start_savings, gamma, beta, bequest, bequest_floor):
-    """Return expected discounted utility for each of G candidate equity-weight paths.
+    """Return expected discounted utility for each of G candidate allocation paths.
 
-    W : (n_years, G) — one column per candidate path; equity weight constant within each
-        interval block but potentially different across blocks.
-    Z : (n_years, n) — shared standard-normal shocks (common random numbers so candidates
-        are evaluated on the same market draws, reducing variance of comparisons).
+    W : (n_years, G[, assets]) — one column per candidate path; allocation constant within
+        each interval block but potentially different across blocks.
+    sample : shared market paths, so candidates are evaluated on the same draws.
     gamma : CRRA risk aversion used for this evaluation (a single value throughout).
     Returns a (G,) array: mean discounted utility across the n paths, for each candidate.
     """
-    means, vols = alloc(W)                       # each (n_years, G)
-    G, n = W.shape[1], Z.shape[1]
+    G, n = W.shape[1], market.path_count(sample)
     bal = np.full((G, n), start_savings)
     for i in range(accum_years):
-        r = means[i][:, None] + vols[i][:, None] * Z[i][None, :]
+        r = market.annual_returns(W[i], sample, i)
         # Floor at 0 before contributing: a leveraged wipeout (margin call) is ruin, not debt.
         # A no-op without leverage, where annual returns never approach −100%.
         bal = np.maximum(bal * (1 + r), 0.0) + contrib * (1 + r / 2)
@@ -182,7 +404,7 @@ def _eu(W, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
     eu = np.zeros((G, n))
     for t in range(retire_years):
         i = accum_years + t
-        r = means[i][:, None] + vols[i][:, None] * Z[i][None, :]
+        r = market.annual_returns(W[i], sample, i)
         grown = np.maximum(bal * (1 + r), 0.0)
         target = (1 - flex) * gap_arr[t] + flex * (wr * bal)
         afford = grown / (1 + r / 2)
@@ -194,24 +416,24 @@ def _eu(W, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
     return eu.mean(axis=1)
 
 
-def _stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr, wr,
+def _stats(weights, sample, accum_years, retire_years, market, *, flex, gap_arr, guar_arr, wr,
            contrib, start_savings, gamma, beta, bequest, bequest_floor):
-    """Outcome stats for one path (independent draw). CE income is CONSUMPTION-ONLY — the
+    """Outcome stats for one path (independent evaluation sample). CE income is CONSUMPTION-ONLY — the
     bequest motive shapes the path but is reported separately (median estate), so adding a
     bequest weight does not distort the spending CE. `gamma` here is the retirement-phase
     risk aversion (the CE is a retirement-consumption metric)."""
-    means, vols = alloc(weights)
-    bal = np.full(Z.shape[1], start_savings)
+    n_paths = market.path_count(sample)
+    bal = np.full(n_paths, start_savings)
     for i in range(accum_years):
-        r = means[i] + vols[i] * Z[i]
+        r = market.annual_returns(weights[i], sample, i)
         bal = np.maximum(bal * (1 + r), 0.0) + contrib * (1 + r / 2)  # floor: leverage ruin
     disc = beta ** np.arange(retire_years)
-    C = np.empty((retire_years, Z.shape[1]))
-    cons_eu = np.zeros(Z.shape[1])
-    depleted = np.zeros(Z.shape[1], bool)
+    C = np.empty((retire_years, n_paths))
+    cons_eu = np.zeros(n_paths)
+    depleted = np.zeros(n_paths, bool)
     for t in range(retire_years):
         i = accum_years + t
-        r = means[i] + vols[i] * Z[i]
+        r = market.annual_returns(weights[i], sample, i)
         grown = np.maximum(bal * (1 + r), 0.0)
         target = (1 - flex) * gap_arr[t] + flex * (wr * bal)
         wdr = np.minimum(target, grown / (1 + r / 2))
@@ -227,9 +449,9 @@ def _stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_
     }
 
 
-def _deterministic_accum_balance(weights, accum_years, alloc, *, contrib, start_savings):
+def _deterministic_accum_balance(weights, accum_years, market, *, contrib, start_savings):
     """Mean-return balance at retirement under a fixed glide path."""
-    means, _ = alloc(weights)
+    means = market.mean_returns(weights)
     bal = float(start_savings)
     for i in range(accum_years):
         r = float(means[i])
@@ -237,25 +459,25 @@ def _deterministic_accum_balance(weights, accum_years, alloc, *, contrib, start_
     return bal
 
 
-def _drawdown_stats(weights, Z, accum_years, retire_years, alloc, *, flex, gap_arr, guar_arr,
+def _drawdown_stats(weights, sample, accum_years, retire_years, market, *, flex, gap_arr, guar_arr,
                     wr, contrib, start_savings, gamma, beta, bequest, bequest_floor):
     """Retirement-phase stats from the deterministic expected retirement balance.
 
     This matches the `/retirement` calculator headline semantics. `_stats` above
     remains the full-path result from today and includes accumulation market luck.
     """
-    means, vols = alloc(weights)
     start_balance = _deterministic_accum_balance(
-        weights, accum_years, alloc, contrib=contrib, start_savings=start_savings
+        weights, accum_years, market, contrib=contrib, start_savings=start_savings
     )
-    bal = np.full(Z.shape[1], start_balance)
+    n_paths = market.path_count(sample)
+    bal = np.full(n_paths, start_balance)
     disc = beta ** np.arange(retire_years)
-    C = np.empty((retire_years, Z.shape[1]))
-    cons_eu = np.zeros(Z.shape[1])
-    depleted = np.zeros(Z.shape[1], bool)
+    C = np.empty((retire_years, n_paths))
+    cons_eu = np.zeros(n_paths)
+    depleted = np.zeros(n_paths, bool)
     for t in range(retire_years):
         i = accum_years + t
-        r = means[i] + vols[i] * Z[i]
+        r = market.annual_returns(weights[i], sample, i)
         grown = np.maximum(bal * (1 + r), 0.0)
         target = (1 - flex) * gap_arr[t] + flex * (wr * bal)
         wdr = np.minimum(target, grown / (1 + r / 2))
@@ -284,6 +506,9 @@ def recommend_glide_path(
     # capital-market input units
     inflation: float = 2.1,
     returns_in_percent: bool = True,
+    return_mode: str = "iid-mc",
+    block_years: int = 10,
+    historical_fixed_income: str = "bonds",
     # leverage (borrowing to invest); 1.0 = none
     max_leverage: float = 1.0,                  # cap on equity weight (1.5 = up to 150%)
     borrow_cost: float = 2.0,                   # REAL cost of borrowing (used only when leveraged)
@@ -293,7 +518,7 @@ def recommend_glide_path(
     target_income: float = 60_000.0,
     withdrawal_rate: float = 0.04,
     # preferences
-    gamma: float = 3.0,                         # CRRA risk aversion (single value; drives the glide)
+    gamma: float = 4.0,                         # CRRA risk aversion (single value; drives the glide)
     beta: float = 0.985,
     bequest: float = 0.0,                       # raw warm-glow weight (advanced)
     bequest_years: float | None = None,         # friendlier: target estate = this × target_income
@@ -306,16 +531,18 @@ def recommend_glide_path(
     start_age: int | None = None,
     flat_band: float = 0.10,
 ) -> dict:
-    """Recommend the welfare-maximizing equity weight per `interval`-year step, by simulation.
+    """Recommend the welfare-maximizing allocation per `interval`-year step, by simulation.
 
     Returns a dict with:
-      schedule      : list of blocks {step, year_start, year_end, age_start, phase, equity_pct}
+      schedule      : list of blocks {step, year_start, year_end, age_start, phase, equity_pct};
+                      bills+bonds mode also includes bond_pct and bill_pct
       equity_by_year: the expanded per-year equity weights (fractions)
       accum_dir/retire_dir : 'Rising' | 'Flat' | 'Falling' slope of each phase
       tent_pct, tent_year/tent_age : lowest equity within 15y of retirement (the tent bottom)
-      ce_income, depletion, income_cv : out-of-sample outcome stats for the recommended path
-      flat_equity_pct, flat_ce_income : the best single CONSTANT equity weight and its CE income
-                                        (the simpler alternative; the glide's edge is usually tiny)
+      ce_income, depletion, income_cv : independent-evaluation outcome stats for the recommended path
+      flat_equity_pct, flat_ce_income : the best single CONSTANT allocation and its CE income
+                                        (the simpler alternative; the glide's edge is usually tiny);
+                                        bills+bonds mode also returns flat_bond_pct/flat_bill_pct
       median_bequest, median_estate_years : median terminal estate ($ and in years of spending)
       bequest_target_reached : None (no target) | True | False (target above what's achievable)
       params        : echo of the resolved inputs (incl. the calibrated bequest weight)
@@ -332,7 +559,15 @@ def recommend_glide_path(
     if not (grid_step <= max_leverage <= 3.0):
         raise ValueError("max_leverage must be in [grid_step, 3.0] (1.0 = no leverage)")
 
-    alloc = _build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost)
+    market = _build_market(
+        return_mode,
+        alloc_curve,
+        inflation,
+        returns_in_percent,
+        borrow_cost,
+        block_years,
+        historical_fixed_income=historical_fixed_income,
+    )
     # Guaranteed income is paid every retirement year (a pre-pension bridge is out of scope);
     # the portfolio funds the remaining gap.
     guaranteed = guaranteed_income
@@ -345,36 +580,51 @@ def recommend_glide_path(
                   contrib=annual_contribution, start_savings=current_savings,
                   beta=beta, bequest_floor=bequest_floor)
 
-    # Candidate equity weights 0..max_leverage. Weights > 1 are leveraged (borrowed) positions.
-    grid = np.round(np.arange(0.0, max_leverage + 1e-9, grid_step), 6)
-    G = len(grid)
+    # Candidate allocations. The two-asset cases vary equity alone; bills+bonds historical
+    # mode searches stock/bond/bill combinations, with bills as the residual allocation.
+    equity_grid = np.round(np.arange(0.0, max_leverage + 1e-9, grid_step), 6)
+    candidates = market.candidate_allocations(equity_grid, grid_step)
+    G = len(candidates)
+
+    def _constant_paths(allocations):
+        return np.broadcast_to(
+            allocations,
+            (n_years,) + np.shape(allocations),
+        )
+
+    def _constant_path(allocation):
+        return np.broadcast_to(allocation, (n_years,) + np.shape(allocation))
 
     # Map each year to its interval block; equity weight is constant within a block.
     # The clamp to n_blocks-1 absorbs any remainder when n_years % interval != 0.
     n_blocks = math.ceil(n_years / interval)
     block_of_year = np.minimum(np.arange(n_years) // interval, n_blocks - 1)
 
-    def _optimize(bequest_w, Zopt, max_passes):
+    def _optimize(bequest_w, opt_sample, max_passes):
         """Coordinate-ascent the per-block equity weights for a given bequest weight.
 
         Returns the per-block weights that maximise expected discounted consumption utility."""
         # Initialise at the best flat weight (shape-neutral) to avoid biasing the shape and
         # reduce the risk of the coordinate ascent settling in a poor local optimum.
-        flat = _eu(np.tile(grid, (n_years, 1)), Zopt, accum_years, retire_years, alloc,
+        flat = _eu(_constant_paths(candidates), opt_sample, accum_years, retire_years, market,
                    gamma=gamma, bequest=bequest_w, **common)
-        block_w = np.full(n_blocks, grid[int(np.argmax(flat))])
+        best_flat = candidates[int(np.argmax(flat))]
+        block_w = np.broadcast_to(
+            best_flat,
+            (n_blocks,) + np.shape(best_flat),
+        ).copy()
         for p in range(max_passes):
             order = range(n_blocks) if p % 2 == 0 else range(n_blocks - 1, -1, -1)
             changed = False
             for b in order:
                 years = block_w[block_of_year]
-                # (n_years, G): current path in all columns, block b's rows = full grid.
-                W = np.tile(years[:, None], (1, G))
-                W[block_of_year == b, :] = grid
-                eu = _eu(W, Zopt, accum_years, retire_years, alloc,
+                # Current path in all columns; block b's rows evaluate every candidate.
+                W = np.repeat(years[:, None, ...], G, axis=1)
+                W[block_of_year == b, ...] = candidates
+                eu = _eu(W, opt_sample, accum_years, retire_years, market,
                          gamma=gamma, bequest=bequest_w, **common)
-                best = grid[int(np.argmax(eu))]
-                if best != block_w[b]:
+                best = candidates[int(np.argmax(eu))]
+                if not np.array_equal(best, block_w[b]):
                     block_w[b] = best
                     changed = True
             if not changed:
@@ -391,12 +641,12 @@ def recommend_glide_path(
     if bequest_years is not None and bequest_years > 0:
         target_estate = bequest_years * target_income
         n_cal = min(n_paths, 4_000)
-        Zc = np.random.default_rng(seed + 101).standard_normal((n_years, n_cal))
-        Zce = np.random.default_rng(seed + 202).standard_normal((n_years, max(n_cal, 12_000)))
+        cal_sample = market.sample(n_years, n_cal, seed + 101)
+        cal_eval_sample = market.sample(n_years, max(n_cal, 12_000), seed + 202)
 
         def _median_estate(bw):
-            w = _optimize(bw, Zc, max_passes=min(passes, 6))[block_of_year]
-            return _stats(w, Zce, accum_years, retire_years, alloc,
+            w = _optimize(bw, cal_sample, max_passes=min(passes, 6))[block_of_year]
+            return _stats(w, cal_eval_sample, accum_years, retire_years, market,
                           gamma=gamma, bequest=bw, **common)["median_bequest"]
 
         natural = _median_estate(0.0)  # estate the spending plan already leaves, motive off
@@ -425,40 +675,41 @@ def recommend_glide_path(
                 bequest_w = 0.5 * (lo + hi)
                 bequest_target_reached = True
 
-    Z = np.random.default_rng(seed).standard_normal((n_years, n_paths))
-    block_w = _optimize(bequest_w, Z, max_passes=passes)
+    opt_sample = market.sample(n_years, n_paths, seed)
+    block_w = _optimize(bequest_w, opt_sample, max_passes=passes)
     weights = block_w[block_of_year]
 
-    # Out-of-sample outcome stats for the recommended path.
-    Zf = np.random.default_rng(seed + 9999).standard_normal((n_years, max(n_paths, 40_000)))
-    st = _stats(weights, Zf, accum_years, retire_years, alloc,
+    # Independent evaluation sample for the recommended path.
+    eval_sample = market.sample(n_years, max(n_paths, 40_000), seed + 9999)
+    st = _stats(weights, eval_sample, accum_years, retire_years, market,
                 gamma=gamma, bequest=bequest_w, **common)
-    drawdown_st = _drawdown_stats(weights, Zf, accum_years, retire_years, alloc,
+    drawdown_st = _drawdown_stats(weights, eval_sample, accum_years, retire_years, market,
                                   gamma=gamma, bequest=bequest_w, **common)
 
     # Best single CONSTANT (flat) equity weight — the simpler alternative to the glide path.
-    # Choose it by out-of-sample CE income, not the in-sample optimization matrix; tail-sensitive
+    # Choose it on the independent evaluation sample, not the optimization sample; tail-sensitive
     # utility plus leverage can otherwise overfit rare bad paths and pick a fragile constant
     # weight. The raw optimized glide is still returned and charted; callers can recommend this
     # flatter comparator when it is materially better.
     flat_stats = []
-    for w in grid:
-        candidate = _stats(np.full(n_years, w), Zf, accum_years, retire_years, alloc,
+    for allocation in candidates:
+        candidate = _stats(_constant_path(allocation), eval_sample, accum_years, retire_years, market,
                            gamma=gamma, bequest=bequest_w, **common)
         flat_stats.append(candidate)
     best_flat_i = int(np.argmax([s["ce_income"] for s in flat_stats]))
-    best_flat_w = float(grid[best_flat_i])
+    best_flat_allocation = candidates[best_flat_i]
     flat_st = flat_stats[best_flat_i]
-    flat_drawdown_st = _drawdown_stats(np.full(n_years, best_flat_w), Zf, accum_years,
-                                       retire_years, alloc, gamma=gamma,
+    flat_drawdown_st = _drawdown_stats(_constant_path(best_flat_allocation), eval_sample, accum_years,
+                                       retire_years, market, gamma=gamma,
                                        bequest=bequest_w, **common)
 
     # Shape descriptors.
     def classify(d):
         return "Rising" if d > flat_band else ("Falling" if d < -flat_band else "Flat")
 
-    acc = weights[:accum_years] if accum_years else np.array([])
-    ret = weights[accum_years:]
+    equity_weights = market.equity_weights(weights)
+    acc = equity_weights[:accum_years] if accum_years else np.array([])
+    ret = equity_weights[accum_years:]
     twin = min(15, retire_years)
     tent_i = int(np.argmin(ret[:twin])) if retire_years else 0
     accum_dir = classify(acc[-1] - acc[0]) if accum_years >= 2 else "n/a"
@@ -476,8 +727,12 @@ def recommend_glide_path(
             "year_start": blk_start,
             "year_end": blk_end,
             "phase": "accum" if blk_start < accum_years else "retire",
-            "equity_pct": round(float(block_w[b]) * 100, 1),
         }
+        equity, bonds, bills = market.allocation_weights(block_w[b])
+        entry["equity_pct"] = round(equity * 100, 1)
+        if market.metadata.get("historical_fixed_income") == "bills+bonds":
+            entry["bond_pct"] = round(bonds * 100, 1)
+            entry["bill_pct"] = round(bills * 100, 1)
         if start_age is not None:
             entry["age_start"] = start_age + blk_start
         schedule.append(entry)
@@ -485,16 +740,19 @@ def recommend_glide_path(
     tent_label = "tent_age" if start_age is not None else "tent_year"
     tent_value = (start_age + accum_years + tent_i) if start_age is not None else (accum_years + tent_i)
 
-    return {
+    best_flat_equity, best_flat_bonds, best_flat_bills = market.allocation_weights(
+        best_flat_allocation
+    )
+    result = {
         "schedule": schedule,
-        "equity_by_year": [round(float(w), 4) for w in weights],
+        "equity_by_year": [round(float(w), 4) for w in equity_weights],
         "accum_dir": accum_dir,
         "retire_dir": retire_dir,
         "tent_pct": round(float(ret[tent_i]) * 100, 1) if retire_years else None,
         tent_label: tent_value,
         "ce_income": round(st["ce_income"], 0),
-        # Best single constant equity weight + its CE income (the simpler alternative).
-        "flat_equity_pct": round(best_flat_w * 100, 1),
+        # Best single constant allocation + its CE income (the simpler alternative).
+        "flat_equity_pct": round(best_flat_equity * 100, 1),
         "flat_ce_income": round(flat_st["ce_income"], 0),
         "median_bequest": round(st["median_bequest"], 0),
         # Estate expressed in years of retirement spending (the friendlier bequest unit).
@@ -516,8 +774,15 @@ def recommend_glide_path(
             "bequest": round(float(bequest_w), 3), "bequest_years": bequest_years,
             "max_leverage": max_leverage, "borrow_cost": borrow_cost,
             "n_paths": n_paths, "grid_step": grid_step,
+            **market.metadata,
         },
     }
+    if market.metadata.get("historical_fixed_income") == "bills+bonds":
+        result["bond_by_year"] = [round(float(w), 4) for w in weights[:, 1]]
+        result["bill_by_year"] = [round(float(w), 4) for w in weights[:, 2]]
+        result["flat_bond_pct"] = round(best_flat_bonds * 100, 1)
+        result["flat_bill_pct"] = round(best_flat_bills * 100, 1)
+    return result
 
 
 # ── plotting ──────────────────────────────────────────────────────────────────
@@ -576,7 +841,7 @@ def plot_glide_path(recs, *, start_age=None, path=None, title=None, show=False):
     ax.set_ylabel("recommended equity weight (%)")
     ax.set_ylim(0, max(105, lev_cap + 5))
     ax.grid(alpha=0.3)
-    ax.set_title(title or "Recommended equity glide path (Monte-Carlo optimized)")
+    ax.set_title(title or "Recommended equity glide path (simulation optimized)")
     if any(lbl for lbl, _ in items):
         ax.legend()
     fig.tight_layout()
@@ -589,9 +854,15 @@ def plot_glide_path(recs, *, start_age=None, path=None, title=None, show=False):
 
 
 # ── formatting helpers ───────────────────────────────────────────────────────-
-def _fmt(rec):
+def format_summary(rec):
     sched = " | ".join(
-        f"{e.get('age_start', 'y'+str(e['year_start']))}:{e['equity_pct']:.0f}%" for e in rec["schedule"]
+        (
+            f"{e.get('age_start', 'y'+str(e['year_start']))}:"
+            f"{e['equity_pct']:.0f}E/{e['bond_pct']:.0f}B/{e['bill_pct']:.0f}Bill"
+            if "bill_pct" in e
+            else f"{e.get('age_start', 'y'+str(e['year_start']))}:{e['equity_pct']:.0f}%"
+        )
+        for e in rec["schedule"]
     )
     tent = rec.get("tent_age", rec.get("tent_year"))
     return (f"  before={rec['accum_dir']:<7} after={rec['retire_dir']:<7} "
@@ -618,14 +889,97 @@ def _ask(prompt, default, cast=float, example=None):
             print(f"  ! Invalid input — expected a number. Try again.\n")
 
 
+def _ask_choice(prompt, default, choices):
+    """Prompt for one of a small set of string choices."""
+    allowed = ", ".join(choices)
+    while True:
+        raw = input(f"{prompt}\n  (default: {default}; choices: {allowed})\n> ").strip()
+        value = raw or default
+        if value in choices:
+            return value
+        print(f"  ! Invalid choice — expected one of: {allowed}. Try again.\n")
+
+
 def _section(title):
     print(f"\n{'─' * 50}")
     print(f"  {title}")
     print(f"{'─' * 50}")
 
 
+def format_reproduction_command(
+    *,
+    accum_years,
+    retire_years,
+    flexibility,
+    guaranteed_income,
+    interval,
+    gamma,
+    beta,
+    bequest_years,
+    max_leverage,
+    borrow_cost,
+    current_savings,
+    annual_contribution,
+    target_income,
+    withdrawal_rate,
+    start_age,
+    return_mode,
+    block_years,
+    historical_fixed_income,
+    n_paths,
+):
+    """Build a shell-safe flag-CLI command matching an interactive run."""
+
+    def value(x):
+        return f"{x:g}" if isinstance(x, float) else str(x)
+
+    args = [
+        "python3",
+        "analysis/recommend_glide.py",
+        "--accum",
+        value(accum_years),
+        "--retire",
+        value(retire_years),
+        "--flex",
+        value(flexibility),
+        "--guaranteed-income",
+        value(guaranteed_income),
+        "--interval",
+        value(interval),
+        "--gamma",
+        value(gamma),
+        "--beta",
+        value(beta),
+        "--start-age",
+        value(start_age),
+        "--savings",
+        value(current_savings),
+        "--contrib",
+        value(annual_contribution),
+        "--target-income",
+        value(target_income),
+        "--withdrawal-rate",
+        value(withdrawal_rate),
+        "--mode",
+        return_mode,
+        "--max-leverage",
+        value(max_leverage),
+        "--paths",
+        value(int(n_paths)),
+    ]
+    if bequest_years is not None and bequest_years > 0:
+        args.extend(["--bequest-years", value(bequest_years)])
+    if max_leverage > 1:
+        args.extend(["--borrow-cost", value(borrow_cost)])
+    if return_mode == "historical-block":
+        args.extend(["--block-years", value(block_years)])
+    if return_mode != "iid-mc":
+        args.extend(["--historical-fixed-income", historical_fixed_income])
+    return shlex.join(args)
+
+
 # ── demo (sweep mode) ─────────────────────────────────────────────────────────
-def _run_demo(out_dir):
+def run_demo(out_dir):
     """Sweep key levers across three spending rules and write plots."""
     import os
     os.makedirs(out_dir, exist_ok=True)
@@ -640,7 +994,7 @@ def _run_demo(out_dir):
         ("guaranteed", "guaranteed income", "guaranteed_income",
          lambda v: f"guaranteed ${v/1000:.0f}k", (0.0, 20_000.0, 50_000.0)),
         ("bequest", "bequest motive",  "bequest",       lambda v: f"bequest {v:g}",        (0.0, 10.0, 100.0)),
-        ("gamma",   "risk aversion γ", "gamma",         lambda v: f"γ = {v:g}",            (1.0, 2.0, 3.0, 5.0)),
+        ("gamma",   "risk aversion γ", "gamma",         lambda v: f"γ = {v:g}",            (1.0, 2.0, 3.0, 4.0, 5.0)),
     ]
 
     def one(flex, **kw):
@@ -656,7 +1010,7 @@ def _run_demo(out_dir):
             for v in values:
                 rec = one(flex, **{kwarg: v})
                 group[fmt(v)] = rec
-                print(f"   {fmt(v):<13} {_fmt(rec).splitlines()[0].strip()}")
+                print(f"   {fmt(v):<13} {format_summary(rec).splitlines()[0].strip()}")
             f = plot_glide_path(
                 group, start_age=AGE,
                 path=os.path.join(out_dir, f"glide_{slug}_by_{lslug}.png"),
@@ -721,14 +1075,14 @@ def _run_interactive():
 
     # ── Preferences ───────────────────────────────────────────────────────────
     _section("Preferences & risk")
-    print("  Risk aversion (γ): 1 = log utility, 2 = moderate, 3 = cautious, 5+ = very cautious.")
+    print("  Risk aversion (γ): 1 = very aggressive, 2 = aggressive, 3 = moderate, 4 = cautious, 5+ = very cautious.")
     print("  One value drives the whole glide — your consumption risk aversion already")
     print("  determines the accumulation path (a separate 'working' γ has ~no effect).")
-    gamma = _ask("Risk aversion γ", 3.0, float, "3 = cautious base case")
+    gamma = _ask("Risk aversion γ", 4.0, float, "4 = cautious base case")
 
     beta = _ask(
-        "Time-discount factor β  (0.99 = very patient saver, 0.97 = moderate)",
-        0.99, float, "0.985 = standard, 0.99 = high saver")
+        "Time-discount factor β",
+        0.985, float, "(1.0 = equal weight, 0.985 = balanced, 0.97 = stronger early-years tilt)")
 
     print("\n  Bequest: how large an estate to leave, in YEARS of your retirement spending.")
     print("  0 = spend it all; 10 = leave ~10 years of expenses. (The plan may already")
@@ -745,19 +1099,36 @@ def _run_interactive():
     else:
         borrow_cost = 2.0  # unused when not leveraging
 
+    # ── Return paths ──────────────────────────────────────────────────────────
+    _section("Return paths")
+    print("  iid-mc uses the app's forward capital-market assumptions.")
+    print("  Historical modes bootstrap raw paired asset returns from the JST world series.")
+    return_mode = _ask_choice("Return mode", "iid-mc", RETURN_MODES)
+    historical_fixed_income = (
+        _ask_choice("Historical asset set", "bonds", HISTORICAL_FIXED_INCOME_OPTIONS)
+        if return_mode != "iid-mc"
+        else "bonds"
+    )
+    block_years = (
+        _ask("Average stationary-block length in years", 10, int,
+             "10 approximates the paper's 120-month average")
+        if return_mode == "historical-block"
+        else 10
+    )
+
     # ── Optimizer ─────────────────────────────────────────────────────────────
     _section("Optimizer settings")
     interval = _ask(
         "Glide-step interval in years (1 = per-age path, 5 = coarser but faster)",
         5, int, "1 for smoothest result, 5 for quick run")
     n_paths = _ask(
-        "Number of Monte Carlo paths (more = more stable, slower)",
+        "Number of simulation paths (more = more stable, slower)",
         15_000, int, "5000 for quick, 30000 for publication quality")
 
     # ── Run ───────────────────────────────────────────────────────────────────
     note = "  (calibrating the bequest target may take a little longer)" if bequest_years > 0 else ""
     lev_note = f", leverage≤{max_leverage:g}× @{borrow_cost:g}% real" if max_leverage > 1 else ""
-    print(f"\n  Running optimiser ({int(n_paths):,} paths, {interval}y steps, "
+    print(f"\n  Running optimiser ({return_mode}, {int(n_paths):,} paths, {interval}y steps, "
           f"γ={gamma}, β={beta}{lev_note})…{note}")
     rec = recommend_glide_path(
         accum_years=accum_years,
@@ -777,6 +1148,9 @@ def _run_interactive():
         n_paths=int(n_paths),
         start_age=current_age,
         alloc_curve=PWL_CURVE,
+        return_mode=return_mode,
+        block_years=block_years,
+        historical_fixed_income=historical_fixed_income,
     )
 
     # ── Results ───────────────────────────────────────────────────────────────
@@ -787,14 +1161,35 @@ def _run_interactive():
     print(f"  Retirement   ({retirement_age}→{planning_age}): {rec['retire_dir']}")
     tent_label = "tent_age" if "tent_age" in rec else "tent_year"
     print(f"  Equity trough: {rec['tent_pct']}% at age {rec[tent_label]}")
+    print(f"  Return mode: {rec['params']['return_mode']}")
+    if return_mode != "iid-mc":
+        p = rec["params"]
+        block = (
+            f", stationary circular blocks averaging {p['block_years']}y"
+            if p["block_years"]
+            else ""
+        )
+        print(f"  History: {p['history_source']} {p['history_start_year']}–{p['history_end_year']}"
+              f" ({p['history_observations']} years, asset set: "
+              f"{p['historical_fixed_income']}{block})")
     print()
-    print(f"  Outcome stats (out-of-sample):")
+    print(f"  Outcome stats (independent evaluation sample):")
     print(f"    CE income     : ${rec['ce_income']:>10,.0f} /yr  (certainty-equivalent spending)")
     if rec["flat_ce_income"] > rec["ce_income"] * 1.05:
-        print(f"    Robust pick   : {rec['flat_equity_pct']:>9.0f} % constant equity "
-              f"(CE ${rec['flat_ce_income']:,.0f}/yr)")
-    print(f"    Best constant : {rec['flat_equity_pct']:>9.0f} %   "
-          f"(CE ${rec['flat_ce_income']:,.0f}/yr — robust flat comparator)")
+        if "flat_bond_pct" in rec:
+            print(f"    Robust pick   : constant {rec['flat_equity_pct']:.0f}% equity / "
+                  f"{rec['flat_bond_pct']:.0f}% bonds / {rec['flat_bill_pct']:.0f}% bills "
+                  f"(CE ${rec['flat_ce_income']:,.0f}/yr)")
+        else:
+            print(f"    Robust pick   : {rec['flat_equity_pct']:>9.0f} % constant equity "
+                  f"(CE ${rec['flat_ce_income']:,.0f}/yr)")
+    if "flat_bond_pct" in rec:
+        print(f"    Best constant : {rec['flat_equity_pct']:.0f}% equity / "
+              f"{rec['flat_bond_pct']:.0f}% bonds / {rec['flat_bill_pct']:.0f}% bills "
+              f"(CE ${rec['flat_ce_income']:,.0f}/yr — robust flat comparator)")
+    else:
+        print(f"    Best constant : {rec['flat_equity_pct']:>9.0f} %   "
+              f"(CE ${rec['flat_ce_income']:,.0f}/yr — robust flat comparator)")
     print(f"    Drawdown dep.  : {rec['drawdown_depletion']*100:>8.1f} %  "
           f"(from expected retirement balance ${rec['expected_retirement_balance']:,.0f})")
     print(f"    Full-path dep. : {rec['depletion']*100:>8.1f} %  "
@@ -806,10 +1201,13 @@ def _run_interactive():
         print(f"    ⚠ Target of {bequest_years:g} yrs is not reachable even at full equity; "
               f"showing the most the plan can leave.")
     print()
-    print(f"  Schedule (equity % per block):")
+    print(f"  Schedule (allocation % per block):")
     for e in rec["schedule"]:
         age_lbl = f"age {e['age_start']:>3}" if "age_start" in e else f"year {e['year_start']:>3}"
-        print(f"    {age_lbl}  [{e['phase']:<6}]  {e['equity_pct']:>5.1f}%")
+        allocation = f"{e['equity_pct']:>5.1f}% equity"
+        if "bill_pct" in e:
+            allocation += f" / {e['bond_pct']:>5.1f}% bonds / {e['bill_pct']:>5.1f}% bills"
+        print(f"    {age_lbl}  [{e['phase']:<6}]  {allocation}")
 
     # ── Plot ──────────────────────────────────────────────────────────────────
     print()
@@ -824,6 +1222,30 @@ def _run_interactive():
                                     f"flex={flexibility}{lev_t})")
         print(f"  Chart saved to: {out}")
 
+    command = format_reproduction_command(
+        accum_years=accum_years,
+        retire_years=retire_years,
+        flexibility=flexibility,
+        guaranteed_income=guaranteed_income,
+        interval=interval,
+        gamma=gamma,
+        beta=beta,
+        bequest_years=bequest_years,
+        max_leverage=max_leverage,
+        borrow_cost=borrow_cost,
+        current_savings=current_savings,
+        annual_contribution=annual_contrib,
+        target_income=target_income,
+        withdrawal_rate=withdrawal_rate,
+        start_age=current_age,
+        return_mode=return_mode,
+        block_years=block_years,
+        historical_fixed_income=historical_fixed_income,
+        n_paths=n_paths,
+    )
+    print("\n  Run this simulation again or modify it with:")
+    print(f"  {command}")
+
 
 # ── entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
@@ -831,7 +1253,15 @@ if __name__ == "__main__":
     import sys
 
     if "--demo" in sys.argv:
-        out_dir = os.path.join(os.path.dirname(__file__), "glidepath_figures")
-        _run_demo(out_dir)
+        demo_mode = "iid-mc"
+        for i, arg in enumerate(sys.argv):
+            if arg == "--mode" and i + 1 < len(sys.argv):
+                demo_mode = sys.argv[i + 1]
+            elif arg.startswith("--mode="):
+                demo_mode = arg.split("=", 1)[1]
+        if demo_mode != "iid-mc":
+            raise SystemExit("demo mode is iid-mc only")
+        out_dir = os.path.join("analysis", "artifacts", "glide_path", "demo")
+        run_demo(out_dir)
     else:
         _run_interactive()

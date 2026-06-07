@@ -1,5 +1,5 @@
 /**
- * Glide-path recommender engine — TypeScript port of `analysis/glide_path_recommender.py`.
+ * Glide-path recommender engine — TypeScript port of `analysis/glide_path/recommender.py`.
  *
  * Optimizes the equity weight at each interval step by Monte Carlo coordinate ascent under
  * common random numbers, maximizing expected discounted CRRA utility of retirement
@@ -12,7 +12,12 @@
  */
 
 import { fillNormals } from "./rng";
-import { DEFAULT_ALLOC_CURVE, GRID_STEP, type AllocAnchor } from "./presets";
+import {
+  DEFAULT_ALLOC_CURVE,
+  GRID_STEP,
+  WEB_GLIDE_INTERVAL,
+  type AllocAnchor,
+} from "./presets";
 import type {
   GlidePathInput,
   GlidePathResult,
@@ -443,7 +448,7 @@ export function recommendGlidePath(
     Math.round(input.planningAge - input.retirementAge),
   );
   const nYears = accumYears + retireYears;
-  const interval = Math.max(1, Math.round(input.interval));
+  const interval = WEB_GLIDE_INTERVAL;
   const gamma = input.gamma;
   const maxLeverage = Math.max(GRID_STEP, input.maxEquityPct / 100);
 
@@ -573,7 +578,7 @@ export function recommendGlidePath(
   let tentI = 0;
   for (let i = 1; i < twin; i++) if (ret[i] < ret[tentI]) tentI = i;
   // Classify a phase by its first-to-last change. The retirement phase drops its final year(s):
-  // the optimizer drives equity toward 0 at the fixed horizon (an artifact, not advice) that would
+  // the optimizer drives equity toward 0 at the fixed horizon (an artifact, not real) that would
   // otherwise skew the read. Accumulation has no such artifact and is classified over its full span.
   const slope = (w: number[], trimLast: boolean): SlopeDir => {
     const eff = trimLast && w.length >= 3 ? w.slice(0, -1) : w;
