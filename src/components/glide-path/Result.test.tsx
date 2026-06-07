@@ -142,7 +142,7 @@ describe("glide-path Result", () => {
     ).toBeInTheDocument();
   });
 
-  it("prefers the constant when full-path shortfall is within 2.5 points", () => {
+  it("prefers the constant when full-path shortfall is within 1 point", () => {
     renderResult(
       makeResult({
         ceIncome: 60000,
@@ -150,7 +150,7 @@ describe("glide-path Result", () => {
         drawdownDepletion: 0.05,
         flatDrawdownDepletion: 0.05,
         depletion: 0.1,
-        flatDepletion: 0.125,
+        flatDepletion: 0.109,
       }),
     );
     expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
@@ -188,7 +188,11 @@ describe("glide-path Result", () => {
       }),
     );
     expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
-    expect(screen.getByText(/trails it by more than/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /The glide path is preferred because the constant allocation trails it/i,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("suggests retiring earlier or spending more below 5% drawdown shortfall", () => {
@@ -211,7 +215,7 @@ describe("glide-path Result", () => {
     ).toBeInTheDocument();
     expect(
       guidance.compareDocumentPosition(recommendation) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
+        Node.DOCUMENT_POSITION_PRECEDING,
     ).toBeTruthy();
   });
 
@@ -275,20 +279,20 @@ describe("glide-path Result", () => {
     ).toBeTruthy();
   });
 
-  it("warns when recommended full-path shortfall is at least 50%", () => {
+  it("warns when recommended full-path shortfall is at least 30%", () => {
     renderResult(
       makeResult({
         ceIncome: 60000,
         flatCeIncome: 50000,
         drawdownDepletion: 0.08,
         flatDrawdownDepletion: 0.2,
-        depletion: 0.55,
-        flatDepletion: 0.55,
+        depletion: 0.3,
+        flatDepletion: 0.35,
       }),
     );
 
     expect(
-      screen.getByText(/Full-path shortfall is 50% or higher/i),
+      screen.getByText(/Full-path shortfall is 30% or higher/i),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Recommended allocation/i)).toBeNull();
     expect(screen.queryByText(/Alternative —/i)).toBeNull();
@@ -316,7 +320,7 @@ describe("glide-path Result", () => {
       screen.queryByText(/may be able to retire earlier or increase/i),
     ).toBeNull();
     expect(
-      screen.getByText(/Full-path shortfall is 50% or higher/i),
+      screen.getByText(/Full-path shortfall is 30% or higher/i),
     ).toBeInTheDocument();
   });
 
