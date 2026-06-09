@@ -323,7 +323,7 @@ export function safeWithdrawalRate(
   inflationPct: number,
   years: number,
   successRate: number,
-  numSims: number = 800,
+  numSims: number = 4000,
 ): number {
   const mean = realMean(retireReturnPct, inflationPct);
   const sigma = retireVolPct / 100;

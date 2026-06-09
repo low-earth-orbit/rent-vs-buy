@@ -6,6 +6,7 @@ import {
   Button,
   Group,
   Popover,
+  SegmentedControl,
   SimpleGrid,
   Slider,
   Stack,
@@ -19,6 +20,7 @@ import type {
   GlidePathErrors,
   GlidePathInput,
   GlidePathInputKey,
+  GlidePathReturnMode,
 } from "@/utils/glide-path/types";
 import type { FieldValue } from "@/types";
 import FormResetButton from "../shared/FormResetButton";
@@ -26,7 +28,9 @@ import FormResetButton from "../shared/FormResetButton";
 interface InputFormProps {
   input: GlidePathInput;
   errors: GlidePathErrors;
+  returnMode: GlidePathReturnMode;
   onChange: (key: GlidePathInputKey, value: FieldValue) => void;
+  onReturnModeChange: (mode: GlidePathReturnMode) => void;
   onReset: () => void;
   onGenerate: () => void;
   generating: boolean;
@@ -35,7 +39,9 @@ interface InputFormProps {
 export default function InputForm({
   input,
   errors,
+  returnMode,
   onChange,
+  onReturnModeChange,
   onReset,
   onGenerate,
   generating,
@@ -227,6 +233,24 @@ export default function InputForm({
         <Accordion.Item value="engine">
           <Accordion.Control>Simulation</Accordion.Control>
           <Accordion.Panel>
+            <Stack gap="md">
+              <Stack gap={4}>
+                <FieldHeader
+                  label="Return model"
+                  description="Forward-block samples historical return sequences (JST Macrohistory, 16 countries) rescaled to the forward-CMA marginals — captures sequence risk while honoring your return assumptions. IID Monte Carlo draws independent normal returns each year."
+                />
+                <SegmentedControl
+                  value={returnMode}
+                  onChange={(v) =>
+                    onReturnModeChange(v as GlidePathReturnMode)
+                  }
+                  data={[
+                    { value: "forward-block", label: "Forward-block" },
+                    { value: "iid-mc", label: "IID Monte Carlo" },
+                  ]}
+                  size="sm"
+                />
+              </Stack>
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <UserInputFormItem
                 {...num("numPaths")}
@@ -255,6 +279,7 @@ export default function InputForm({
                 />
               )}
             </SimpleGrid>
+            </Stack>
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion>

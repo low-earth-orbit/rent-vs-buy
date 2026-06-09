@@ -6,7 +6,7 @@ import type { GlidePathRequest } from "../utils/glide-path/types";
 const ctx = self as unknown as Worker;
 
 ctx.onmessage = (event: MessageEvent<GlidePathRequest>) => {
-  const { input, requestId, seed } = event.data;
-  const result = recommendGlidePath(input, undefined, seed);
+  const { input, requestId, seed, returnMode } = event.data;
+  const result = recommendGlidePath(input, undefined, seed, returnMode);
   ctx.postMessage({ requestId, input, result });
 };

@@ -5,13 +5,19 @@ import { Container, Grid } from "@mantine/core";
 import InputForm from "./InputForm";
 import Result from "./Result";
 import { DEFAULTS } from "@/utils/glide-path/presets";
-import { loadInput, saveInput } from "@/utils/glide-path/storage";
+import {
+  loadInput,
+  loadReturnMode,
+  saveInput,
+  saveReturnMode,
+} from "@/utils/glide-path/storage";
 import { validateGlidePathInput } from "@/utils/glide-path/validation";
 import type {
   GlidePathInput,
   GlidePathInputKey,
   GlidePathResult,
   GlidePathResponse,
+  GlidePathReturnMode,
 } from "@/utils/glide-path/types";
 import type { FieldValue } from "@/types";
 
@@ -23,6 +29,9 @@ interface Computed {
 
 export default function Main() {
   const [input, setInput] = useState<GlidePathInput>(() => loadInput());
+  const [returnMode, setReturnMode] = useState<GlidePathReturnMode>(
+    () => loadReturnMode(),
+  );
   const [computed, setComputed] = useState<Computed | null>(null);
   const [computing, setComputing] = useState(false);
   const [rerolling, setRerolling] = useState(false);
@@ -77,7 +86,7 @@ export default function Main() {
     // swaps to the full loader.
     if (isReroll) setRerolling(true);
     else setComputing(true);
-    worker.postMessage({ input, requestId, seed: seedValue });
+    worker.postMessage({ input, requestId, seed: seedValue, returnMode });
   }
 
   function handleGenerate() {
@@ -115,6 +124,19 @@ export default function Main() {
     requestIdRef.current += 1; // invalidate any in-flight worker response
   }
 
+  function handleReturnModeChange(mode: GlidePathReturnMode) {
+    setReturnMode(mode);
+    saveReturnMode(mode);
+    setComputed(null);
+    setComputing(false);
+    setRerolling(false);
+    setError(false);
+    seedRef.current = 0;
+    setSeed(0);
+    terminateWorker();
+    requestIdRef.current += 1;
+  }
+
   function handleReset() {
     const fresh: GlidePathInput = { ...DEFAULTS };
     setInput(fresh);
@@ -136,7 +158,9 @@ export default function Main() {
           <InputForm
             input={input}
             errors={errors}
+            returnMode={returnMode}
             onChange={handleChange}
+            onReturnModeChange={handleReturnModeChange}
             onReset={handleReset}
             onGenerate={handleGenerate}
             generating={computing}

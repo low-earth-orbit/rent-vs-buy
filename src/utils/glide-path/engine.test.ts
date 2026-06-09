@@ -136,11 +136,20 @@ describe("recommendGlidePath", () => {
   });
 
   it("lowers recommended equity as risk aversion rises", () => {
-    // The constant-$ shape is fairly γ-invariant, but the overall equity level should not
-    // increase with γ — a more cautious investor never gets a more aggressive recommendation.
-    const cautious = recommendGlidePath(base({ gamma: 8, maxEquityPct: 100 }));
+    // Test the monotonicity property with the parametric iid-mc mode (deterministic at
+    // low path counts); forward-block adds bootstrap noise that can flip the ordering at
+    // numPaths=200.
+    const cautious = recommendGlidePath(
+      base({ gamma: 8, maxEquityPct: 100 }),
+      undefined,
+      0,
+      "iid-mc",
+    );
     const aggressive = recommendGlidePath(
       base({ gamma: 1, maxEquityPct: 100 }),
+      undefined,
+      0,
+      "iid-mc",
     );
     const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
     expect(avg(cautious.equityByYear)).toBeLessThanOrEqual(

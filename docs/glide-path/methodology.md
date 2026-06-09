@@ -5,8 +5,11 @@ Developer/research note for the Lifetime Allocation Optimizer. Companion to the
 should you hold at each age — before and after retirement — to maximize lifetime welfare?**
 
 The research sweep and reported results in Sections 2–4 use our forward Canadian capital-market
-assumptions and plain **iid Monte Carlo**. The productized Python recommender additionally supports
-historical iid and stationary-block sensitivity checks. The web app remains iid-only.
+assumptions and plain **iid Monte Carlo**. The productized Python recommender and the web app both
+now default to **forward-block pooled** — historical single-country return sequences affine-rescaled
+to the forward-CMA marginals, then stationary-block-bootstrapped — so the results capture sequence
+risk while honoring the user's return assumptions. **IID Monte Carlo** remains available as an
+optional mode in both interfaces.
 
 The web and Python recommender share the baseline household/model defaults: flexibility 0,
 γ = 4, β = 0.985, a 4% flexible withdrawal rate, and a 2% real borrowing cost. Their product
@@ -39,11 +42,15 @@ gitignored `analysis/artifacts/glide_path/research/`.
 5. [Python recommender](#5-recommender-script)
 6. [Reproducing the analysis](#6-reproduce)
 
-The research sweep and web app remain forward-CMA iid Monte Carlo. The productized Python
-recommender also supports two raw-history cross-checks:
+The research sweep remains forward-CMA iid Monte Carlo. The web app and Python recommender both
+default to forward-block pooled; iid-mc is available as an optional mode. The four supported
+modes in the Python recommender:
 
 ```bash
-# Existing default: forward-CMA normal iid Monte Carlo
+# Default: historical sequences rescaled to forward-CMA marginals, then block-bootstrapped
+python3 analysis/recommend_glide.py                         # forward-block pooled
+
+# Forward-CMA normal iid Monte Carlo (original behavior)
 python3 analysis/recommend_glide.py --mode iid-mc
 
 # Raw paired world stock/fixed-income years, sampled independently with replacement
@@ -140,10 +147,11 @@ matching forward marginals (intermediate-weight risk therefore comes from that h
 covariance, not the curve). (3) `forward-block` matches only the `w=0`/`w=1` anchors, not the
 curve's interpolated intermediate-weight vols.
 
-**Dataset and exclusions** (historical modes only): `--dataset world` (default) averages countries
-within each calendar year into one annually-rebalanced portfolio; `--dataset pooled` concatenates
+**Dataset and exclusions** (historical modes only): `--dataset pooled` (default) concatenates
 each country's own sequence end to end, with segment ids that keep a block from bridging two
 countries or a data/exclusion gap, so a block samples consecutive years of a single country.
+`--dataset world` averages countries within each calendar year into one annually-rebalanced
+portfolio.
 `--exclude-countries` / `--exclude-years` (pooled only) drop disaster countries or windows.
 
 For allocations up to 100% equity, each annual portfolio return is `w × stock + (1−w) × bonds`.
@@ -399,11 +407,17 @@ and **derisk into retirement**; the precise curve is worth ~0.5%.
 
 ---
 
-## 4. Caveats — what an iid model on our CMAs cannot see
+## 4. Caveats — what the iid research sweep (§2–§3) cannot see
 
-- **No valuation signal / no mean reversion.** By design. So we cannot reproduce ERN's
-  _CAPE-conditional_ SWR boost, and we likely understate multi-decade equity reversion (which, per
-  the JST work in the methodology doc, would _lower_ long-horizon SWRs, not raise them).
+The research sweep (§2–§3) used iid Monte Carlo; the web app and Python recommender now default to
+**forward-block pooled**, which captures historical sequence structure (equity mean reversion, bond
+persistence, single-country clustering). The caveats below apply to the §2–§3 iid results; the
+forward-block default addresses the first two directly.
+
+- **No valuation signal / no mean reversion (iid only).** The research sweep is by design iid, so
+  it cannot reproduce ERN's _CAPE-conditional_ SWR boost. Forward-block preserves the empirical
+  equity mean reversion from JST history (~VR(10y)≈0.91) and bond persistence (VR>1) in the
+  bootstrap sequences.
 - **One equity asset, our curve.** No domestic/international split, so ACO's ⅓/⅔ tilt and its
   diversification benefit are out of scope — we test only the _stock-vs-bond_ and _flat-vs-glide_
   axes, on a ~3.3pp premium deliberately lower than ACO's US-tilted history.
@@ -425,17 +439,18 @@ The same model is exposed as a one-call recommender —
 [`analysis/glide_path/recommender.py`](../../analysis/glide_path/recommender.py),
 `recommend_glide_path(...)` — that **optimizes** (does not look up) the allocation per chosen step
 (`interval` = 1y, 5y, …) given your horizons, spending flexibility, guaranteed income, risk
-aversion, and selected return mode (including an arbitrary return/vol curve under `iid-mc`). It
-varies equity against bonds. It first finds a coordinate-ascent glide, then scores both that glide
-and the best single constant allocation on an independent evaluation sample. It always returns the
-raw optimized glide as the schedule, plus the robust constant comparator (`flat_equity_pct` /
-`flat_ce_income`) so callers can recommend the flat path when it is materially better. It returns the per-step schedule
-plus independent-evaluation CE income, income CV, and two depletion views:
-full-path depletion (`depletion`), which includes pre-retirement market luck from today, and
-drawdown-only depletion (`drawdown_depletion`), which starts from the deterministic expected
-retirement balance and matches the `/retirement` headline semantics. It also returns the **best
-single constant allocation** — the simpler alternative whose CE the glide path usually beats by
-only a hair (§2e) — and ships a `plot_glide_path()` helper.
+aversion, and selected return mode (including an arbitrary return/vol curve under `iid-mc`). The
+default return mode is `forward-block` with `dataset=pooled`. It varies equity against bonds. It
+first finds a coordinate-ascent glide, then scores both that glide and the best single constant
+allocation on an independent evaluation sample. It always returns the raw optimized glide as the
+schedule, plus the robust constant comparator (`flat_equity_pct` / `flat_ce_income`) so callers
+can recommend the flat path when it is materially better. It returns the per-step schedule plus
+independent-evaluation CE income, income CV, and two depletion views: full-path depletion
+(`depletion`), which includes pre-retirement market luck from today, and drawdown-only depletion
+(`drawdown_depletion`), which starts from the deterministic expected retirement balance and matches
+the `/retirement` headline semantics. It also returns the **best single constant allocation** — the
+simpler alternative whose CE the glide path usually beats by only a hair (§2e) — and ships a
+`plot_glide_path()` helper.
 
 `python3 analysis/recommend_glide.py --demo` sweeps **each lever across all three spending
 rules** under `iid-mc` — holding every other input at its default — and writes
@@ -503,6 +518,9 @@ python3 -m analysis.glide_path.research             # the analysis (tables + fig
 python3 -m analysis.glide_path.recommender          # interactive: prompts for your inputs
 python3 analysis/recommend_glide.py --demo          # recommender showcase: 3×3 lever matrix + overview, ≈ 2 min
 python3 analysis/recommend_glide.py --help          # scriptable flag CLI for a single custom recommendation
+
+# Regenerate the pre-rescaled JST bundle used by the web app's forward-block engine
+python3 -m analysis.glide_path.generate_bundle      # writes src/utils/glide-path/jstData.ts
 ```
 
 After an interactive run, the recommender prints a copy-pasteable `analysis/recommend_glide.py`

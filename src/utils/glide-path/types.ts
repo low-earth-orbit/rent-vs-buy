@@ -69,7 +69,11 @@ export interface ResolvedParams {
   borrowCost: number;
   gamma: number;
   interval: number;
+  returnMode: GlidePathReturnMode;
 }
+
+/** Return mode for the glide-path simulation engine. */
+export type GlidePathReturnMode = "forward-block" | "iid-mc";
 
 /** Message sent to the glide-path Web Worker. */
 export interface GlidePathRequest {
@@ -77,6 +81,8 @@ export interface GlidePathRequest {
   requestId: number;
   /** Re-roll nonce: 0 = canonical draw; >0 reseeds the Monte Carlo to a new reproducible draw. */
   seed?: number;
+  /** Simulation engine. Defaults to "forward-block" when omitted. */
+  returnMode?: GlidePathReturnMode;
 }
 
 /** Message returned from the glide-path Web Worker. */

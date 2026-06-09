@@ -14,7 +14,9 @@ function renderForm(input: Partial<GlidePathInput> = {}) {
         ...input,
       }}
       errors={{}}
+      returnMode="forward-block"
       onChange={vi.fn()}
+      onReturnModeChange={vi.fn()}
       onReset={vi.fn()}
       onGenerate={vi.fn()}
       generating={false}

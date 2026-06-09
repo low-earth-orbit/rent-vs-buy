@@ -17,6 +17,7 @@ function makeResult(o: ResultOverrides = {}): GlidePathResult {
     borrowCost: 2,
     gamma: 3,
     interval: 5,
+    returnMode: "forward-block" as const,
     ...o.params,
   };
   return {
