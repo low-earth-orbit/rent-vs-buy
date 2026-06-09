@@ -1029,8 +1029,6 @@ def _run_interactive():
     # ── Preferences ───────────────────────────────────────────────────────────
     _section("Preferences & risk")
     print("  Risk aversion (γ): 1 = very aggressive, 2 = aggressive, 3 = moderate, 4 = cautious, 5+ = very cautious.")
-    print("  One value drives the whole glide — your consumption risk aversion already")
-    print("  determines the accumulation path (a separate 'working' γ has ~no effect).")
     gamma = _ask("Risk aversion γ", 4.0, float, "4 = cautious base case")
 
     beta = _ask(
@@ -1039,7 +1037,7 @@ def _run_interactive():
 
     print("\n  Leverage: allow borrowing to invest more than 100% in equity?")
     print("  Enter the max equity % (100 = no leverage, 150 = up to 1.5×).")
-    max_equity_pct = _ask("Max equity %", 100.0, float, "100 = none, 150 = lifecycle leverage")
+    max_equity_pct = _ask("Max equity %", 100.0, float, "100 = none, 150 = max 1.5x leverage")
     max_leverage = max(max_equity_pct / 100.0, 0.05)
     if max_leverage > 1.0:
         borrow_cost = _ask("  Real cost of borrowing (% per year)", 2.0, float,
@@ -1073,7 +1071,7 @@ def _run_interactive():
     )
     block_years = (
         _ask("Average stationary-block length in years", 10, int,
-             "10 approximates the paper's 120-month average")
+             "10")
         if return_mode in _BLOCK_MODES
         else 10
     )
