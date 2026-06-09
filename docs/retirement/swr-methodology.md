@@ -28,7 +28,7 @@ Validation prototype:
   modest, not because the risk model is harsh.** This is correct, not a bug.
 - Return presets come from **PWL Capital** (corroborated by **FP Canada** planning guidelines).
   They are mainstream Canadian forward estimates — **not conservative**.
-- The US "4% rule" / ~3.7% long-horizon floor is a **US-exceptionalism artifact**
+- The US "4% rule" is a **US-exceptionalism artifact**
   (US real returns ~6%, geo ~5.4%). It does not transfer to Canadian forward CMAs.
 - `RETURN_AUTOCORRELATION = 0` (iid) is confirmed correct: the app's parametric output is
   within ~0.1pp of forward-calibrated historical sequencing (pooled forward-block) across all
@@ -67,10 +67,9 @@ volatility drag (geometric ≈ arithmetic − σ²/2). Fixed PRNG seed ⇒ deter
 | **60/40 (retire default)** | **5.67%**      | **8.79%**  | **~3.5%**   | **~3.1%** |
 | 40/60                      | 5.01%          | 7.17%      | ~2.8%       | ~2.6%     |
 
-Inflation 2.1%. Source: **PWL Capital** capital-market assumptions (linked in
-[`Assumptions.tsx`](../../src/components/retirement/Assumptions.tsx)). Cross-checked against
-**FP Canada Projection Assumption Guidelines 2025/26**: inflation 2.1%, fixed income ~3.2–3.4%,
-equities ~6.3–6.6% nominal CAD. The presets are at or slightly above these — **not conservative.**
+Source: **PWL Capital** capital-market assumptions (linked in
+[`Assumptions.tsx`](../../src/components/retirement/Assumptions.tsx)). Inflation 2.1%. Cross-checked against
+**FP Canada 2026 Projection Assumption Guidelines**.
 
 ---
 
