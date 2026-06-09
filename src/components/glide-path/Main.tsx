@@ -29,8 +29,8 @@ interface Computed {
 
 export default function Main() {
   const [input, setInput] = useState<GlidePathInput>(() => loadInput());
-  const [returnMode, setReturnMode] = useState<GlidePathReturnMode>(
-    () => loadReturnMode(),
+  const [returnMode, setReturnMode] = useState<GlidePathReturnMode>(() =>
+    loadReturnMode(),
   );
   const [computed, setComputed] = useState<Computed | null>(null);
   const [computing, setComputing] = useState(false);

@@ -104,7 +104,7 @@ caution is appropriate.
 - **The −0.05 candidate (from equity VR diagnostics)**: the JST variance-ratio analysis
   (see glide-path methodology) gives equity VR(10y) ≈ 0.91, implying a lag-1 autocorrelation
   of about −0.05. However, adding ρ = −0.05 barely moves the SWR or optimal allocation in
-  practice, and the bond side has *positive* persistence (VR > 1) which cannot be handled by
+  practice, and the bond side has _positive_ persistence (VR > 1) which cannot be handled by
   the same scalar AR(1). The empirically grounded answer is to use the historical block
   bootstrap (§4), not to approximate the joint dynamics parametrically.
 
@@ -113,7 +113,7 @@ is within ~0.1pp of forward-calibrated historical sequencing (§G, pooled forwar
 every horizon — mildly optimistic, not conservative. The gap is small (0.1pp at 30y) and not
 large enough to justify adding a negative AR(1) coefficient. Historical sequences do carry some
 negative equity serial correlation (equity VR ≈ 0.91 implies ρ ≈ −0.05), but the bond side
-has *positive* persistence, and the net effect on the 60/40 portfolio is close to zero.
+has _positive_ persistence, and the net effect on the 60/40 portfolio is close to zero.
 
 ---
 
@@ -128,36 +128,36 @@ research (`analysis/shared/jst_history.py`).
 The script tests the **marginals × sequencing × dataset factorial** that mirrors the
 glide-path research:
 
-| | Marginals: historical | Marginals: forward-CMA |
-|---|---|---|
-| **Sequencing: none** | overlapping windows (§A/B/D) | iid parametric (§H) |
-| **Sequencing: block** | block bootstrap (§C/E) | forward-block (§F/G) |
-| | world=§B/C &nbsp; pooled=§D/E | world=§F &nbsp; pooled=§G |
+|                       | Marginals: historical         | Marginals: forward-CMA    |
+| --------------------- | ----------------------------- | ------------------------- |
+| **Sequencing: none**  | overlapping windows (§A/B/D)  | iid parametric (§H)       |
+| **Sequencing: block** | block bootstrap (§C/E)        | forward-block (§F/G)      |
+|                       | world=§B/C &nbsp; pooled=§D/E | world=§F &nbsp; pooled=§G |
 
 Forward-CMA anchors (real): equity 4.67%/12.57%, bonds 1.42%/5.38%.
 
 ### Return statistics
 
-| Series | Mean | Vol | Geo |
-|---|---|---|---|
-| USA (149 yrs) | 6.19% | 12.10% | 5.47% |
-| World eq-wt (150 yrs) | 5.14% | 9.61% | 4.69% |
+| Series                           | Mean  | Vol    | Geo   |
+| -------------------------------- | ----- | ------ | ----- |
+| USA (149 yrs)                    | 6.19% | 12.10% | 5.47% |
+| World eq-wt (150 yrs)            | 5.14% | 9.61%  | 4.69% |
 | Pooled single-country (2212 obs) | 5.04% | 15.44% | 3.79% |
-| World fwd-rescaled | 3.37% | 8.57% | 3.01% |
-| Pooled fwd-rescaled | 3.37% | 8.43% | 3.02% |
-| App ALLOC iid | 3.50% | 8.79% | — |
+| World fwd-rescaled               | 3.37% | 8.57%  | 3.01% |
+| Pooled fwd-rescaled              | 3.37% | 8.43%  | 3.02% |
+| App ALLOC iid                    | 3.50% | 8.79%  | —     |
 
 ### SWR results @ 90%, 60/40, block = 10y
 
 | Horizon | §A USA | §B Wld-OL | §C Wld-Blk | §D Pool-OL | §E Pool-Blk | §F Wld-FwdBlk | §G Pool-FwdBlk | §H App iid |
-|---|---|---|---|---|---|---|---|---|
-| 20y | 5.39% | 4.95% | 5.00% | 3.41% | 3.91% | 4.60% | 4.98% | 5.08% |
-| 25y | 4.85% | 4.16% | 4.29% | 2.64% | 3.07% | 3.78% | 4.13% | 4.26% |
-| 30y | 4.54% | 3.77% | 3.78% | 2.18% | 2.47% | 3.29% | 3.57% | 3.68% |
-| 35y | 4.28% | 3.43% | 3.48% | 1.82% | 2.14% | 2.95% | 3.15% | 3.28% |
-| 40y | 4.08% | 3.20% | 3.22% | 1.59% | 1.94% | 2.68% | 2.89% | 2.99% |
-| 45y | 3.90% | 2.98% | 3.05% | 1.33% | 1.69% | 2.46% | 2.65% | 2.79% |
-| 50y | 3.74% | 2.83% | 2.95% | 1.20% | 1.61% | 2.31% | 2.49% | 2.64% |
+| ------- | ------ | --------- | ---------- | ---------- | ----------- | ------------- | -------------- | ---------- |
+| 20y     | 5.39%  | 4.95%     | 5.00%      | 3.41%      | 3.91%       | 4.60%         | 4.98%          | 5.08%      |
+| 25y     | 4.85%  | 4.16%     | 4.29%      | 2.64%      | 3.07%       | 3.78%         | 4.13%          | 4.26%      |
+| 30y     | 4.54%  | 3.77%     | 3.78%      | 2.18%      | 2.47%       | 3.29%         | 3.57%          | 3.68%      |
+| 35y     | 4.28%  | 3.43%     | 3.48%      | 1.82%      | 2.14%       | 2.95%         | 3.15%          | 3.28%      |
+| 40y     | 4.08%  | 3.20%     | 3.22%      | 1.59%      | 1.94%       | 2.68%         | 2.89%          | 2.99%      |
+| 45y     | 3.90%  | 2.98%     | 3.05%      | 1.33%      | 1.69%       | 2.46%         | 2.65%          | 2.79%      |
+| 50y     | 3.74%  | 2.83%     | 2.95%      | 1.20%      | 1.61%       | 2.31%         | 2.49%          | 2.64%      |
 
 ### What the factorial teaches
 
@@ -184,7 +184,7 @@ geo) reduces the SWR. The world overlapping floor relied partly on high historic
 (geo 4.69%); at the app's more modest 3.1% real geo, the floor is lower.
 
 **5. §G vs §H — the key comparison: forward sequencing ≈ iid.**
-At 30y: 3.57% (§G, pooled fwd-block) vs 3.68% (§H, app iid). App iid is ~0.1pp *above* pooled
+At 30y: 3.57% (§G, pooled fwd-block) vs 3.68% (§H, app iid). App iid is ~0.1pp _above_ pooled
 fwd-block across all horizons. The forward-calibrated historical sequencing, which preserves
 real equity and bond serial correlation from single-country sequences, is mildly less favorable
 than iid. This means `RETURN_AUTOCORRELATION = 0` is slightly optimistic relative to empirical

@@ -1,5 +1,9 @@
 import { DEFAULTS } from "./presets";
-import type { GlidePathInput, GlidePathInputKey, GlidePathReturnMode } from "./types";
+import type {
+  GlidePathInput,
+  GlidePathInputKey,
+  GlidePathReturnMode,
+} from "./types";
 
 const KEY = "glide_input";
 

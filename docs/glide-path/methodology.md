@@ -127,21 +127,21 @@ and independent evaluation-sample comparison:
 - **`forward-block`** affine-rescales each asset's historical series to the forward-CMA marginals
   (the same `w=0` and `w=1` mean/vol `iid-mc` uses), then block-bootstraps exactly like
   `historical-block`. Being affine, the rescale preserves each asset's autocorrelation and the
-  stock/bond correlation, so this isolates *sequencing* from the historical return/risk level — the
+  stock/bond correlation, so this isolates _sequencing_ from the historical return/risk level — the
   missing cell of the marginals × sequencing factorial.
 
 **What each mode actually does** (the distinctions that matter when reading results):
 
-| Mode | Preserves sequencing | Single-country sequence | Stock/bond pair kept | Uses forward PWL marginals |
-| ----------------- | :------------------: | :---------------------: | :------------------: | :-------------------------: |
-| `iid-mc`          | ✕ (iid)              | n/a                     | n/a (curve, no corr) | ✓ (full curve)              |
-| `historical-iid`  | ✕ (iid)              | pooled only             | ✓                    | ✕ (raw historical)          |
-| `historical-block`| ✓                    | pooled only             | ✓                    | ✕ (raw historical)          |
-| `forward-block`   | ✓                    | pooled only             | ✓                    | ✓ (`w=0` & `w=1` anchors)   |
+| Mode               | Preserves sequencing | Single-country sequence | Stock/bond pair kept | Uses forward PWL marginals |
+| ------------------ | :------------------: | :---------------------: | :------------------: | :------------------------: |
+| `iid-mc`           |       ✕ (iid)        |           n/a           | n/a (curve, no corr) |       ✓ (full curve)       |
+| `historical-iid`   |       ✕ (iid)        |       pooled only       |          ✓           |     ✕ (raw historical)     |
+| `historical-block` |          ✓           |       pooled only       |          ✓           |     ✕ (raw historical)     |
+| `forward-block`    |          ✓           |       pooled only       |          ✓           | ✓ (`w=0` & `w=1` anchors)  |
 
 Notes: (1) "Single-country sequence" holds only with `--dataset pooled`; the default `world`
 dataset is the equal-weight cross-country average, whose sequence no single investor lived. (2) The
-stock/bond *contemporaneous* correlation is preserved in every historical mode because both series
+stock/bond _contemporaneous_ correlation is preserved in every historical mode because both series
 are indexed by the same sampled rows; `forward-block` keeps the **historical** correlation while
 matching forward marginals (intermediate-weight risk therefore comes from that historical
 covariance, not the curve). (3) `forward-block` matches only the `w=0`/`w=1` anchors, not the
@@ -377,7 +377,7 @@ Two readings, both important:
 
 | Claim                                                    | Verdict under our iid model                                                                                                                                                                                                                                                                                                                                                                       |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ACO:** ~100% equity, flat across life                  | **Validated — conditional on flexible spending** (or, as in ACO's utility, a bequest/terminal-wealth motive). When income moves with the market, flat ~100% is optimal here too, even on our smaller ~3.3pp premium. With _rigid_ spending and no bequest motive it is **not** optimal: a ~60–80% level with a derisking tent into retirement beats flat 100% by $650–$2,000/yr.                                                             |
+| **ACO:** ~100% equity, flat across life                  | **Validated — conditional on flexible spending** (or, as in ACO's utility, a bequest/terminal-wealth motive). When income moves with the market, flat ~100% is optimal here too, even on our smaller ~3.3pp premium. With _rigid_ spending and no bequest motive it is **not** optimal: a ~60–80% level with a derisking tent into retirement beats flat 100% by $650–$2,000/yr.                  |
 | **ERN / Kitces–Pfau:** rising equity glide in retirement | **Validated as a shape, for constant-$ spending — and shown to be sequence-risk, not valuation.** The derisk-then-rise glide emerges under pure iid, so it needs no CAPE>20. _But_ ERN's specific claim — that the glide _raises the SWR_ — does **not** reproduce (§2a): under iid it only ties the best flat weight. That boost is the valuation-conditional slice an iid model cannot contain. |
 | Both: beat the conventional **declining** (TDF) glide    | **Direction agreed, magnitude tiny.** A monotone-declining retirement glide is dominated in every cell — but the glide _shape_ is worth ≤ ~0.5% of CE. The spending rule and the equity _level_ dwarf it.                                                                                                                                                                                         |
 
