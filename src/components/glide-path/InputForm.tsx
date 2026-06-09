@@ -237,48 +237,40 @@ export default function InputForm({
               <Stack gap={4}>
                 <FieldHeader
                   label="Return model"
-                  description="Forward-block samples historical return sequences (JST Macrohistory, 16 countries) rescaled to the forward-CMA marginals — captures sequence risk while honoring your return assumptions. IID Monte Carlo draws independent normal returns each year."
+                  description="Sequence-aware (forward-block) replays real historical return sequences, rescaled to our forward capital-market assumptions, so multi-year patterns like mean reversion are preserved. Independent (IID Monte Carlo) draws each year independently, ignoring how returns clustered historically."
                 />
                 <SegmentedControl
                   value={returnMode}
-                  onChange={(v) =>
-                    onReturnModeChange(v as GlidePathReturnMode)
-                  }
+                  onChange={(v) => onReturnModeChange(v as GlidePathReturnMode)}
                   data={[
-                    { value: "forward-block", label: "Forward-block" },
-                    { value: "iid-mc", label: "IID Monte Carlo" },
+                    { value: "forward-block", label: "Sequence-aware" },
+                    { value: "iid-mc", label: "Independent (IID)" },
                   ]}
                   size="sm"
                 />
               </Stack>
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <UserInputFormItem
-                {...num("numPaths")}
-                label="Monte Carlo paths"
-                labelHelperText="The number of simulated market histories. More paths give steadier results but take longer."
-                thousandSeparator
-              />
-              <UserInputFormItem
-                {...num("inflation")}
-                label="Inflation"
-                labelHelperText="Used to deflate the return curve to real terms."
-                suffix="%"
-              />
-              <UserInputFormItem
-                {...num("maxEquityPct")}
-                label="Max equity"
-                labelHelperText="The most equity the optimizer may use. Above 100% means borrowing to invest."
-                suffix="%"
-              />
-              {leveraged && (
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <UserInputFormItem
-                  {...num("borrowCost")}
-                  label="Real cost of borrowing"
-                  labelHelperText="Your real (after-inflation) borrowing rate."
+                  {...num("maxEquityPct")}
+                  label="Max equity"
+                  labelHelperText="The most equity the optimizer may use. Above 100% means borrowing to invest."
                   suffix="%"
                 />
-              )}
-            </SimpleGrid>
+                {leveraged && (
+                  <UserInputFormItem
+                    {...num("borrowCost")}
+                    label="Real cost of borrowing"
+                    labelHelperText="Your real (after-inflation) borrowing rate."
+                    suffix="%"
+                  />
+                )}
+                <UserInputFormItem
+                  {...num("numPaths")}
+                  label="Monte Carlo paths"
+                  labelHelperText="The number of simulated market histories. More paths give steadier results but take longer."
+                  thousandSeparator
+                />
+              </SimpleGrid>
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>

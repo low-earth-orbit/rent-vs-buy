@@ -628,12 +628,6 @@ export default function Result({
         showConstant={showNeutralOptions || !flatDegenerate}
       />
 
-      <Text size="xs" c="dimmed" ta="center">
-        {result.params.returnMode === "forward-block"
-          ? "Paths: stationary block bootstrap from JST Macrohistory (16 countries, 1871–2020), rescaled to forward-CMA marginals"
-          : "Paths: IID normal draws from the forward-CMA capital-market curve"}
-      </Text>
-
       {onReroll && (
         <Stack gap={4} align="center" mt="xs">
           <Button

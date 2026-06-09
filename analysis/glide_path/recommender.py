@@ -41,14 +41,13 @@ KEY INPUTS
                               marginals, then block-bootstrapped; previously "iid-mc"),
                               "historical-iid" (paired stock/bond years sampled with
                               replacement), "historical-block" (paired stock/bond years sampled
-                              with a stationary circular block bootstrap), or "forward-block"
-                              (historical sequences rescaled to the forward-CMA marginals, then
-                              block-bootstrapped).
+                              with a stationary circular block bootstrap), or "iid-mc"
+                              (forward-CMA normal Monte Carlo with no sequencing).
   block_years               : average years per historical block (default 10). Used only by the
                               block modes; realized block lengths are geometric.
-  dataset                   : "pooled" (default — single-country sequences; previously "world")
-                              or "world" (equal-weight cross-country average)
-                              (each country's own sequence concatenated). Historical modes only.
+  dataset                   : "pooled" (default — each country's own sequence concatenated, so
+                              blocks carry single-country sequence risk; previously "world") or
+                              "world" (equal-weight cross-country average). Historical modes only.
   exclude_countries,
   exclude_years             : drop countries / inclusive year windows from the pooled dataset.
   max_leverage              : cap on the equity weight. 1.0 = no leverage (default); 1.5 = the

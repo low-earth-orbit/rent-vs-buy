@@ -131,7 +131,7 @@ export default function SwrTechnicalNote({ input }: SwrTechnicalNoteProps) {
             beside your plan is for <em>your</em> horizon.
           </Text>
           <Text size="sm">
-            I checked these rates against 150 years of global market history (18
+            I checked these rates against 150 years of global market history (16
             countries, 1870–2020): they are in line with what real history would
             have sustained. The takeaway is that the withdrawal rate is driven
             by the return assumption, not by an overly harsh risk model.

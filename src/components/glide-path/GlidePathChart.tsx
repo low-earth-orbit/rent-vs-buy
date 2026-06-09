@@ -265,6 +265,11 @@ export default function GlidePathChart({
             : `Equity is held flat within each ${result.params.interval}-year step.`}
         </Text>
       </Group>
+      <Text size="xs" c="dimmed" mt="xs">
+        {result.params.returnMode === "forward-block"
+          ? "Paths: stationary block bootstrap from JST Macrohistory (16 countries, 1871–2020), rescaled to forward-CMA marginals."
+          : "Paths: IID normal draws from the forward-CMA capital-market curve."}
+      </Text>
       {terminalDerisk && (
         <Text size="xs" c="dimmed" mt="xs">
           <Text span fw={600}>

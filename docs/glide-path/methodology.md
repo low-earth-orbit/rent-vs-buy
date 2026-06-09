@@ -516,7 +516,7 @@ the `recommend_glide.py` flag CLI:
 ```bash
 python3 -m analysis.glide_path.research             # the analysis (tables + figures), ≈ 5 min
 python3 -m analysis.glide_path.recommender          # interactive: prompts for your inputs
-python3 analysis/recommend_glide.py --demo          # recommender showcase: 3×3 lever matrix + overview, ≈ 2 min
+python3 analysis/recommend_glide.py --demo          # recommender showcase: 3×2 lever matrix + overview, ≈ 2 min
 python3 analysis/recommend_glide.py --help          # scriptable flag CLI for a single custom recommendation
 
 # Regenerate the pre-rescaled JST bundle used by the web app's forward-block engine
