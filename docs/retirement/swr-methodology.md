@@ -117,7 +117,8 @@ AR(1) would improve accuracy.
 ## 4. Empirical validation — JST Macrohistory full factorial
 
 Prototype: [`analysis/retirement/jst_swr_bootstrap.py`](../../analysis/retirement/jst_swr_bootstrap.py).
-Auto-downloads **Jordà–Schularick–Taylor R6** (1870–2020, 16 economies) to a gitignored
+Auto-downloads **Jordà–Schularick–Taylor R6** (1870–2020, 18 economies in database, 16 with
+equity+bond series — Canada and Ireland have no return data in R6) to a gitignored
 `analysis/.data/`. Uses the same segment-aware block infrastructure built for the glide-path
 research (`analysis/shared/jst_history.py`).
 

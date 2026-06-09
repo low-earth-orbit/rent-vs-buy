@@ -13,7 +13,7 @@ single-country sequences) and block structure materially change the SWR.
 DATA
 ----
 Jordà, Knoll, Kuvshinov, Schularick, Taylor — "The Rate of Return on Everything, 1870–2015"
-(JST Macrohistory DB, R6: 1870–2020, 16 advanced economies with equity+bond series).
+(JST Macrohistory DB, R6: 1870–2020, 18 economies in database, 16 with equity+bond series).
 Real total return = (1 + nominal) / (1 + inflation) − 1; inflation = cpi.pct_change().
 The file auto-downloads to analysis/.data/ on first run (≈1.4 MB, not committed).
 
@@ -314,7 +314,7 @@ def main() -> None:
     print()
     print("COLUMN GUIDE")
     print("  §A  USA overlapping     — US-only, every overlapping window (reference)")
-    print("  §B  World overlapping   — 16-country eq-wt avg, every overlapping window")
+    print("  §B  World overlapping   — 16-country eq-wt avg (18 in DB; CAN/IRL have no return data)")
     print("  §C  World block         — world series, segment-aware block bootstrap")
     print("  §D  Pooled overlapping  — single-country windows only (within-segment)")
     print("  §E  Pooled block        — single-country sequences, segment-aware block")
