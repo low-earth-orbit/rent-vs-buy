@@ -51,8 +51,8 @@ MODEL (real, today's dollars)
         target_t = (1-FLEX)*GAP + FLEX*(WITHDRAWAL_RATE*balance_t)
     FLEX=0  -> constant real dollar (income fixed until the portfolio is exhausted),
     FLEX=1  -> fully flexible (income rises and falls with the market).
-  * Objective: expected discounted CRRA utility of retirement consumption (+ optional
-    bequest on terminal wealth). We optimize equity weight per age by coordinate ascent
+  * Objective: expected discounted CRRA utility of retirement consumption (no bequest
+    motive). We optimize equity weight per age by coordinate ascent
     over a shared set of shocks (common random numbers), so every weight is compared on the
     same simulated markets and the resulting profile is noise-free relative to that draw.
 
@@ -98,8 +98,6 @@ WITHDRAWAL_RATE = 0.04            # proportional-spending rate used by the flexi
 # Preferences
 GAMMA = 4.0                       # CRRA relative risk aversion (base case)
 BETA = 0.985                      # annual subjective discount factor
-BEQUEST = 0.0                     # weight on terminal-wealth utility (0 = pure consumption)
-BEQUEST_FLOOR = 10_000.0
 
 # Spending regimes (income-variation levels): FLEX in [0,1].
 SPENDING_REGIMES = [
@@ -165,7 +163,7 @@ def predraw(n_years, n_sims, seed):
 
 
 # ── Vectorized lifecycle EU over a *bundle* of candidate glide paths ────────────
-def eu_vec(W, Z, accum_years, retire_years, flex, gamma=GAMMA, beta=BETA, bequest=BEQUEST):
+def eu_vec(W, Z, accum_years, retire_years, flex, gamma=GAMMA, beta=BETA):
     """Expected discounted utility for many candidate paths at once.
 
     W: equity-weight matrix, shape (n_years, G) — column c is one full lifecycle glide.
@@ -189,15 +187,12 @@ def eu_vec(W, Z, accum_years, retire_years, flex, gamma=GAMMA, beta=BETA, beques
         w = np.minimum(target, afford)
         bal = grown - w * (1 + r / 2)
         eu += disc[t] * crra(GUARANTEED + w, gamma)
-    if bequest > 0:
-        eu += bequest * disc[-1] * crra(bal + BEQUEST_FLOOR, gamma)
     return eu.mean(axis=1)
 
 
-def full_stats(weights, Z, accum_years, retire_years, flex, gamma=GAMMA, beta=BETA,
-               bequest=BEQUEST):
-    """Rich stats for a single glide: CE consumption, income variability, downside, bequest."""
-    eu_paths = eu_vec(weights[:, None], Z, accum_years, retire_years, flex, gamma, beta, bequest)
+def full_stats(weights, Z, accum_years, retire_years, flex, gamma=GAMMA, beta=BETA):
+    """Rich stats for a single glide: CE consumption, income variability, downside."""
+    eu_paths = eu_vec(weights[:, None], Z, accum_years, retire_years, flex, gamma, beta)
     # Re-run once more to collect the consumption path distribution (kept separate for clarity).
     means, vols = alloc(weights)
     bal = np.full(Z.shape[1], START_SAVINGS)
@@ -227,7 +222,6 @@ def full_stats(weights, Z, accum_years, retire_years, flex, gamma=GAMMA, beta=BE
         "p10_consumption": float(np.percentile(path_mean, 10)),
         "median_consumption": float(np.median(path_mean)),
         "depletion": float(depleted.mean()),
-        "median_bequest": float(np.median(bal)),
     }
 
 

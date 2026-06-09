@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Shared JST Macrohistory loading and bootstrap helpers.
 
-Historical glide-path modes use paired real stock, bond, and optional bill returns
-from an equal-weight world aggregate. The source workbook is downloaded on first use
-and cached under the gitignored ``analysis/.data/`` directory.
+Historical glide-path modes use paired real stock and long-bond returns from an
+equal-weight world aggregate or a per-country pool. The source workbook is downloaded
+on first use and cached under the gitignored ``analysis/.data/`` directory.
 """
 
 from __future__ import annotations
@@ -22,15 +22,22 @@ DATA_URL = "https://www.macrohistory.net/app/download/9834512569/JSTdatasetR6.xl
 
 @dataclass(frozen=True)
 class ReturnHistory:
-    """Paired annual real stock, bond, and optional bill returns."""
+    """Paired annual real stock and bond returns.
+
+    ``segment_ids`` labels each observation with the contiguous run it belongs to.
+    A single-country or equal-weight-world series is one contiguous circular series
+    (``segment_ids is None``). A pooled multi-country series concatenates several
+    countries end to end; ``segment_ids`` then marks each maximal run of consecutive
+    calendar years for one country so the block bootstrap never bridges a country
+    boundary or a within-country gap.
+    """
 
     years: np.ndarray
     equity: np.ndarray
     fixed_income: np.ndarray
     label: str
     country_count: int
-    fixed_income_asset: str = "bonds"
-    bills: np.ndarray | None = None
+    segment_ids: np.ndarray | None = None
 
     @property
     def observations(self) -> int:
@@ -38,11 +45,13 @@ class ReturnHistory:
 
     @property
     def start_year(self) -> int:
-        return int(self.years[0])
+        # min/max (not first/last) so pooled series, whose years are not globally
+        # monotonic, still report a meaningful calendar span.
+        return int(self.years.min())
 
     @property
     def end_year(self) -> int:
-        return int(self.years[-1])
+        return int(self.years.max())
 
 
 def ensure_data(path: str = DATA_FILE) -> str:
@@ -65,13 +74,8 @@ def load_jst_frame(path: str | None = None) -> pd.DataFrame:
     return pd.read_excel(ensure_data(path or DATA_FILE), sheet_name=0)
 
 
-def real_stock_fixed_income_returns(
-    sub: pd.DataFrame, fixed_income: str = "bonds"
-) -> pd.DataFrame:
-    """Convert one country's selected nominal asset returns to real returns."""
-    if fixed_income not in ("bonds", "bills+bonds"):
-        raise ValueError("fixed_income must be bonds or bills+bonds")
-
+def real_stock_fixed_income_returns(sub: pd.DataFrame) -> pd.DataFrame:
+    """Convert one country's nominal stock and long-bond returns to real returns."""
     sub = sub.sort_values("year").copy()
     # Calculate annual CPI changes on the calendar series before filtering returns. This
     # preserves the first valid return and avoids treating gaps as one-year inflation.
@@ -79,74 +83,254 @@ def real_stock_fixed_income_returns(
     sub["equity"] = (1 + sub["eq_tr"]) / (1 + sub["inflation"]) - 1
     sub["fixed_income"] = (1 + sub["bond_tr"]) / (1 + sub["inflation"]) - 1
     columns = ["year", "equity", "fixed_income"]
-    if fixed_income == "bills+bonds":
-        sub["bills"] = (1 + sub["bill_rate"]) / (1 + sub["inflation"]) - 1
-        columns.append("bills")
-    return sub.dropna(subset=["inflation", *columns[1:]])[columns]
+    return sub.dropna(subset=["inflation", "equity", "fixed_income"])[columns]
 
 
-def _as_history(
-    frame: pd.DataFrame, label: str, country_count: int, fixed_income: str
-) -> ReturnHistory:
+def _as_history(frame: pd.DataFrame, label: str, country_count: int) -> ReturnHistory:
     frame = frame.sort_values("year").dropna(subset=["equity", "fixed_income"])
     if frame.empty:
-        raise ValueError(f"no paired stock/{fixed_income} returns available for {label}")
+        raise ValueError(f"no paired stock/bond returns available for {label}")
     return ReturnHistory(
         years=frame["year"].to_numpy(dtype=int),
         equity=frame["equity"].to_numpy(dtype=float),
         fixed_income=frame["fixed_income"].to_numpy(dtype=float),
         label=label,
         country_count=country_count,
-        fixed_income_asset=fixed_income,
-        bills=(
-            frame["bills"].to_numpy(dtype=float)
-            if "bills" in frame
-            else None
-        ),
     )
 
 
-def load_country_returns(
-    country: str, path: str | None = None, fixed_income: str = "bonds"
-) -> ReturnHistory:
-    """Load paired real stock/bond and optional bill returns for one JST country."""
+def load_country_returns(country: str, path: str | None = None) -> ReturnHistory:
+    """Load paired real stock/bond returns for one JST country."""
     frame = load_jst_frame(path)
-    returns = real_stock_fixed_income_returns(
-        frame[frame["country"] == country], fixed_income
-    )
-    return _as_history(returns, country, 1, fixed_income)
+    returns = real_stock_fixed_income_returns(frame[frame["country"] == country])
+    return _as_history(returns, country, 1)
 
 
-def load_world_returns(
-    path: str | None = None, fixed_income: str = "bonds"
-) -> ReturnHistory:
-    """Build equal-weight world real stock/bond and optional bill returns."""
+def load_world_returns(path: str | None = None) -> ReturnHistory:
+    """Build equal-weight world real stock/bond returns."""
     frame = load_jst_frame(path)
     country_frames = []
     for country in frame["country"].dropna().unique():
-        returns = real_stock_fixed_income_returns(
-            frame[frame["country"] == country], fixed_income
-        ).copy()
+        returns = real_stock_fixed_income_returns(frame[frame["country"] == country]).copy()
         if not returns.empty:
             returns["country"] = country
             country_frames.append(returns)
     if not country_frames:
-        raise ValueError(f"no paired stock/{fixed_income} returns available in JST dataset")
+        raise ValueError("no paired stock/bond returns available in JST dataset")
 
     panel = pd.concat(country_frames, ignore_index=True)
-    return_columns = ["equity", "fixed_income"]
-    if fixed_income == "bills+bonds":
-        return_columns.append("bills")
-    world = panel.groupby("year", as_index=False)[return_columns].mean()
+    world = panel.groupby("year", as_index=False)[["equity", "fixed_income"]].mean()
     label = "JST R6 equal-weight world"
-    if fixed_income != "bonds":
-        label += f" ({fixed_income})"
-    return _as_history(
-        world,
-        label,
-        len(country_frames),
-        fixed_income,
+    return _as_history(world, label, len(country_frames))
+
+
+def _normalize_year_windows(exclude_years) -> list[tuple[int, int]]:
+    """Coerce ``exclude_years`` into a list of inclusive ``(lo, hi)`` windows.
+
+    Accepts an iterable mixing scalar years (``1923``) and ``(lo, hi)`` pairs
+    (``(1914, 1923)``); a bare scalar drops that single year.
+    """
+    if not exclude_years:
+        return []
+    windows = []
+    for item in exclude_years:
+        if isinstance(item, (tuple, list)):
+            lo, hi = int(item[0]), int(item[1])
+        else:
+            lo = hi = int(item)
+        windows.append((min(lo, hi), max(lo, hi)))
+    return windows
+
+
+def _assign_segments(countries: np.ndarray, years: np.ndarray) -> np.ndarray:
+    """Label each row with a segment id, breaking on country change or a year gap.
+
+    A segment is a maximal run of consecutive calendar years for one country, so a
+    sampled block can never bridge two countries or a discontinuity (a natural data
+    gap or an excluded window).
+    """
+    countries = np.asarray(countries)
+    years = np.asarray(years, dtype=int)
+    n = len(years)
+    segments = np.zeros(n, dtype=int)
+    for i in range(1, n):
+        breaks = countries[i] != countries[i - 1] or years[i] != years[i - 1] + 1
+        segments[i] = segments[i - 1] + (1 if breaks else 0)
+    return segments
+
+
+def _segment_bounds(
+    segment_ids: np.ndarray | None, observations: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Per-observation segment start index and length.
+
+    With ``segment_ids is None`` the whole series is one segment, so the block
+    sampler's circular continuation reduces to ``(idx + 1) % observations`` —
+    bit-for-bit the pre-segment behavior.
+    """
+    if segment_ids is None:
+        return (
+            np.zeros(observations, dtype=int),
+            np.full(observations, observations, dtype=int),
+        )
+    segment_ids = np.asarray(segment_ids)
+    n = len(segment_ids)
+    change = np.flatnonzero(np.diff(segment_ids) != 0) + 1
+    starts = np.concatenate(([0], change))
+    ends = np.concatenate((change, [n]))
+    seg_start = np.empty(n, dtype=int)
+    seg_len = np.empty(n, dtype=int)
+    for start, end in zip(starts, ends):
+        seg_start[start:end] = start
+        seg_len[start:end] = end - start
+    return seg_start, seg_len
+
+
+def _split_segments(values: np.ndarray, segment_ids: np.ndarray | None) -> list[np.ndarray]:
+    """Split a per-observation array into its contiguous segment runs."""
+    values = np.asarray(values)
+    if segment_ids is None:
+        return [values]
+    segment_ids = np.asarray(segment_ids)
+    change = np.flatnonzero(np.diff(segment_ids) != 0) + 1
+    return np.split(values, change)
+
+
+def load_pooled_country_returns(
+    path: str | None = None,
+    *,
+    countries: list[str] | None = None,
+    exclude_countries: list[str] | None = None,
+    exclude_years=None,
+) -> ReturnHistory:
+    """Concatenate per-country real return series end to end (not cross-sectionally).
+
+    Unlike :func:`load_world_returns`, which averages countries within each calendar
+    year into one annually-rebalanced world portfolio, this pools each country's own
+    sequence: a block then samples consecutive years of a *single* country, matching
+    the sequence risk a real single-country investor lived through. ``segment_ids``
+    keeps blocks from bridging countries or gaps.
+
+    ``countries`` restricts to a whitelist; ``exclude_countries`` drops a blacklist;
+    ``exclude_years`` drops inclusive ``(lo, hi)`` windows (or scalar years) from every
+    country before segmentation, so a removed window splits the country in two.
+    """
+    frame = load_jst_frame(path)
+    available = [c for c in frame["country"].dropna().unique()]
+    selected = available
+    if countries is not None:
+        wanted = set(countries)
+        selected = [c for c in available if c in wanted]
+    if exclude_countries:
+        dropped = set(exclude_countries)
+        selected = [c for c in selected if c not in dropped]
+    if not selected:
+        raise ValueError("no countries selected for pooled history")
+
+    windows = _normalize_year_windows(exclude_years)
+    country_frames = []
+    for country in selected:
+        returns = real_stock_fixed_income_returns(frame[frame["country"] == country]).copy()
+        if windows:
+            years = returns["year"].to_numpy()
+            drop = np.zeros(len(returns), dtype=bool)
+            for lo, hi in windows:
+                drop |= (years >= lo) & (years <= hi)
+            returns = returns[~drop]
+        if returns.empty:
+            continue
+        returns["country"] = country
+        country_frames.append(returns)
+    if not country_frames:
+        raise ValueError("no paired stock/bond returns available for the pooled selection")
+
+    # Concatenate in country order, each already year-sorted, WITHOUT a global year
+    # sort (that would interleave countries and destroy the per-country sequences).
+    panel = pd.concat(country_frames, ignore_index=True)
+    segment_ids = _assign_segments(
+        panel["country"].to_numpy(), panel["year"].to_numpy(dtype=int)
     )
+    label = f"JST R6 pooled ({len(country_frames)} countries)"
+    return ReturnHistory(
+        years=panel["year"].to_numpy(dtype=int),
+        equity=panel["equity"].to_numpy(dtype=float),
+        fixed_income=panel["fixed_income"].to_numpy(dtype=float),
+        label=label,
+        country_count=len(country_frames),
+        segment_ids=segment_ids,
+    )
+
+
+def _affine_to_target(values: np.ndarray, target_mean: float, target_vol: float) -> np.ndarray:
+    """Affine-map a series to a target arithmetic mean and population vol.
+
+    ``r' = target_mean + (target_vol / sd) * (r - mean)``. Being affine, this leaves
+    each asset's own autocorrelation (mean-reversion structure) and the cross-asset
+    contemporaneous correlation invariant while hitting the target marginal moments.
+    """
+    values = np.asarray(values, dtype=float)
+    sd = values.std()  # population (ddof=0), matching variance_ratio's convention
+    if sd == 0:
+        return np.full_like(values, float(target_mean))
+    return float(target_mean) + (float(target_vol) / sd) * (values - values.mean())
+
+
+def rescale_to_targets(
+    history: ReturnHistory,
+    *,
+    equity_mean: float,
+    equity_vol: float,
+    fixed_income_mean: float,
+    fixed_income_vol: float,
+    label_suffix: str = "rescaled",
+) -> ReturnHistory:
+    """Rescale each asset's marginal moments to forward targets, keeping the sequence.
+
+    Isolates sequence structure from the historical return/risk level: the returned
+    series has the supplied (real, decimal) means/vols but preserves the original year
+    ordering, autocorrelation, cross-correlation, and ``segment_ids``. Use it to
+    block-bootstrap forward-calibrated marginals — the missing cell of the
+    marginals x sequencing factorial.
+    """
+    label = f"{history.label} ({label_suffix})"
+    return ReturnHistory(
+        years=history.years,
+        equity=_affine_to_target(history.equity, equity_mean, equity_vol),
+        fixed_income=_affine_to_target(
+            history.fixed_income, fixed_income_mean, fixed_income_vol
+        ),
+        label=label,
+        country_count=history.country_count,
+        segment_ids=history.segment_ids,
+    )
+
+
+def variance_ratio(
+    returns: np.ndarray, horizon: int, segment_ids: np.ndarray | None = None
+) -> float:
+    """Lo-MacKinlay-style variance ratio on log returns; <1 = mean reversion.
+
+    ``VR(q) = Var(sum of q consecutive log returns) / (q * Var(one-year log return))``
+    using overlapping windows. ``q``-sums are formed only within a segment, so the
+    statistic never straddles a country boundary or a gap. Returns ``nan`` when no
+    segment is long enough or one-year variance is zero. This is the simple
+    (non-bias-corrected) ratio, intended as a diagnostic, not a formal test.
+    """
+    if horizon < 1:
+        raise ValueError("horizon must be >= 1")
+    log_returns = np.log1p(np.asarray(returns, dtype=float))
+    var_one = log_returns.var()
+    if var_one == 0:
+        return float("nan")
+    block_sums = []
+    for segment in _split_segments(log_returns, segment_ids):
+        if len(segment) >= horizon:
+            prefix = np.concatenate(([0.0], np.cumsum(segment)))
+            block_sums.append(prefix[horizon:] - prefix[:-horizon])
+    if not block_sums:
+        return float("nan")
+    pooled = np.concatenate(block_sums)
+    return float(pooled.var() / (horizon * var_one))
 
 
 def sample_indices(
@@ -157,14 +341,22 @@ def sample_indices(
     mode: str,
     block_years: int,
     seed: int,
+    segment_ids: np.ndarray | None = None,
 ) -> np.ndarray:
-    """Sample historical row indices as iid years or stationary circular blocks."""
+    """Sample historical row indices as iid years or stationary circular blocks.
+
+    When ``segment_ids`` is given, a block's circular continuation wraps within its
+    own segment instead of around the whole series, so consecutive years always come
+    from the same country run. Restarts still land uniformly across all observations.
+    """
     if observations < 1:
         raise ValueError("historical return series must contain at least one observation")
     if n_years < 1 or n_paths < 1:
         raise ValueError("n_years and n_paths must be >= 1")
     if block_years < 1:
         raise ValueError("block_years must be >= 1")
+    if segment_ids is not None and len(segment_ids) != observations:
+        raise ValueError("segment_ids length must equal observations")
 
     rng = np.random.default_rng(seed)
     if mode == "historical-iid":
@@ -174,14 +366,18 @@ def sample_indices(
 
     # Politis-Romano stationary bootstrap: continue the current circular block
     # with probability 1 - 1/L, otherwise restart at a random observation. This
-    # makes block lengths geometric with expected length L.
+    # makes block lengths geometric with expected length L. Continuation is circular
+    # within the current segment (the whole series when unsegmented).
+    seg_start, seg_len = _segment_bounds(segment_ids, observations)
     indices = np.empty((n_years, n_paths), dtype=int)
     indices[0] = rng.integers(0, observations, size=n_paths)
     restart_probability = 1.0 / block_years
     for year in range(1, n_years):
         starts = rng.integers(0, observations, size=n_paths)
         restarts = rng.random(n_paths) < restart_probability
-        continuations = (indices[year - 1] + 1) % observations
+        previous = indices[year - 1]
+        starts_of = seg_start[previous]
+        continuations = starts_of + ((previous - starts_of + 1) % seg_len[previous])
         indices[year] = np.where(restarts, starts, continuations)
     return indices
 
@@ -194,8 +390,8 @@ def sample_return_paths(
     mode: str,
     block_years: int,
     seed: int,
-) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Return paired stock/bond/bill bootstrap paths with shape ``(years, paths)``."""
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return paired stock/bond bootstrap paths with shape ``(years, paths)``."""
     indices = sample_indices(
         history.observations,
         n_years,
@@ -203,9 +399,6 @@ def sample_return_paths(
         mode=mode,
         block_years=block_years,
         seed=seed,
+        segment_ids=history.segment_ids,
     )
-    equity = history.equity[indices]
-    bonds = history.fixed_income[indices]
-    if history.bills is None:
-        return equity, bonds
-    return equity, bonds, history.bills[indices]
+    return history.equity[indices], history.fixed_income[indices]

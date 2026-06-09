@@ -75,12 +75,18 @@ A hub landing page at `/` links to each tool, and every tool lives at its own ro
 - **Lifetime Allocation Optimizer** (`/glide-path`): compares the welfare-maximizing equity allocation curve across the accumulation and decumulation phases with the best constant allocation. Uses Monte Carlo coordinate ascent to maximize expected discounted CRRA utility of retirement consumption, and separately scores the best constant allocation out of sample as a robust comparator. The raw optimized glide remains the returned/charted schedule; the UI lists both choices and applies a simplicity bias toward the constant comparator when its CE income is within 5%, either depletion rate is within 5 percentage points, or it wins all three comparable outcomes. Reports both full-path and drawdown-only income shortfall (the share of paths with a year the portfolio can't fund the targeted draw) — the latter from the expected retirement balance, matching the `/retirement` headline semantics. Guaranteed income is entered as a flat real annual amount and paid every retirement year — a pre-pension bridge is intentionally out of scope (that funding-feasibility question belongs to `/retirement`). Supports leverage (equity weight > 1). Engine in `src/utils/glide-path/`, components in `src/components/glide-path/`.
 
   The web/TypeScript optimizer remains forward-CMA iid Monte Carlo. The Python recommender
-  (`analysis/recommend_glide.py`) additionally supports raw equal-weight-world JST historical
-  backtesting via paired-year iid sampling and stationary circular block bootstrap. The block
-  length setting is an average, not a fixed length. Historical modes use stocks plus long
-  government bonds by default; the `bills+bonds` asset set lets the optimizer choose separate
-  stock, bond, and bill weights at each glide step. Shared JST loading and bootstrap helpers live
-  in `analysis/shared/jst_history.py`; downloaded data stays under `analysis/.data/`. The web app
+  (`analysis/recommend_glide.py`) additionally supports raw JST historical backtesting via
+  paired-year iid sampling (`historical-iid`), stationary circular block bootstrap
+  (`historical-block`), and `forward-block` — historical sequences affine-rescaled to the
+  forward-CMA equity/bond marginals, then block-bootstrapped, to isolate sequencing from the
+  historical return/risk level (the marginals×sequencing factorial). The block length setting is
+  an average, not a fixed length. `--dataset` chooses the equal-weight cross-country `world`
+  average (default) or `pooled`, which concatenates each country's own sequence so blocks
+  preserve single-country sequence risk; `--exclude-countries`/`--exclude-years` (pooled only)
+  drop disasters. The optimizer allocates between stocks and long government bonds only (no bills,
+  no bequest motive). Shared JST loading, pooling, rescaling, the variance-ratio diagnostic, and
+  bootstrap helpers live in
+  `analysis/shared/jst_history.py`; downloaded data stays under `analysis/.data/`. The web app
   intentionally fixes the glide interval at 5 years, uses browser-sized path/pass caps, exposes
   fewer controls, and requires at least $10,000 of guaranteed income; Python keeps those research
   controls configurable and accepts zero guaranteed income.

@@ -12,8 +12,8 @@ The web and Python recommender share the baseline household/model defaults: flex
 γ = 4, β = 0.985, a 4% flexible withdrawal rate, and a 2% real borrowing cost. Their product
 surfaces intentionally differ: the web app fixes the glide cadence at 5-year steps, uses
 browser-sized path/pass caps, exposes fewer controls, and requires at least $10,000 of guaranteed
-income. Python exposes the interval, historical return modes, and bequest controls, and accepts
-zero guaranteed income for research and CLI sensitivity cases.
+income. Python exposes the interval and historical return modes (with world/pooled dataset
+choices), and accepts zero guaranteed income for research and CLI sensitivity cases.
 
 This work is a deliberate cross-check on two influential backtest-based studies:
 
@@ -49,31 +49,25 @@ python3 analysis/recommend_glide.py --mode iid-mc
 # Raw paired world stock/fixed-income years, sampled independently with replacement
 python3 analysis/recommend_glide.py --mode historical-iid
 
-# Raw paired world stock/fixed-income years, sampled in stationary circular blocks
+# Raw paired world stock/bond years, sampled in stationary circular blocks
 python3 analysis/recommend_glide.py --mode historical-block --block-years 10
 
-# Let the optimizer allocate separately among stocks, long government bonds, and bills
-python3 analysis/recommend_glide.py --mode historical-block --historical-fixed-income bills+bonds
+# Historical sequences rescaled to the forward-CMA marginals, then block-bootstrapped
+python3 analysis/recommend_glide.py --mode forward-block --dataset pooled
 ```
 
-Historical modes use the equal-weight-world series from the JST R6 Macrohistory workbook.
-`analysis/shared/jst_history.py` downloads it on first use to gitignored `analysis/.data/`, deflates
-the selected asset returns by each country's CPI, and aggregates paired real returns by year.
-Long-government-bond total returns are the default. With `--historical-fixed-income bills+bonds`,
-the optimizer chooses stock, long-government-bond, and short-term-government-bill weights
-separately at each glide step; it does not force an equal-weight fixed-income mix. Each sampled
-historical year keeps all available asset returns paired. The usable country composition can
-differ between the two asset sets because JST coverage differs by asset. Historical modes require
-pandas and openpyxl in addition to numpy. A custom `--curve` and `--inflation` apply only to
-`iid-mc`.
+Historical modes use real paired stock and long-government-bond returns from the JST R6
+Macrohistory workbook. `analysis/shared/jst_history.py` downloads it on first use to gitignored
+`analysis/.data/`, deflates each asset by each country's CPI, and pairs the real returns by year.
+`--dataset world` (default) averages countries within each calendar year into one
+annually-rebalanced portfolio; `--dataset pooled` concatenates each country's own sequence so a
+block samples consecutive years of a single country. Each sampled historical year keeps stock and
+bond paired. Historical modes require pandas and openpyxl in addition to numpy. A custom `--curve`
+and `--inflation` apply only to `iid-mc`.
 
-The expanded asset set makes bills available; it does not force the optimizer to use them. In the
-full 1871–2020 equal-weight-world series, bills have a much lower average real return than bonds or
-stocks, and the block bootstrap preserves long inflation-damaged bond and bill regimes. The same
-world series has no negative 20- or 30-year circular stock window. Longer average blocks can
-therefore make a 100% stock result optimal under this model, even when `bills+bonds` is selected.
-That result is a property of bootstrapping the already-diversified world series, not evidence that
-bills were omitted from the candidate allocations.
+The world series has no negative 20- or 30-year circular stock window, so longer average blocks can
+make a 100% stock result optimal under this model — a property of bootstrapping the
+already-diversified world series, not of the (stock/bond) candidate set.
 
 ---
 
@@ -111,7 +105,7 @@ likes here is robust to the absence of mean reversion, by construction.
 
 ### Python recommender return modes
 
-All three modes feed the same lifecycle cash flows, utility objective, coordinate-ascent optimizer,
+All four modes feed the same lifecycle cash flows, utility objective, coordinate-ascent optimizer,
 and independent evaluation-sample comparison:
 
 - **`iid-mc`** maps each allocation to the app's forward-CMA real mean and volatility, then draws
@@ -123,16 +117,44 @@ and independent evaluation-sample comparison:
   Each next year continues the current historical sequence with probability `1 − 1/L` or restarts
   at a random year with probability `1/L`, so block lengths are geometric and average `L` years.
   The default `L` is 10 years, an annual approximation of the 120-month average used by ACO.
+- **`forward-block`** affine-rescales each asset's historical series to the forward-CMA marginals
+  (the same `w=0` and `w=1` mean/vol `iid-mc` uses), then block-bootstraps exactly like
+  `historical-block`. Being affine, the rescale preserves each asset's autocorrelation and the
+  stock/bond correlation, so this isolates *sequencing* from the historical return/risk level — the
+  missing cell of the marginals × sequencing factorial.
 
-For the default bonds asset set and allocations up to 100% equity, each annual portfolio return is
-`w × stock + (1−w) × bonds`. With `bills+bonds`, the optimizer searches feasible stock/bond/bill
-weights that sum to 100% at the configured grid step. Above 100% equity, the leveraged return is
-`w × stock − (w−1) × real borrowing cost`, with no bond or bill position. Historical modes use raw
-realized return levels; they do not re-center history to the forward CMAs. They are bootstrap
-backtests, not overlapping realized lifecycle windows. The historical-block mode bootstraps an
-already-diversified annual equal-weight-world series; unlike ACO, it does not bootstrap a monthly
-country-level four-asset panel, so it is a sequencing sensitivity check rather than an ACO
-replication.
+**What each mode actually does** (the distinctions that matter when reading results):
+
+| Mode | Preserves sequencing | Single-country sequence | Stock/bond pair kept | Uses forward PWL marginals |
+| ----------------- | :------------------: | :---------------------: | :------------------: | :-------------------------: |
+| `iid-mc`          | ✕ (iid)              | n/a                     | n/a (curve, no corr) | ✓ (full curve)              |
+| `historical-iid`  | ✕ (iid)              | pooled only             | ✓                    | ✕ (raw historical)          |
+| `historical-block`| ✓                    | pooled only             | ✓                    | ✕ (raw historical)          |
+| `forward-block`   | ✓                    | pooled only             | ✓                    | ✓ (`w=0` & `w=1` anchors)   |
+
+Notes: (1) "Single-country sequence" holds only with `--dataset pooled`; the default `world`
+dataset is the equal-weight cross-country average, whose sequence no single investor lived. (2) The
+stock/bond *contemporaneous* correlation is preserved in every historical mode because both series
+are indexed by the same sampled rows; `forward-block` keeps the **historical** correlation while
+matching forward marginals (intermediate-weight risk therefore comes from that historical
+covariance, not the curve). (3) `forward-block` matches only the `w=0`/`w=1` anchors, not the
+curve's interpolated intermediate-weight vols.
+
+**Dataset and exclusions** (historical modes only): `--dataset world` (default) averages countries
+within each calendar year into one annually-rebalanced portfolio; `--dataset pooled` concatenates
+each country's own sequence end to end, with segment ids that keep a block from bridging two
+countries or a data/exclusion gap, so a block samples consecutive years of a single country.
+`--exclude-countries` / `--exclude-years` (pooled only) drop disaster countries or windows.
+
+For allocations up to 100% equity, each annual portfolio return is `w × stock + (1−w) × bonds`.
+Above 100% equity, the leveraged return is `w × stock − (w−1) × real borrowing cost`, with no bond
+position. The `historical-*` modes use raw
+realized return levels; they do not re-center history to the forward CMAs (only `forward-block`
+does). They are bootstrap backtests, not overlapping realized lifecycle windows. With the default
+`world` dataset, the block bootstrap resamples an already-diversified annual equal-weight-world
+series; the `pooled` dataset instead preserves single-country sequence risk. Either way these are
+annual sequencing sensitivity checks, not an ACO replication (ACO bootstraps a monthly
+country-level four-asset panel).
 
 ### Returns — our own assumptions, no history
 
@@ -145,8 +167,8 @@ target retirement income **60%** of income, of which **$20k** is guaranteed inco
 paid every retirement year — so the portfolio must fund a **$40k** gap. Accumulation consumption is
 allocation-invariant, so it drops out of the objective; the accumulation glide matters only through
 the **wealth distribution it hands to retirement**. Retirement is a **fixed planning horizon**
-(`retire_years`), which makes "horizon" a clean axis (no mortality truncation; bequest, if any, is
-terminal wealth — weight 0 in the base case).
+(`retire_years`), which makes "horizon" a clean axis (no mortality truncation; no bequest motive —
+terminal wealth carries no utility).
 
 ### Spending rules — the income-variation axis
 
@@ -347,7 +369,7 @@ Two readings, both important:
 
 | Claim                                                    | Verdict under our iid model                                                                                                                                                                                                                                                                                                                                                                       |
 | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ACO:** ~100% equity, flat across life                  | **Validated — conditional on flexible spending (or a bequest motive).** When income moves with the market, flat ~100% is optimal here too, even on our smaller ~3.3pp premium. With _rigid_ spending and _no_ bequest it is **not** optimal: a ~60–80% level with a derisking tent into retirement beats flat 100% by $650–$2,000/yr.                                                             |
+| **ACO:** ~100% equity, flat across life                  | **Validated — conditional on flexible spending** (or, as in ACO's utility, a bequest/terminal-wealth motive). When income moves with the market, flat ~100% is optimal here too, even on our smaller ~3.3pp premium. With _rigid_ spending and no bequest motive it is **not** optimal: a ~60–80% level with a derisking tent into retirement beats flat 100% by $650–$2,000/yr.                                                             |
 | **ERN / Kitces–Pfau:** rising equity glide in retirement | **Validated as a shape, for constant-$ spending — and shown to be sequence-risk, not valuation.** The derisk-then-rise glide emerges under pure iid, so it needs no CAPE>20. _But_ ERN's specific claim — that the glide _raises the SWR_ — does **not** reproduce (§2a): under iid it only ties the best flat weight. That boost is the valuation-conditional slice an iid model cannot contain. |
 | Both: beat the conventional **declining** (TDF) glide    | **Direction agreed, magnitude tiny.** A monotone-declining retirement glide is dominated in every cell — but the glide _shape_ is worth ≤ ~0.5% of CE. The spending rule and the equity _level_ dwarf it.                                                                                                                                                                                         |
 
@@ -369,10 +391,11 @@ per-age optima — it is the assumptions:
    insurance to stay aggressive. Our iid + ~3.3pp premium removes the recovery guarantee, so the
    sequence protection of derisking is worth more.
 
-Both levers point the same way, and both are switchable: add a bequest motive (`BEQUEST>0`) or a
-higher premium and our accumulation path rises back toward ACO's flat 100%. The robust, assumption-
-light conclusion is the one in §2e — for constant-$, hold a **moderate** level and **derisk into
-retirement**; the precise curve is worth ~0.5%.
+Both assumptions point the same way: a terminal-wealth/bequest motive (as in ACO) or a higher
+premium would raise our accumulation path back toward ACO's flat 100%. This model has no bequest
+motive (pure consumption), so within the tool **spending flexibility** is the switchable lever. The
+robust, assumption-light conclusion is the one in §2e — for constant-$, hold a **moderate** level
+and **derisk into retirement**; the precise curve is worth ~0.5%.
 
 ---
 
@@ -402,13 +425,12 @@ The same model is exposed as a one-call recommender —
 [`analysis/glide_path/recommender.py`](../../analysis/glide_path/recommender.py),
 `recommend_glide_path(...)` — that **optimizes** (does not look up) the allocation per chosen step
 (`interval` = 1y, 5y, …) given your horizons, spending flexibility, guaranteed income, risk
-aversion, bequest motive, and selected return mode (including an arbitrary return/vol curve under
-`iid-mc`). The usual modes vary equity against bonds; `bills+bonds` historical mode chooses all
-three asset weights. It first finds a coordinate-ascent glide, then scores both that glide and the
-best single constant allocation on an independent evaluation sample. It always returns the raw
-optimized glide as the schedule, plus the robust constant comparator (`flat_equity_pct` /
+aversion, and selected return mode (including an arbitrary return/vol curve under `iid-mc`). It
+varies equity against bonds. It first finds a coordinate-ascent glide, then scores both that glide
+and the best single constant allocation on an independent evaluation sample. It always returns the
+raw optimized glide as the schedule, plus the robust constant comparator (`flat_equity_pct` /
 `flat_ce_income`) so callers can recommend the flat path when it is materially better. It returns the per-step schedule
-plus independent-evaluation CE income, income CV, the median estate, and two depletion views:
+plus independent-evaluation CE income, income CV, and two depletion views:
 full-path depletion (`depletion`), which includes pre-retirement market luck from today, and
 drawdown-only depletion (`drawdown_depletion`), which starts from the deterministic expected
 retirement balance and matches the `/retirement` headline semantics. It also returns the **best
@@ -416,9 +438,9 @@ single constant allocation** — the simpler alternative whose CE the glide path
 only a hair (§2e) — and ships a `plot_glide_path()` helper.
 
 `python3 analysis/recommend_glide.py --demo` sweeps **each lever across all three spending
-rules** under `iid-mc` — a 3×3 matrix, holding every other input at its default — and writes
+rules** under `iid-mc` — holding every other input at its default — and writes
 `glide_<spending>_by_<lever>.png` (spending ∈ {`constant`, `semiflex`, `flexible`}; lever ∈
-{`guaranteed`, `bequest`, `gamma`}) plus a `glide_by_spending.png` overview to
+{`guaranteed`, `gamma`}) plus a `glide_by_spending.png` overview to
 gitignored `analysis/artifacts/glide_path/demo/`. What each lever does — and how the
 effect itself depends on the spending rule:
 
@@ -426,11 +448,10 @@ effect itself depends on the spending rule:
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Spending** (`flex`) | rigid → deep retirement tent; flexible → flat ~100% (`glide_by_spending.png`).                                                                                                                                                                                |
 | **Guaranteed income** | a bigger guaranteed floor lets the portfolio derisk → **deeper, lower tent**. $0 guaranteed income is a permanent zero-income bridge: CE becomes tail-dominated, so its allocation comparison is inconclusive rather than a valid "go for broke" result (§1). |
-| **Bequest** (motive)  | **constant-$**: lifts equity toward flat-high (upside stops being wasted → ACO). **Flexible**: ≈ no effect (already ~100%). **Semi-flex**: instead derisks mid-retirement to protect the estate.                                                              |
 | **Risk aversion** (γ) | higher γ → lower equity / deeper tent — but mostly under **flexible/semi-flex** spending; the **constant-$ shape is ~γ-invariant** (its tent is driven by the rigid floor, not by taste).                                                                     |
 
-The guaranteed-income and bequest panels are the concrete, dial-able form of the §3a reconciliation: for
-constant-$ they move the path between our "derisk" result and ACO's "flat ~100%."
+The guaranteed-income panel is the concrete, dial-able form of the §3a reconciliation: for
+constant-$ it moves the path between our "derisk" result and ACO's "flat ~100%."
 
 **Additional dials** (beyond the demo matrix), all exposed on both the interactive prompt flow and
 the `recommend_glide.py` flag CLI:
@@ -439,11 +460,6 @@ the `recommend_glide.py` flag CLI:
   DB pensions, and other income paid **every** retirement year. A pre-pension bridge is out of
   scope. A zero amount recreates the same zero-income state and makes the CE allocation comparison
   inconclusive (see §1).
-- **Bequest in years of spending.** `bequest_years` targets a median estate of
-  `bequest_years × target_income` and back-calibrates the raw warm-glow weight to hit it. The motive
-  can only _raise_ the estate (via more equity), so a target at/below what the spending plan already
-  leaves needs no motive, and very large targets saturate (`bequest_target_reached` flags this); the
-  result also reports `median_estate_years`.
 - **Leverage.** `max_leverage` (1.0 = none; 1.5 = up to 150% equity) lets the optimizer borrow at a
   **real** `borrow_cost` to hold w>1 in the all-equity portfolio (real return `w·eq − (w−1)·borrow`,
   vol `w·eq_vol`; a wipeout is treated as ruin). It leverages only where the risk-adjusted gain beats
@@ -494,7 +510,7 @@ command containing the resolved inputs. The flag CLI exposes the interactive opt
 including `--beta` and `--paths`, so that command reruns the same simulation and is easy to modify.
 
 Tweak `analysis/glide_path/research.py`'s CONFIG block: `SPENDING_REGIMES` (FLEX levels), `RETIRE_HORIZONS`,
-`ACCUM_HORIZONS`, `GAMMA`, `BEQUEST`, `WITHDRAWAL_RATE`, `GRID_STEP`, `OPT_N`/`N_FINAL`/`OPT_PASSES`.
+`ACCUM_HORIZONS`, `GAMMA`, `WITHDRAWAL_RATE`, `GRID_STEP`, `OPT_N`/`N_FINAL`/`OPT_PASSES`.
 Returns/vol come straight from the `ALLOC_ANCHORS` mirror of
 [`presets.ts`](../../src/utils/retirement/presets.ts) — change them there (and here) together. Runtime
 ≈ 5 min (the per-age coordinate ascent is the cost).
