@@ -342,15 +342,16 @@ class GlidePathMarketTests(unittest.TestCase):
         )
         self.assertEqual(market.metadata["dataset"], "pooled")
 
-    def test_iid_rejects_dataset_and_exclusions(self):
+    def test_iid_rejects_exclusions(self):
         with self.assertRaisesRegex(ValueError, "dataset/exclusions apply only"):
-            _build_market("iid-mc", PWL_CURVE, 2.1, True, 2.0, 5, dataset="pooled")
+            _build_market("iid-mc", PWL_CURVE, 2.1, True, 2.0, 5,
+                          exclude_countries=["Germany"])
 
     def test_world_dataset_rejects_exclusions(self):
         with self.assertRaisesRegex(ValueError, "exclusions require dataset='pooled'"):
             _build_market(
                 "historical-block", PWL_CURVE, 2.1, True, 2.0, 5,
-                exclude_countries=["Germany"],
+                dataset="world", exclude_countries=["Germany"],
             )
 
     def test_ask_choice_accepts_letter_name_and_default(self):
@@ -367,7 +368,7 @@ class GlidePathMarketTests(unittest.TestCase):
         with patch("builtins.input", side_effect=["z", "b"]):
             self.assertEqual(_ask_choice("Mode", "iid-mc", choices), "historical-iid")
 
-    def test_reproduction_command_emits_dataset_only_when_not_world(self):
+    def test_reproduction_command_emits_dataset_only_when_not_pooled(self):
         base = dict(
             accum_years=0, retire_years=30, flexibility=0.0, guaranteed_income=20_000.0,
             interval=5, gamma=4.0, beta=0.985, max_leverage=1.0, borrow_cost=2.0,
@@ -375,9 +376,11 @@ class GlidePathMarketTests(unittest.TestCase):
             withdrawal_rate=0.04, start_age=None, return_mode="forward-block",
             block_years=10, n_paths=5_000,
         )
-        pooled = shlex.split(format_reproduction_command(dataset="pooled", **base))
-        self.assertEqual(pooled[pooled.index("--dataset") + 1], "pooled")
-        self.assertNotIn("--dataset", shlex.split(format_reproduction_command(dataset="world", **base)))
+        # pooled is the new default — should be omitted from the command
+        self.assertNotIn("--dataset", shlex.split(format_reproduction_command(dataset="pooled", **base)))
+        # world is non-default — should be emitted
+        world = shlex.split(format_reproduction_command(dataset="world", **base))
+        self.assertEqual(world[world.index("--dataset") + 1], "world")
 
     def test_reproduction_command_forward_block_emits_block_years(self):
         command = format_reproduction_command(
@@ -392,10 +395,11 @@ class GlidePathMarketTests(unittest.TestCase):
         self.assertIn("forward-block", tokens)
         self.assertEqual(tokens[tokens.index("--block-years") + 1], "7")
 
-    def test_cli_rejects_exclusions_without_pooled(self):
+    def test_cli_rejects_exclusions_with_world_dataset(self):
         stderr = io.StringIO()
         with redirect_stderr(stderr), self.assertRaises(SystemExit):
-            cli_main(["--mode", "historical-block", "--exclude-countries", "Germany"])
+            cli_main(["--mode", "historical-block", "--dataset", "world",
+                      "--exclude-countries", "Germany"])
         self.assertIn("require --dataset pooled", stderr.getvalue())
 
     def test_cli_forwards_dataset_and_exclusions(self):
@@ -412,16 +416,20 @@ class GlidePathMarketTests(unittest.TestCase):
         self.assertEqual(kwargs["exclude_countries"], ["Germany", "Japan"])
         self.assertEqual(kwargs["exclude_years"], [1923, (1914, 1923)])
 
-    def test_default_and_explicit_iid_are_identical(self):
-        implicit = self._recommend()
-        explicit = self._recommend(return_mode="iid-mc")
-        self.assertEqual(implicit, explicit)
+    def test_default_mode_is_forward_block_pooled(self):
+        # Default recommend_glide_path call should use forward-block + pooled.
+        with patch(
+            "analysis.glide_path.recommender._load_history",
+            return_value=synthetic_history(),
+        ):
+            result = self._recommend()
+        self.assertEqual(result["params"]["return_mode"], "forward-block")
 
     def test_all_modes_are_deterministic_end_to_end(self):
         history = synthetic_history()
         for mode in ("iid-mc", "historical-iid", "historical-block"):
             with self.subTest(mode=mode), patch(
-                "analysis.glide_path.recommender._load_world_history", return_value=history
+                "analysis.glide_path.recommender._load_history", return_value=history
             ):
                 first = self._recommend(return_mode=mode, block_years=2)
                 second = self._recommend(return_mode=mode, block_years=2)

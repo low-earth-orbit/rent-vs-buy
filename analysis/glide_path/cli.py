@@ -145,15 +145,15 @@ def main(argv=None):
     ap.add_argument("--inflation", type=float, default=2.1,
                     help="inflation %% used to deflate the iid-mc curve to real")
     ap.add_argument("--mode", choices=RETURN_MODES,
-                    default="iid-mc", help="return path generation mode "
-                    "(forward-block = historical sequences rescaled to the forward-CMA "
-                    "marginals, then block-bootstrapped)")
+                    default="forward-block", help="return path generation mode "
+                    "(default: forward-block — historical sequences rescaled to the forward-CMA "
+                    "marginals, then block-bootstrapped; iid-mc = forward-CMA iid normal)")
     ap.add_argument("--block-years", type=int, default=10,
                     help="average stationary circular-block length for block modes "
                     "(historical-block, forward-block)")
-    ap.add_argument("--dataset", choices=DATASETS, default="world",
-                    help="historical dataset: world (equal-weight cross-country average) or "
-                    "pooled (each country's own sequence, concatenated)")
+    ap.add_argument("--dataset", choices=DATASETS, default="pooled",
+                    help="historical dataset: pooled (default — each country's own sequence) or "
+                    "world (equal-weight cross-country average)")
     ap.add_argument("--exclude-countries", nargs="*", default=None, metavar="COUNTRY",
                     help="JST country names to drop (requires --dataset pooled)")
     ap.add_argument("--exclude-years", nargs="*", default=None, metavar="YEAR|LO-HI",
@@ -177,14 +177,12 @@ def main(argv=None):
     if args.curve and args.mode != "iid-mc":
         ap.error("--curve is only supported with --mode iid-mc; historical modes use raw JST returns")
     exclusions = bool(args.exclude_countries or args.exclude_years)
-    if args.mode == "iid-mc" and (args.dataset != "world" or exclusions):
-        ap.error("--dataset/--exclude-* apply only to historical modes")
+    if args.mode == "iid-mc" and exclusions:
+        ap.error("--exclude-* apply only to historical modes")
     if exclusions and args.dataset != "pooled":
         ap.error("--exclude-countries/--exclude-years require --dataset pooled")
     exclude_years = parse_year_windows(args.exclude_years) if args.exclude_years else None
     if args.demo:
-        if args.mode != "iid-mc":
-            ap.error("--demo is iid-mc only")
         run_demo("analysis/artifacts/glide_path/demo")
         return
 

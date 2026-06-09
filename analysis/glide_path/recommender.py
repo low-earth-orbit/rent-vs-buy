@@ -37,7 +37,8 @@ KEY INPUTS
                               Must match the units of `alloc_curve` (default: percent, i.e. 2.1).
                               Used only by `iid-mc`.
   returns_in_percent        : if True (default), `alloc_curve` means/vols are in % per year.
-  return_mode               : "iid-mc" (default forward-CMA normal Monte Carlo),
+  return_mode               : "forward-block" (default — history rescaled to forward-CMA
+                              marginals, then block-bootstrapped; previously "iid-mc"),
                               "historical-iid" (paired stock/bond years sampled with
                               replacement), "historical-block" (paired stock/bond years sampled
                               with a stationary circular block bootstrap), or "forward-block"
@@ -45,7 +46,8 @@ KEY INPUTS
                               block-bootstrapped).
   block_years               : average years per historical block (default 10). Used only by the
                               block modes; realized block lengths are geometric.
-  dataset                   : "world" (equal-weight cross-country average, default) or "pooled"
+  dataset                   : "pooled" (default — single-country sequences; previously "world")
+                              or "world" (equal-weight cross-country average)
                               (each country's own sequence concatenated). Historical modes only.
   exclude_countries,
   exclude_years             : drop countries / inclusive year windows from the pooled dataset.
@@ -341,7 +343,7 @@ def _build_market(
     block_years,
     history=None,
     *,
-    dataset="world",
+    dataset="pooled",
     exclude_countries=None,
     exclude_years=None,
 ):
@@ -352,7 +354,7 @@ def _build_market(
     if dataset not in DATASETS:
         raise ValueError(f"dataset must be one of {', '.join(DATASETS)}")
     if return_mode == "iid-mc":
-        if dataset != "world" or exclude_countries or exclude_years:
+        if exclude_countries or exclude_years:
             raise ValueError("dataset/exclusions apply only to historical modes")
         return _IidMarket(_build_alloc(alloc_curve, inflation, returns_in_percent, borrow_cost))
 
@@ -509,9 +511,9 @@ def recommend_glide_path(
     # capital-market input units
     inflation: float = 2.1,
     returns_in_percent: bool = True,
-    return_mode: str = "iid-mc",
+    return_mode: str = "forward-block",
     block_years: int = 10,
-    dataset: str = "world",
+    dataset: str = "pooled",
     exclude_countries: Sequence[str] | None = None,
     exclude_years=None,
     # leverage (borrowing to invest); 1.0 = none
@@ -880,7 +882,7 @@ def format_reproduction_command(
     return_mode,
     block_years,
     n_paths,
-    dataset="world",
+    dataset="pooled",
 ):
     """Build a shell-safe flag-CLI command matching an interactive run."""
 
@@ -925,7 +927,7 @@ def format_reproduction_command(
         args.extend(["--borrow-cost", value(borrow_cost)])
     if return_mode in _BLOCK_MODES:
         args.extend(["--block-years", value(block_years)])
-    if dataset != "world":
+    if dataset != "pooled":
         args.extend(["--dataset", dataset])
     return shlex.join(args)
 
@@ -1050,20 +1052,20 @@ def _run_interactive():
     print("  iid-mc uses the app's forward capital-market assumptions;")
     print("  historical modes bootstrap raw paired stock/bond returns from JST history.")
     return_mode = _ask_choice(
-        "Return mode", "iid-mc", RETURN_MODES,
+        "Return mode", "forward-block", RETURN_MODES,
         labels={
-            "iid-mc": "forward-CMA normal Monte Carlo",
+            "iid-mc": "forward-CMA normal Monte Carlo (no sequencing)",
             "historical-iid": "raw history, years sampled independently",
             "historical-block": "raw history, stationary circular blocks (keeps sequencing)",
-            "forward-block": "history rescaled to forward marginals, then block-bootstrapped",
+            "forward-block": "history rescaled to forward marginals, then block-bootstrapped (recommended)",
         },
     )
     dataset = (
         _ask_choice(
-            "Historical dataset", "world", DATASETS,
+            "Historical dataset", "pooled", DATASETS,
             labels={
                 "world": "equal-weight cross-country average (one rebalanced portfolio)",
-                "pooled": "each country's own sequence (single-country sequence risk)",
+                "pooled": "each country's own sequence — single-country sequence risk (recommended)",
             },
         )
         if return_mode != "iid-mc"
@@ -1197,8 +1199,6 @@ if __name__ == "__main__":
                 demo_mode = sys.argv[i + 1]
             elif arg.startswith("--mode="):
                 demo_mode = arg.split("=", 1)[1]
-        if demo_mode != "iid-mc":
-            raise SystemExit("demo mode is iid-mc only")
         out_dir = os.path.join("analysis", "artifacts", "glide_path", "demo")
         run_demo(out_dir)
     else:
