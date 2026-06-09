@@ -24,15 +24,16 @@ Validation prototype:
 
 ## TL;DR
 
-- The long-horizon SWR (~2.4% at 50y for 60/40) is **low because the return assumption is
+- The long-horizon SWR (~2.6% at 50y for 60/40) is **low because the return assumption is
   modest, not because the risk model is harsh.** This is correct, not a bug.
 - Return presets come from **PWL Capital** (corroborated by **FP Canada** planning guidelines).
   They are mainstream Canadian forward estimates — **not conservative**.
 - The US "4% rule" / ~3.7% long-horizon floor is a **US-exceptionalism artifact**
   (US real returns ~6%, geo ~5.4%). It does not transfer to Canadian forward CMAs.
-- `RETURN_AUTOCORRELATION = 0` (iid) is confirmed correct: forward-calibrated historical
-  sequencing (pooled forward-block) gives SWRs within ~0.1–0.2pp of the app's parametric
-  output — not materially different in either direction.
+- `RETURN_AUTOCORRELATION = 0` (iid) is confirmed correct: the app's parametric output is
+  within ~0.1pp of forward-calibrated historical sequencing (pooled forward-block) across all
+  horizons. The iid assumption is mildly optimistic vs empirical sequencing (not conservative),
+  but the gap is small enough that it does not justify adding a negative AR(1) coefficient.
 - **If asked to lift the long-horizon SWR, the lever is the return assumption — not the
   risk model.** Inflating returns to chase the US floor is not recommended.
 
@@ -77,17 +78,17 @@ equities ~6.3–6.6% nominal CAD. The presets are at or slightly above these —
 
 SWR @ 90%, 60/40, current engine (φ = 0, iid):
 
-| Horizon | 20y   | 30y   | 40y   | 50y    |
-| ------- | ----- | ----- | ----- | ------ |
-| SWR     | 4.80% | 3.44% | 2.77% | ~2.36% |
+| Horizon | 20y   | 30y   | 40y   | 50y   |
+| ------- | ----- | ----- | ----- | ----- |
+| SWR     | 5.08% | 3.68% | 2.99% | 2.64% |
 
 This is **entirely a consequence of the ~3.5% real return assumption.** At ~3.5% real, the
 median retiree barely grows the portfolio while withdrawing, so longer horizons keep biting.
 The US 4%-rule floor (~3.7% even at 50y) assumes **US real returns of ~6%** (geo 5.4%) — the
 luckiest equity century on record — which Canadian forward CMAs explicitly do not project.
 
-**For a typical retirement (retire 60–65, plan to 95 ⇒ 30–35y horizon) the SWR is ~3.0–3.4%,
-which is reasonable.** Sub-2.5% appears only at 45–50y horizons (retiring at 45–50), where
+**For a typical retirement (retire 60–65, plan to 95 ⇒ 30–35y horizon) the SWR is ~3.3–3.7%,
+which is reasonable.** Sub-2.8% appears only at 45–50y horizons (retiring at 45–50), where
 caution is appropriate.
 
 ---
@@ -107,10 +108,12 @@ caution is appropriate.
   the same scalar AR(1). The empirically grounded answer is to use the historical block
   bootstrap (§4), not to approximate the joint dynamics parametrically.
 
-**Why we keep it at zero:** the full factorial (§4) shows that forward-calibrated historical
-sequencing (§G, pooled forward-block) gives SWRs within ~0.1–0.2pp of the app's iid estimate
-(§H), not systematically above or below. There is no direction-stable evidence that a non-zero
-AR(1) would improve accuracy.
+**Why we keep it at zero:** the full factorial (§4) shows that the app's iid estimate (§H)
+is within ~0.1pp of forward-calibrated historical sequencing (§G, pooled forward-block) at
+every horizon — mildly optimistic, not conservative. The gap is small (0.1pp at 30y) and not
+large enough to justify adding a negative AR(1) coefficient. Historical sequences do carry some
+negative equity serial correlation (equity VR ≈ 0.91 implies ρ ≈ −0.05), but the bond side
+has *positive* persistence, and the net effect on the 60/40 portfolio is close to zero.
 
 ---
 
@@ -142,19 +145,19 @@ Forward-CMA anchors (real): equity 4.67%/12.57%, bonds 1.42%/5.38%.
 | Pooled single-country (2212 obs) | 5.04% | 15.44% | 3.79% |
 | World fwd-rescaled | 3.37% | 8.57% | 3.01% |
 | Pooled fwd-rescaled | 3.37% | 8.43% | 3.02% |
-| App CMA iid | 3.37% | 9.69% | — |
+| App ALLOC iid | 3.50% | 8.79% | — |
 
 ### SWR results @ 90%, 60/40, block = 10y
 
 | Horizon | §A USA | §B Wld-OL | §C Wld-Blk | §D Pool-OL | §E Pool-Blk | §F Wld-FwdBlk | §G Pool-FwdBlk | §H App iid |
 |---|---|---|---|---|---|---|---|---|
-| 20y | 5.39% | 4.95% | 5.00% | 3.41% | 3.91% | 4.60% | 4.98% | 4.80% |
-| 25y | 4.85% | 4.16% | 4.29% | 2.64% | 3.07% | 3.78% | 4.13% | 3.97% |
-| 30y | 4.54% | 3.77% | 3.78% | 2.18% | 2.47% | 3.29% | 3.57% | 3.44% |
-| 35y | 4.28% | 3.43% | 3.48% | 1.82% | 2.14% | 2.95% | 3.15% | 3.05% |
-| 40y | 4.08% | 3.20% | 3.22% | 1.59% | 1.94% | 2.68% | 2.89% | 2.77% |
-| 45y | 3.90% | 2.98% | 3.05% | 1.33% | 1.69% | 2.46% | 2.65% | 2.55% |
-| 50y | 3.74% | 2.83% | 2.95% | 1.20% | 1.61% | 2.31% | 2.49% | 2.36% |
+| 20y | 5.39% | 4.95% | 5.00% | 3.41% | 3.91% | 4.60% | 4.98% | 5.08% |
+| 25y | 4.85% | 4.16% | 4.29% | 2.64% | 3.07% | 3.78% | 4.13% | 4.26% |
+| 30y | 4.54% | 3.77% | 3.78% | 2.18% | 2.47% | 3.29% | 3.57% | 3.68% |
+| 35y | 4.28% | 3.43% | 3.48% | 1.82% | 2.14% | 2.95% | 3.15% | 3.28% |
+| 40y | 4.08% | 3.20% | 3.22% | 1.59% | 1.94% | 2.68% | 2.89% | 2.99% |
+| 45y | 3.90% | 2.98% | 3.05% | 1.33% | 1.69% | 2.46% | 2.65% | 2.79% |
+| 50y | 3.74% | 2.83% | 2.95% | 1.20% | 1.61% | 2.31% | 2.49% | 2.64% |
 
 ### What the factorial teaches
 
@@ -181,11 +184,13 @@ geo) reduces the SWR. The world overlapping floor relied partly on high historic
 (geo 4.69%); at the app's more modest 3.1% real geo, the floor is lower.
 
 **5. §G vs §H — the key comparison: forward sequencing ≈ iid.**
-At 30y: 3.57% (§G, pooled fwd-block) vs 3.44% (§H, app iid). §G is 0.1–0.2pp *above* app iid
-across all horizons. The forward-calibrated historical sequencing (which preserves equity mean
-reversion and moderate bond persistence from single-country sequences) is slightly more
-favorable than iid — confirming that `RETURN_AUTOCORRELATION = 0` is appropriate and slightly
-conservative, not optimistic.
+At 30y: 3.57% (§G, pooled fwd-block) vs 3.68% (§H, app iid). App iid is ~0.1pp *above* pooled
+fwd-block across all horizons. The forward-calibrated historical sequencing, which preserves
+real equity and bond serial correlation from single-country sequences, is mildly less favorable
+than iid. This means `RETURN_AUTOCORRELATION = 0` is slightly optimistic relative to empirical
+sequencing — real return sequences carry modest negative equity serial correlation that helps
+the drawdown phase, partially offset by positive bond persistence. The gap (~0.1pp) is small
+enough that iid remains a reasonable default; it does not justify a non-zero AR(1) coefficient.
 
 **6. §G > §F — pooled forward-block gives higher SWR than world forward-block.**
 At 30y: 3.57% vs 3.29%. Same forward-CMA marginals; difference is sequencing. The world series
@@ -203,9 +208,10 @@ Canadian forward CMAs do not project returns at this level.
 
 The empirically honest range for a diversified, forward-looking Canadian retiree (60/40, 90%,
 30y) is **3.3–3.6%** (§F–§G), bracketed below by raw pooled history (§E, 2.47%) and above by
-US history (§A, 4.54%). The app's parametric iid output of **3.44%** sits comfortably within
-this range and is slightly conservative relative to pooled forward-block (3.57%). Using iid is
-well-justified.
+US history (§A, 4.54%). The app's parametric iid output of **3.68%** sits just above this range
+(~0.1pp above §G, pooled fwd-block), reflecting the slightly higher PWL ALLOC return assumption
+(60/40 nominal 5.67% → real 3.50%) vs the linear per-asset blend (3.37%). The discrepancy is
+small and does not warrant a model change; using iid with the ALLOC parameters is well-justified.
 
 ---
 
@@ -215,13 +221,13 @@ SWR @ 90%, 60/40, vol 8.79%, by assumed real return:
 
 | Real return             | 20y   | 30y   | 40y   | 50y   |
 | ----------------------- | ----- | ----- | ----- | ----- |
-| **3.5% (current, φ=0)** | 4.80% | 3.44% | 2.77% | 2.36% |
-| 4.0%                    | 5.05% | 3.70% | 3.03% | 2.63% |
-| 4.5%                    | 5.30% | 3.97% | 3.31% | 2.91% |
-| 5.0%                    | 5.57% | 4.26% | 3.61% | 3.23% |
+| **3.5% (current, φ=0)** | 5.08% | 3.68% | 2.99% | 2.65% |
+| 4.0%                    | 5.33% | 3.93% | 3.27% | 2.94% |
+| 4.5%                    | 5.59% | 4.20% | 3.55% | 3.25% |
+| 5.0%                    | 5.84% | 4.48% | 3.84% | 3.57% |
 
-To get the **50y SWR to ~3.2%** you need **~5% real** — well above the PWL/FP Canada anchor
-(~3.5% real for 60/40). That means adopting US-like return assumptions. **Not recommended.**
+To get the **50y SWR to ~3.2%** you need **~4.5% real** — well above the PWL/FP Canada anchor
+(~3.5% real for 60/40). That means adopting near-US-level return assumptions. **Not recommended.**
 The honest position: keep the CMAs, accept the long-horizon SWR they imply.
 
 ---
@@ -242,11 +248,11 @@ allocation (`SWR_TABLE_ALLOCATIONS`) × horizon (`SWR_TABLE_HORIZONS`), computed
 
 - **Don't chase the US 4%/3.7% floor by inflating returns.** It would abandon the Canadian CMA
   anchor. The low long-horizon SWR is the honest output.
-- **Keep `RETURN_AUTOCORRELATION = 0`.** The full factorial (§4) confirms iid is slightly
-  conservative relative to forward-calibrated historical sequencing (§G, 3.57% at 30y vs iid
-  3.44%). Adding ρ = −0.05 does not materially change the SWR and the bond side has the
-  opposite sign (positive persistence). Use the historical bootstrap modes for research, not
-  the parametric engine.
+- **Keep `RETURN_AUTOCORRELATION = 0`.** The full factorial (§4) shows the app's iid is ~0.1pp
+  above pooled fwd-block (§G, 3.57% at 30y vs iid 3.68%) — mildly optimistic, not conservative.
+  The gap is small and does not justify adding ρ = −0.05; the bond side has opposite-sign
+  persistence that partially cancels equity mean reversion. Use the historical bootstrap modes
+  for research, not the parametric engine.
 - To revisit the empirical basis, re-run `python3 -m analysis.retirement.jst_swr_bootstrap`
   (tweak the CONFIG block: allocation, `TARGET`, `BLOCK_YEARS`, `HORIZONS`).
 

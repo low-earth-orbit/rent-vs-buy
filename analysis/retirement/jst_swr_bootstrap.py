@@ -40,7 +40,7 @@ Each mode is a cell in the marginals × sequencing factorial:
 FORWARD-CMA ANCHORS (real, derived from PWL_CURVE at w=0 and w=1, 2.1% inflation)
   equity : mean 4.67 %, vol 12.57 %
   bonds  : mean 1.42 %, vol  5.38 %
-  60/40 portfolio implied: mean ~3.5 %, vol ~8.8 %
+  60/40 portfolio (from ALLOCATIONS table): nominal 5.67 % → real 3.50 %, vol 8.79 %
 
 KEY FINDINGS (default run: 60/40, 90% success, block=10y)
 ----------------------------------------------------------
@@ -52,7 +52,7 @@ KEY FINDINGS (default run: 60/40, 90% success, block=10y)
   §E Pooled block (10y)  3.91%   2.47%   1.94%   1.61%
   §F World fwd-block     4.60%   3.29%   2.68%   2.31%
   §G Pooled fwd-block    4.98%   3.57%   2.89%   2.49%   ← best empirical comparator for app
-  §H App iid parametric  4.80%   3.44%   2.77%   2.36%
+  §H App iid parametric  5.08%   3.68%   2.99%   2.64%   ← web app ALLOCATIONS params
 
   Key readings:
   * §B vs §C: 10y blocks now track the overlapping floor (unlike the old 8y study, where
@@ -61,9 +61,10 @@ KEY FINDINGS (default run: 60/40, 90% success, block=10y)
   * §D/§E: raw pooled overlapping/block gives catastrophically low SWRs (single-country
     disaster risk: Germany 1914–1943, Japan 1940s, etc.). Not directly applicable to a
     diversified investor, but sets the lower bound.
-  * §G vs §H: pooled forward-block (3.57% at 30y) is 0.1–0.2pp ABOVE app iid (3.44%).
-    Forward-calibrated real sequencing is slightly more favorable than iid → the app's
-    RETURN_AUTOCORRELATION=0 assumption is correct and mildly conservative.
+  * §G vs §H: app iid (3.68% at 30y) is ~0.1pp ABOVE pooled fwd-block (3.57%). The web
+    app's iid assumption is slightly optimistic vs empirical forward-calibrated sequencing —
+    real return sequences carry modest negative serial correlation that iid misses. The gap
+    is small enough that the app's RETURN_AUTOCORRELATION=0 is a reasonable default.
   * §G > §F: pooled sequences have weaker bond persistence (VR~1.7 vs world VR~3.8),
     which makes the 60/40 portfolio slightly more mean-reverting → higher SWR than world.
 
@@ -102,6 +103,7 @@ HORIZONS      = [20, 25, 30, 35, 40, 45, 50]
 NUM_SIMS      = 20_000        # bootstrap paths
 BLOCK_YEARS   = 10            # average block length (stationary bootstrap)
 SEED          = 12345
+INFLATION     = 0.021         # matches web app default inflationRate
 
 # Forward-CMA per-asset anchors (real, decimal), derived from PWL Capital curve
 # at w=1.0 (all-equity) and w=0.0 (all-bond) deflated by 2.1% inflation.
@@ -109,6 +111,24 @@ FWD_EQ_MEAN  = 0.0467
 FWD_EQ_VOL   = 0.1257
 FWD_BD_MEAN  = 0.0142
 FWD_BD_VOL   = 0.0538
+
+# Web app ALLOCATIONS table (presets.ts) — nominal return (%) and portfolio vol (%)
+# for each equity/bond mix. These are PWL Capital estimates for the full portfolio,
+# not simple per-asset linear blends; they include stock-bond correlation in the vol.
+# Keyed by equity percentage (0–100 in steps of 10).
+ALLOC_TABLE: dict[int, tuple[float, float]] = {
+    100: (6.87, 12.57),
+    90:  (6.59, 11.59),
+    80:  (6.29, 10.62),
+    70:  (5.99,  9.68),
+    60:  (5.67,  8.79),
+    50:  (5.35,  7.94),
+    40:  (5.01,  7.17),
+    30:  (4.66,  6.49),
+    20:  (4.30,  5.94),
+    10:  (3.93,  5.56),
+    0:   (3.55,  5.38),
+}
 # ──────────────────────────────────────────────────────────
 
 
@@ -248,9 +268,12 @@ def main() -> None:
     p_port  = _portfolio(pooled_h, eq_w)
     u_port  = eq_w * usa_h.equity + (1 - eq_w) * usa_h.fixed_income
 
-    # App's 60/40 forward-CMA preset
-    app_mean = FWD_EQ_MEAN * eq_w + FWD_BD_MEAN * (1 - eq_w)
-    app_vol  = FWD_EQ_VOL  * eq_w + FWD_BD_VOL  * (1 - eq_w)   # linear blend (conservative)
+    # App's iid parametric parameters — taken from the ALLOCATIONS table (presets.ts),
+    # matching exactly what safeWithdrawalRate uses in the web app.
+    eq_pct = int(round(eq_w * 100))
+    alloc_nom_pct, alloc_vol_pct = ALLOC_TABLE[eq_pct]
+    app_mean = (1 + alloc_nom_pct / 100) / (1 + INFLATION) - 1  # real return
+    app_vol  = alloc_vol_pct / 100                                # correlated portfolio vol
 
     print(f"\nJST R6  ·  {eqp}/{100-eqp} portfolio  ·  {int(TARGET*100)}% success  "
           f"·  block={BLOCK_YEARS}y  ·  paths={NUM_SIMS:,}\n")
@@ -260,7 +283,8 @@ def main() -> None:
           f"{pooled_h.start_year}–{pooled_h.end_year}): {describe(p_port)}")
     print(f"  World fwd-rescaled: {describe(_portfolio(world_fwd,  eq_w))}")
     print(f"  Pooled fwd-rescaled: {describe(_portfolio(pooled_fwd, eq_w))}")
-    print(f"  App CMA iid: mean={app_mean*100:.2f}%  vol={app_vol*100:.2f}%")
+    print(f"  App ALLOC iid: nominal={alloc_nom_pct:.2f}%  real={app_mean*100:.2f}%  "
+          f"vol={app_vol*100:.2f}%  (ALLOCATIONS[{eq_pct}/{100-eq_pct}])")
 
     # ── Section headers ────────────────────────────────────────────────────────
     cols = [
@@ -320,7 +344,7 @@ def main() -> None:
     print("  §E  Pooled block        — single-country sequences, segment-aware block")
     print("  §F  World fwd-block     — world rescaled to fwd-CMA, then block bootstrap")
     print("  §G  Pooled fwd-block    — pooled rescaled to fwd-CMA, then block bootstrap")
-    print("  §H  App iid parametric  — web app engine: iid normal, fwd-CMA assumptions")
+    print(f"  §H  App iid parametric  — web app engine: iid normal, ALLOCATIONS params (nominal {alloc_nom_pct:.2f}%, vol {alloc_vol_pct:.2f}%)")
     print()
     print("INTERPRETATION GUIDE")
     print("  §B vs §C : does block bootstrap preserve the floor vs overlapping? (world)")
