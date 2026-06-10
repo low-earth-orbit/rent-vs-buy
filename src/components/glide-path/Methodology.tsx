@@ -90,28 +90,33 @@ export default function Methodology() {
           market paths (common random numbers), keeps the best, then repeats for
           every other step — cycling until nothing improves. No parametric shape
           (flat, rising, falling) is assumed; the shape emerges from the math.
-          Returns are drawn from our PWL / FP-Canada capital-market curve in
-          real (today&apos;s) dollars, with no historical data and no mean
-          reversion — so any shape the optimizer prefers is robust to the
-          absence of a valuation signal.
+          By default, returns come from historical stock and bond sequences (the
+          JST Macrohistory cross-country panel) rescaled to our PWL / FP-Canada
+          capital-market assumptions in real (today&apos;s) dollars, then
+          block-bootstrapped — so the simulations keep history&apos;s sequence
+          structure (crashes followed by recoveries) while honoring forward
+          return assumptions. An iid Monte Carlo mode with no historical
+          sequencing is available via the Simulation toggle.
         </Text>
 
         <Title order={3} fz="md">
           Key findings
         </Title>
-        <Point heading="The spending rule sets the shape.">
-          Rigid constant-$ spending causes the optimizer to derisk into a
-          &ldquo;bond tent&rdquo; near retirement to protect against a bad
-          sequence of returns right when you stop earning. Flexible spending
-          (income moves with the market) removes that risk — the optimizer stays
-          near 100% equity throughout.
+        <Point heading="The return model and the spending rule set the shape.">
+          Under the default historical-sequence engine, the optimizer stays near
+          100% equity even with rigid constant-$ spending — history&apos;s
+          recoveries make derisking mostly unnecessary, and the residual risk
+          shows up as the reported shortfall rates instead. Under the optional
+          iid mode (which assumes no recovery), rigid spending derisks into a
+          &ldquo;bond tent&rdquo; near retirement. Flexible spending (income
+          moves with the market) stays near 100% equity in both.
         </Point>
         <Point heading="The shape is worth little; the level matters.">
           Out of sample, the full per-age glide path beats the best single flat
-          weight by only ~0.5% of certainty-equivalent income — but picking the
-          wrong level (e.g. 100% equity under constant-$ spending) can cost
-          $650–$2,000/yr. Getting the level right matters far more than
-          optimizing the curve. That is why we also report the best{" "}
+          weight by only ~0.5% of certainty-equivalent income under the iid
+          mode, and essentially nothing under the default engine. Getting the
+          equity level right matters far more than optimizing the curve. That is
+          why we also report the best{" "}
           <Text span fw={600}>
             constant
           </Text>{" "}
