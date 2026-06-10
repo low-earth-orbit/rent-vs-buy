@@ -1,14 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)",
-      "Bash(node -p \"const p=require\\('./node_modules/react/package.json'\\); p.version\")"
+      "Bash(npm run *)"
     ]
-  },
-  "skills": {
-    "caveman": {
-      "enabled": true,
-      "default": "full"
-    }
   }
 }
