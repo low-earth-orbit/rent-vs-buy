@@ -47,6 +47,14 @@ const TOOLS: Tool[] = [
     href: "/glide-path",
     status: "preview",
   },
+  {
+    emoji: "🧾",
+    title: "ACB Calculator",
+    description:
+      "Compute the adjusted cost basis of your non-registered holdings from a Wealthsimple activity export.",
+    href: "/acb",
+    status: "new",
+  },
 ];
 
 function ToolCardBody({ tool }: { tool: Tool }) {

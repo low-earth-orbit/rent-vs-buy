@@ -1,0 +1,81 @@
+import { NumberInput, Table, Text } from "@mantine/core";
+import { applyT3Adjustment, type Holding } from "@/utils/acb/parser";
+import { formatCAD } from "@/utils/format";
+
+export type T3Adjustments = Record<string, number>;
+
+type HoldingsTableProps = {
+  holdings: Holding[];
+  t3Adjustments: T3Adjustments;
+  onT3Change: (symbol: string, value: number) => void;
+};
+
+const acbFormatter = new Intl.NumberFormat("en-CA", {
+  style: "currency",
+  currency: "CAD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const sharesFormatter = new Intl.NumberFormat("en-CA", {
+  maximumFractionDigits: 4,
+});
+
+const HoldingsTable = ({
+  holdings,
+  t3Adjustments,
+  onT3Change,
+}: HoldingsTableProps) => {
+  return (
+    <Table striped highlightOnHover withTableBorder>
+      <Table.Thead>
+        <Table.Tr>
+          <Table.Th>Symbol</Table.Th>
+          <Table.Th ta="right">Shares</Table.Th>
+          <Table.Th ta="right">ACB/share</Table.Th>
+          <Table.Th ta="right">Total cost basis</Table.Th>
+          <Table.Th>T3 adjustment</Table.Th>
+        </Table.Tr>
+      </Table.Thead>
+      <Table.Tbody>
+        {holdings.map((holding) => {
+          const t3 = t3Adjustments[holding.symbol] ?? 0;
+          const adjusted = applyT3Adjustment(holding, t3);
+          return (
+            <Table.Tr key={holding.symbol}>
+              <Table.Td fw={600}>{holding.symbol}</Table.Td>
+              <Table.Td ta="right">
+                {sharesFormatter.format(adjusted.shares)}
+              </Table.Td>
+              <Table.Td ta="right">
+                {adjusted.acbPerShare === null ? (
+                  <Text component="span" c="dimmed">
+                    —
+                  </Text>
+                ) : (
+                  acbFormatter.format(adjusted.acbPerShare)
+                )}
+              </Table.Td>
+              <Table.Td ta="right">{formatCAD(adjusted.costBasis)}</Table.Td>
+              <Table.Td>
+                <NumberInput
+                  aria-label={`T3 adjustment for ${holding.symbol}`}
+                  value={t3 === 0 ? "" : t3}
+                  onChange={(value) => onT3Change(holding.symbol, +value || 0)}
+                  prefix="$"
+                  min={0}
+                  step={10}
+                  size="xs"
+                  w={130}
+                  placeholder="$0"
+                />
+              </Table.Td>
+            </Table.Tr>
+          );
+        })}
+      </Table.Tbody>
+    </Table>
+  );
+};
+
+export default HoldingsTable;
