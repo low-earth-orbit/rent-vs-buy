@@ -67,9 +67,9 @@ python3 analysis/recommend_glide.py --mode forward-block --dataset pooled
 Historical modes use real paired stock and long-government-bond returns from the JST R6
 Macrohistory workbook. `analysis/shared/jst_history.py` downloads it on first use to gitignored
 `analysis/.data/`, deflates each asset by each country's CPI, and pairs the real returns by year.
-`--dataset world` (default) averages countries within each calendar year into one
-annually-rebalanced portfolio; `--dataset pooled` concatenates each country's own sequence so a
-block samples consecutive years of a single country. Each sampled historical year keeps stock and
+`--dataset pooled` (default) concatenates each country's own sequence so a block samples
+consecutive years of a single country; `--dataset world` averages countries within each
+calendar year into one annually-rebalanced portfolio. Each sampled historical year keeps stock and
 bond paired. Historical modes require pandas and openpyxl in addition to numpy. A custom `--curve`
 and `--inflation` apply only to `iid-mc`.
 
@@ -146,8 +146,8 @@ and independent evaluation-sample comparison:
 | `historical-block` |          ✓           |       pooled only       |          ✓           |     ✕ (raw historical)     |
 | `forward-block`    |          ✓           |       pooled only       |          ✓           | ✓ (`w=0` & `w=1` anchors)  |
 
-Notes: (1) "Single-country sequence" holds only with `--dataset pooled`; the default `world`
-dataset is the equal-weight cross-country average, whose sequence no single investor lived. (2) The
+Notes: (1) "Single-country sequence" holds only with `--dataset pooled` (the default); the
+`world` dataset is the equal-weight cross-country average, whose sequence no single investor lived. (2) The
 stock/bond _contemporaneous_ correlation is preserved in every historical mode because both series
 are indexed by the same sampled rows; `forward-block` keeps the **historical** correlation while
 matching forward marginals (intermediate-weight risk therefore comes from that historical
@@ -165,9 +165,9 @@ For allocations up to 100% equity, each annual portfolio return is `w × stock +
 Above 100% equity, the leveraged return is `w × stock − (w−1) × real borrowing cost`, with no bond
 position. The `historical-*` modes use raw
 realized return levels; they do not re-center history to the forward CMAs (only `forward-block`
-does). They are bootstrap backtests, not overlapping realized lifecycle windows. With the default
-`world` dataset, the block bootstrap resamples an already-diversified annual equal-weight-world
-series; the `pooled` dataset instead preserves single-country sequence risk. Either way these are
+does). They are bootstrap backtests, not overlapping realized lifecycle windows. With the `world`
+dataset, the block bootstrap resamples an already-diversified annual equal-weight-world
+series; the default `pooled` dataset instead preserves single-country sequence risk. Either way these are
 annual sequencing sensitivity checks, not an ACO replication (ACO bootstraps a monthly
 country-level four-asset panel).
 
@@ -255,12 +255,14 @@ Two honesty checks accompany every result:
   draw against (a) flat 100%, (b) the best single flat weight, and (c) the optimal retirement glide
   with accumulation _forced_ to 100%. If the optimized accumulation shape doesn't beat flat-100% out
   of sample, we don't believe it.
-- **Product recommender fallback.** The interactive recommender applies one extra robustness guard:
-  after coordinate ascent, it scores the optimized glide and the best constant allocation on an
-  independent draw. If the constant allocation wins materially, the UI/CLI recommends that flat
-  allocation as the robust choice, while still charting and reporting the raw optimized glide.
-  Smaller differences are treated as shape-vs-level noise: the app may still call out the simpler
-  constant allocation, but it keeps the optimized glide visible.
+- **Product recommender fallback.** The recommender applies one extra robustness guard: after
+  coordinate ascent, it scores the optimized glide and the best constant allocation on an
+  independent draw. The Python CLI flags the constant allocation as the robust choice when its
+  CE beats the glide's by more than 5%. The web UI biases harder toward simplicity: it
+  recommends the constant allocation whenever it wins on CE income outright, or comes within 2%
+  on CE income **and** within 1pp on drawdown shortfall **and** within 2pp on full-path
+  shortfall (`SIMPLICITY_*` thresholds in `src/components/glide-path/Result.tsx`). Either way
+  the raw optimized glide stays charted and reported.
 
 ---
 
