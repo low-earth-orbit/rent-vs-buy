@@ -52,8 +52,7 @@ const TOOLS: Tool[] = [
     title: "ACB Calculator",
     description:
       "Compute the adjusted cost basis of your non-registered holdings from a Wealthsimple activity export.",
-    href: "/acb",
-    status: "preview",
+    // href: "/acb",
   },
 ];
 
