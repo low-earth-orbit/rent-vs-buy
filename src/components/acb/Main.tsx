@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Container, Paper, Stack, Text, Title } from "@mantine/core";
+import { Alert, Container, Paper, Stack, Text, Title } from "@mantine/core";
 import FileUpload from "./FileUpload";
 import HoldingsTable, { type T3Adjustments } from "./HoldingsTable";
 import {
   computeHoldings,
+  hasMixedCurrencies,
   parseWealthsimpleCsv,
   type AcbTransaction,
 } from "@/utils/acb/parser";
@@ -43,9 +44,12 @@ const Main = () => {
   }
 
   const holdings = transactions ? computeHoldings(transactions) : null;
+  const mixedCurrencies = transactions
+    ? hasMixedCurrencies(transactions)
+    : false;
 
   return (
-    <Container size="md" py="md">
+    <Container size="xl" py="md">
       <Stack gap="lg">
         <Paper withBorder p="md" radius="md">
           <FileUpload
@@ -54,6 +58,16 @@ const Main = () => {
             onFileChange={handleFileChange}
           />
         </Paper>
+        {mixedCurrencies && (
+          <Alert color="yellow" title="Mixed currencies detected">
+            <Text size="sm">
+              This export contains both CAD and USD holdings. ACB calculations
+              assume a single currency. USD holdings will need separate ACB
+              tracking in CAD using the exchange rate at the time of each
+              transaction.
+            </Text>
+          </Alert>
+        )}
         {holdings && (
           <Paper withBorder p="md" radius="md">
             <Stack gap="sm">
@@ -62,9 +76,10 @@ const Main = () => {
               </Title>
               <Text c="dimmed" size="sm">
                 ACB per share = total cost basis ÷ shares held. Sells reduce
-                shares but not the cost basis pool. Enter reinvested (phantom)
-                distributions from your T3 slips to add them to a fund&apos;s
-                cost basis.
+                both shares and the cost basis pool pro-rata (CRA rule), so
+                ACB/share stays constant after a sale. Enter the{" "}
+                <strong>return of capital (ROC)</strong> amount from box 42 of
+                your T3 slip to reduce a fund&apos;s cost basis.
               </Text>
               <HoldingsTable
                 holdings={holdings}

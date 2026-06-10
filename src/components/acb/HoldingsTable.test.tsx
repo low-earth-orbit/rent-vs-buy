@@ -6,7 +6,7 @@ import type { Holding } from "@/utils/acb/parser";
 
 const HOLDINGS: Holding[] = [
   { symbol: "VEQT", shares: 10, costBasis: 400, acbPerShare: 40 },
-  { symbol: "XEQT", shares: 0, costBasis: 300, acbPerShare: null },
+  { symbol: "XEQT", shares: 0, costBasis: 0, acbPerShare: null },
 ];
 
 describe("HoldingsTable", () => {
@@ -47,9 +47,10 @@ describe("HoldingsTable", () => {
       />,
     );
 
+    // ROC of $100 reduces pool: $400 - $100 = $300, ACB/share = $30
     const veqtRow = screen.getByText("VEQT").closest("tr")!;
-    expect(within(veqtRow).getByText("$500")).toBeInTheDocument();
-    expect(within(veqtRow).getByText("$50.00")).toBeInTheDocument();
+    expect(within(veqtRow).getByText("$300")).toBeInTheDocument();
+    expect(within(veqtRow).getByText("$30.00")).toBeInTheDocument();
   });
 
   it("calls onT3Change with the symbol when a T3 amount is entered", async () => {
@@ -63,7 +64,7 @@ describe("HoldingsTable", () => {
       />,
     );
 
-    const input = screen.getByLabelText("T3 adjustment for VEQT");
+    const input = screen.getByLabelText("T3 ROC (box 42) for VEQT");
     await user.type(input, "25");
     expect(onT3Change).toHaveBeenLastCalledWith("VEQT", 25);
   });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyT3Adjustment,
   computeHoldings,
+  hasMixedCurrencies,
   parseWealthsimpleCsv,
   type AcbTransaction,
 } from "./parser";
@@ -30,6 +31,7 @@ describe("parseWealthsimpleCsv", () => {
       quantity: 10,
       price: 40,
       type: "buy",
+      currency: "CAD",
     });
     expect(result.transactions[1].type).toBe("dividend");
     expect(result.transactions[3].type).toBe("sell");
@@ -60,7 +62,35 @@ describe("parseWealthsimpleCsv", () => {
       quantity: 2,
       price: 25.5,
       type: "buy",
+      currency: "CAD",
     });
+  });
+
+  it("parses the Currency column case-insensitively and uppercases values", () => {
+    const result = parseWealthsimpleCsv(
+      [
+        "Date,Symbol,Quantity,Price,Type,currency",
+        "2025-01-02,VEQT,10,40.00,buy,cad",
+        "2025-01-03,VTI,5,200.00,buy,usd",
+        "2025-01-04,XEQT,3,30.00,buy,",
+      ].join("\n"),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.transactions.map((tx) => tx.currency)).toEqual([
+      "CAD",
+      "USD",
+      "CAD", // empty field defaults to CAD
+    ]);
+  });
+
+  it("defaults currency to CAD when the column is absent", () => {
+    const result = parseWealthsimpleCsv(
+      csv("2025-01-02,VEQT,10,40.00,buy,Bought"),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.transactions[0].currency).toBe("CAD");
   });
 
   it("handles quoted fields containing commas and formatted numbers", () => {
@@ -96,6 +126,34 @@ describe("parseWealthsimpleCsv", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error).toBe("No transactions found");
+  });
+});
+
+describe("hasMixedCurrencies", () => {
+  const tx = (currency?: string): AcbTransaction => ({
+    symbol: "VEQT",
+    quantity: 1,
+    price: 10,
+    type: "buy",
+    ...(currency !== undefined ? { currency } : {}),
+  });
+
+  it("returns false for an empty list", () => {
+    expect(hasMixedCurrencies([])).toBe(false);
+  });
+
+  it("returns false when all transactions share one currency", () => {
+    expect(hasMixedCurrencies([tx("CAD"), tx("CAD")])).toBe(false);
+    expect(hasMixedCurrencies([tx("USD"), tx("USD")])).toBe(false);
+  });
+
+  it("returns true when currencies differ", () => {
+    expect(hasMixedCurrencies([tx("CAD"), tx("USD")])).toBe(true);
+  });
+
+  it("treats a missing currency field as CAD", () => {
+    expect(hasMixedCurrencies([tx(), tx("CAD")])).toBe(false);
+    expect(hasMixedCurrencies([tx(), tx("USD")])).toBe(true);
   });
 });
 
@@ -161,21 +219,31 @@ describe("computeHoldings", () => {
 });
 
 describe("applyT3Adjustment", () => {
-  it("adds the T3 amount to the cost basis and recalculates ACB", () => {
+  it("subtracts ROC from cost basis and recalculates ACB", () => {
+    // 10 shares @ $40 = $400 pool. ROC of $100 → pool = $300, ACB/share = $30.
     const holding = computeHoldings([
       { symbol: "VEQT", quantity: 10, price: 40, type: "buy" },
     ])[0];
     const adjusted = applyT3Adjustment(holding, 100);
-    expect(adjusted.costBasis).toBe(500);
-    expect(adjusted.acbPerShare).toBe(50);
+    expect(adjusted.costBasis).toBe(300);
+    expect(adjusted.acbPerShare).toBe(30);
+  });
+
+  it("clamps cost basis to zero (ROC cannot create negative ACB)", () => {
+    const holding = computeHoldings([
+      { symbol: "VEQT", quantity: 10, price: 40, type: "buy" },
+    ])[0];
+    const adjusted = applyT3Adjustment(holding, 9999);
+    expect(adjusted.costBasis).toBe(0);
+    expect(adjusted.acbPerShare).toBe(0);
   });
 
   it("keeps ACB null when no shares remain", () => {
     const adjusted = applyT3Adjustment(
-      { symbol: "VEQT", shares: 0, costBasis: 400, acbPerShare: null },
+      { symbol: "VEQT", shares: 0, costBasis: 0, acbPerShare: null },
       100,
     );
-    expect(adjusted.costBasis).toBe(500);
+    expect(adjusted.costBasis).toBe(0);
     expect(adjusted.acbPerShare).toBeNull();
   });
 });

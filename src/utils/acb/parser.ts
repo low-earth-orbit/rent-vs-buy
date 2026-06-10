@@ -13,6 +13,8 @@ export type AcbTransaction = {
   quantity: number;
   price: number;
   type: "buy" | "sell" | "dividend";
+  /** ISO currency code from the optional Currency column; "CAD" when absent. */
+  currency?: string;
 };
 
 export type Holding = {
@@ -90,6 +92,7 @@ export function parseWealthsimpleCsv(text: string): ParseResult {
       columnIndex[column] = idx;
     }
   }
+  const currencyIndex = header.indexOf("currency");
   if (missing.length > 0) {
     return {
       ok: false,
@@ -108,11 +111,14 @@ export function parseWealthsimpleCsv(text: string): ParseResult {
     if (!symbol) continue;
     const quantity = parseNumber(fields[columnIndex.Quantity!]);
     const price = parseNumber(fields[columnIndex.Price!]);
+    const rawCurrency =
+      currencyIndex === -1 ? "" : (fields[currencyIndex] ?? "").trim();
     transactions.push({
       symbol,
       quantity: Number.isFinite(quantity) ? quantity : 0,
       price: Number.isFinite(price) ? price : 0,
       type: rawType,
+      currency: rawCurrency === "" ? "CAD" : rawCurrency.toUpperCase(),
     });
   }
 
@@ -121,6 +127,15 @@ export function parseWealthsimpleCsv(text: string): ParseResult {
   }
 
   return { ok: true, transactions };
+}
+
+/**
+ * True when transactions span more than one currency. A missing `currency`
+ * field is treated as "CAD" (the column is absent from some exports).
+ */
+export function hasMixedCurrencies(transactions: AcbTransaction[]): boolean {
+  const currencies = new Set(transactions.map((tx) => tx.currency ?? "CAD"));
+  return currencies.size > 1;
 }
 
 /** Aggregate transactions into per-symbol holdings with ACB. */
@@ -155,9 +170,12 @@ export function computeHoldings(transactions: AcbTransaction[]): Holding[] {
     .sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
-/** Apply a T3 reinvested-distribution adjustment to a holding's cost basis. */
-export function applyT3Adjustment(holding: Holding, t3: number): Holding {
-  const costBasis = holding.costBasis + t3;
+/**
+ * Apply a T3 return-of-capital (ROC) reduction to a holding's cost basis.
+ * ROC reduces ACB: costBasis -= roc. Pass the ROC amount from box 42 of the T3.
+ */
+export function applyT3Adjustment(holding: Holding, roc: number): Holding {
+  const costBasis = Math.max(0, holding.costBasis - roc);
   return {
     ...holding,
     costBasis,

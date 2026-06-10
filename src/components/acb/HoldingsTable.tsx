@@ -34,7 +34,7 @@ const HoldingsTable = ({
           <Table.Th ta="right">Shares</Table.Th>
           <Table.Th ta="right">ACB/share</Table.Th>
           <Table.Th ta="right">Total cost basis</Table.Th>
-          <Table.Th>T3 adjustment</Table.Th>
+          <Table.Th>T3 ROC (box 42)</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -59,7 +59,7 @@ const HoldingsTable = ({
               <Table.Td ta="right">{formatCAD(adjusted.costBasis)}</Table.Td>
               <Table.Td>
                 <NumberInput
-                  aria-label={`T3 adjustment for ${holding.symbol}`}
+                  aria-label={`T3 ROC (box 42) for ${holding.symbol}`}
                   value={t3 === 0 ? "" : t3}
                   onChange={(value) => onT3Change(holding.symbol, +value || 0)}
                   prefix="$"
