@@ -481,7 +481,7 @@ export default function Result({
                   retiring later, reducing retirement spending, or saving more.
                 </Text>
               )}
-              {!hasHighFullPathRisk && hasHighFullPathRisk && (
+              {!hasHighDrawdownRisk && hasHighFullPathRisk && (
                 <Text size="sm" c="dimmed">
                   Full-path shortfall is{" "}
                   {FULLPATH_RISK_HIGHLIGHT_THRESHOLD * 100}% or higher, so
