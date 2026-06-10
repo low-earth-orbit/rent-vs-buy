@@ -1,14 +1,26 @@
-import { Badge, Group, NumberInput, Table, Text, Tooltip } from "@mantine/core";
-import { applyAdjustments, type Holding } from "@/utils/acb/parser";
+import {
+  Badge,
+  Button,
+  Group,
+  NumberInput,
+  Table,
+  Text,
+  Tooltip,
+} from "@mantine/core";
+import {
+  applyAdjustments,
+  t3NetAdjustment,
+  type Holding,
+  type T3Slips,
+} from "@/utils/acb/parser";
 import { formatCAD } from "@/utils/format";
 
-export type T3Adjustments = Record<string, number>;
 export type OpeningLots = Record<string, number>;
 
 type HoldingsTableProps = {
   holdings: Holding[];
-  t3Adjustments: T3Adjustments;
-  onT3Change: (symbol: string, value: number) => void;
+  t3Slips: T3Slips;
+  onEditT3: (symbol: string) => void;
   openingLots: OpeningLots;
   onOpeningLotChange: (symbol: string, value: number) => void;
 };
@@ -26,8 +38,8 @@ const sharesFormatter = new Intl.NumberFormat("en-CA", {
 
 const HoldingsTable = ({
   holdings,
-  t3Adjustments,
-  onT3Change,
+  t3Slips,
+  onEditT3,
   openingLots,
   onOpeningLotChange,
 }: HoldingsTableProps) => {
@@ -42,14 +54,14 @@ const HoldingsTable = ({
           <Table.Th ta="right">ACB/share</Table.Th>
           <Table.Th ta="right">Total cost basis</Table.Th>
           {anyTransferred && <Table.Th>Opening lot ACB ($)</Table.Th>}
-          <Table.Th>T3 ROC (box 42)</Table.Th>
+          <Table.Th>T3 slips</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
         {holdings.map((holding) => {
-          const t3 = t3Adjustments[holding.symbol] ?? 0;
+          const t3Net = t3NetAdjustment(t3Slips[holding.symbol] ?? []);
           const openingLot = openingLots[holding.symbol] ?? 0;
-          const adjusted = applyAdjustments(holding, openingLot, t3);
+          const adjusted = applyAdjustments(holding, openingLot, t3Net);
           const hasTransfers = holding.transferredShares > 0;
           return (
             <Table.Tr key={holding.symbol}>
@@ -105,17 +117,24 @@ const HoldingsTable = ({
                 </Table.Td>
               )}
               <Table.Td>
-                <NumberInput
-                  aria-label={`T3 ROC (box 42) for ${holding.symbol}`}
-                  value={t3 === 0 ? "" : t3}
-                  onChange={(value) => onT3Change(holding.symbol, +value || 0)}
-                  prefix="$"
-                  min={0}
-                  step={10}
-                  size="xs"
-                  w={130}
-                  placeholder="$0"
-                />
+                <Group gap="xs" wrap="nowrap">
+                  <Button
+                    variant="subtle"
+                    size="xs"
+                    onClick={() => onEditT3(holding.symbol)}
+                  >
+                    Edit T3
+                  </Button>
+                  {t3Net !== 0 && (
+                    <Badge
+                      size="sm"
+                      variant="light"
+                      color={t3Net > 0 ? "teal" : "red"}
+                    >
+                      {`${t3Net < 0 ? "−" : "+"}${formatCAD(Math.abs(t3Net))}`}
+                    </Badge>
+                  )}
+                </Group>
               </Table.Td>
             </Table.Tr>
           );

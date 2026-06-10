@@ -22,14 +22,36 @@ export type AcbTransaction = {
   symbol: string;
   quantity: number;
   price: number;
-  type: "buy" | "sell" | "dividend" | "transfer";
+  type: "buy" | "sell" | "dividend" | "transfer" | "interest";
   /** ISO currency code from the optional Currency column; "CAD" when absent. */
   currency?: string;
   /** ISO date string from `transaction_date`; "" when the column is absent. */
   date?: string;
   /** Raw `activity_type` (or legacy `Type`) value as it appeared in the CSV. */
   rawActivityType?: string;
+  /** Raw `account_type` column value; undefined when the column is absent. */
+  accountType?: string;
+  /** Parsed `net_cash_amount` column value; undefined when absent. */
+  netCashAmount?: number;
 };
+
+/** One T3 slip's ACB-relevant boxes for a single tax year. */
+export type T3Entry = {
+  /** Tax year, e.g. 2024. */
+  year: number;
+  /** Box 21 — Capital Gains Distributions. Adds to ACB. */
+  box21: number;
+  /** Box 42 — Amount Resulting in Cost Base Adjustment (ROC). Subtracts from ACB. */
+  box42: number;
+};
+
+/** T3 entries keyed by symbol. */
+export type T3Slips = Record<string, T3Entry[]>;
+
+/** Net ACB adjustment across all years: sum(box21) − sum(box42). */
+export function t3NetAdjustment(entries: T3Entry[]): number {
+  return entries.reduce((sum, entry) => sum + entry.box21 - entry.box42, 0);
+}
 
 export type Holding = {
   symbol: string;
@@ -104,6 +126,7 @@ function mapActivityType(
   }
   if (type === "dividend") return "dividend";
   if (type === "securitytransfer") return "transfer";
+  if (type === "interestcharged") return "interest";
   return null;
 }
 
@@ -129,6 +152,8 @@ export function parseWealthsimpleCsv(text: string): ParseResult {
   const directionIdx = col("direction");
   const currencyIdx = col("currency");
   const dateIdx = col("transaction_date");
+  const accountTypeIdx = col("account_type");
+  const netCashAmountIdx = col("net_cash_amount");
 
   // The legacy `Type` column wins when present; otherwise require the
   // Wealthsimple activity columns.
@@ -175,13 +200,16 @@ export function parseWealthsimpleCsv(text: string): ParseResult {
         field(directionIdx),
       );
     }
-    if (type === null) continue; // ignore deposits, interest, fees, etc.
+    if (type === null) continue; // ignore deposits, deposit interest, fees, etc.
 
     const symbol = field(symbolIdx);
-    if (!symbol) continue;
+    // Interest-charged rows have no symbol; everything else requires one.
+    if (!symbol && type !== "interest") continue;
     const quantity = parseNumber(fields[quantityIdx]);
     const price = parseNumber(fields[priceIdx]);
     const rawCurrency = field(currencyIdx);
+    const accountType = field(accountTypeIdx);
+    const rawNetCash = field(netCashAmountIdx);
     transactions.push({
       symbol,
       quantity: Number.isFinite(quantity) ? quantity : 0,
@@ -190,6 +218,8 @@ export function parseWealthsimpleCsv(text: string): ParseResult {
       currency: rawCurrency === "" ? "CAD" : rawCurrency.toUpperCase(),
       date: field(dateIdx),
       rawActivityType,
+      ...(accountType !== "" ? { accountType } : {}),
+      ...(rawNetCash !== "" ? { netCashAmount: parseNumber(rawNetCash) } : {}),
     });
   }
 
@@ -245,7 +275,8 @@ export function computeHoldings(transactions: AcbTransaction[]): Holding[] {
     { shares: number; costBasis: number; transferredShares: number }
   >();
   for (const tx of transactions) {
-    if (tx.type === "dividend") continue; // dividends never touch ACB
+    // Dividends never touch ACB; interest charges never touch holdings.
+    if (tx.type === "dividend" || tx.type === "interest") continue;
     const entry = bySymbol.get(tx.symbol) ?? {
       shares: 0,
       costBasis: 0,
@@ -285,27 +316,94 @@ export function computeHoldings(transactions: AcbTransaction[]): Holding[] {
 }
 
 /**
+ * @deprecated Use `applyAdjustments(holding, 0, -roc)` instead.
  * Apply a T3 return-of-capital (ROC) reduction to a holding's cost basis.
  * ROC reduces ACB: costBasis -= roc. Pass the ROC amount from box 42 of the T3.
  */
 export function applyT3Adjustment(holding: Holding, roc: number): Holding {
-  return applyAdjustments(holding, 0, roc);
+  return applyAdjustments(holding, 0, -roc);
 }
 
 /**
  * Apply UI-layer cost basis adjustments to a holding:
  * - `openingLot`: total cost basis for transferred-in shares (added first)
- * - `roc`: T3 box 42 return of capital (subtracted, clamped at zero)
+ * - `t3Net`: net T3 adjustment, `sum(box 21) − sum(box 42)` — positive adds
+ *   to the pool, negative subtracts (combined result clamped at zero)
  */
 export function applyAdjustments(
   holding: Holding,
   openingLot: number,
-  roc: number,
+  t3Net: number,
 ): Holding {
-  const costBasis = Math.max(0, holding.costBasis + openingLot - roc);
+  const costBasis = Math.max(0, holding.costBasis + openingLot + t3Net);
   return {
     ...holding,
     costBasis,
     acbPerShare: holding.shares > 0 ? costBasis / holding.shares : null,
   };
+}
+
+/** Total margin interest paid (absolute value) keyed by calendar year. */
+export type MarginInterestByYear = Record<number, number>;
+
+/**
+ * Sum interest charged on margin accounts by calendar year. Only rows whose
+ * raw activity type is `InterestCharged` and whose account type contains
+ * "margin" (case-insensitive) count; rows without a parseable date are
+ * skipped. Uses `net_cash_amount` (negative for charges) when present,
+ * falling back to quantity × price.
+ */
+export function computeMarginInterest(
+  transactions: AcbTransaction[],
+): MarginInterestByYear {
+  const byYear: MarginInterestByYear = {};
+  for (const tx of transactions) {
+    const activity = (tx.rawActivityType ?? "").trim().toLowerCase();
+    if (activity !== "interestcharged") continue;
+    if (!(tx.accountType ?? "").toLowerCase().includes("margin")) continue;
+    const year = Number((tx.date ?? "").slice(0, 4));
+    if (!Number.isInteger(year) || year <= 0) continue;
+    const amount =
+      tx.netCashAmount !== undefined && tx.netCashAmount !== 0
+        ? Math.abs(tx.netCashAmount)
+        : Math.abs(tx.quantity * tx.price);
+    if (amount === 0) continue;
+    byYear[year] = (byYear[year] ?? 0) + amount;
+  }
+  return byYear;
+}
+
+/** One successfully parsed upload: the file's name and its transactions. */
+export type ParsedFile = {
+  name: string;
+  transactions: AcbTransaction[];
+};
+
+/**
+ * Parse a batch of uploaded files. Successfully parsed files are returned in
+ * order; unreadable or invalid files contribute a `"name: reason"` error
+ * string instead. Designed for additive uploads: callers append `parsed` to
+ * their existing file list.
+ */
+export async function parseFiles(
+  files: File[],
+): Promise<{ parsed: ParsedFile[]; errors: string[] }> {
+  const parsed: ParsedFile[] = [];
+  const errors: string[] = [];
+  for (const file of files) {
+    let text: string;
+    try {
+      text = await file.text();
+    } catch {
+      errors.push(`${file.name}: could not read the file.`);
+      continue;
+    }
+    const result = parseWealthsimpleCsv(text);
+    if (result.ok) {
+      parsed.push({ name: file.name, transactions: result.transactions });
+    } else {
+      errors.push(`${file.name}: ${result.error}`);
+    }
+  }
+  return { parsed, errors };
 }

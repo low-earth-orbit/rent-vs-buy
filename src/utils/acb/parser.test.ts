@@ -3,9 +3,12 @@ import {
   applyAdjustments,
   applyT3Adjustment,
   computeHoldings,
+  computeMarginInterest,
   detectOverlappingFiles,
   hasMixedCurrencies,
+  parseFiles,
   parseWealthsimpleCsv,
+  t3NetAdjustment,
   type AcbTransaction,
 } from "./parser";
 
@@ -177,23 +180,47 @@ describe("parseWealthsimpleCsv (Wealthsimple activity columns)", () => {
       currency: "CAD",
       date: "2025-01-02",
       rawActivityType: "Trade",
+      accountType: "non-registered",
+      netCashAmount: -400,
     });
   });
 
-  it("skips non-trade activity types", () => {
+  it("skips non-trade activity types but keeps interest charges", () => {
     const result = parseWealthsimpleCsv(
       wsCsv(
         "2025-01-01,2025-01-01,acc1,non-registered,MoneyMovement,DEPOSIT,,,,CAD,,,0,1000.00",
         "2025-01-02,2025-01-03,acc1,non-registered,Trade,BUY,LONG,XEQT,iShares,CAD,5,30.00,0,-150.00",
         "2025-01-31,2025-01-31,acc1,non-registered,Interest,,,,,CAD,,,0,1.23",
-        "2025-02-01,2025-02-01,acc1,non-registered,InterestCharged,,,,,CAD,,,0,-0.50",
+        "2025-02-01,2025-02-01,acc1,margin,InterestCharged,,,,,CAD,,,0,-0.50",
         "2025-02-15,2025-02-15,acc1,non-registered,AdministrativePayment,,,,,CAD,,,0,-5.00",
       ),
     );
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.transactions).toHaveLength(1);
+    expect(result.transactions.map((tx) => tx.type)).toEqual([
+      "buy",
+      "interest",
+    ]);
     expect(result.transactions[0].symbol).toBe("XEQT");
+    expect(result.transactions[1]).toMatchObject({
+      type: "interest",
+      rawActivityType: "InterestCharged",
+      accountType: "margin",
+      netCashAmount: -0.5,
+      date: "2025-02-01",
+    });
+  });
+
+  it("parses account_type and net_cash_amount on trade rows", () => {
+    const result = parseWealthsimpleCsv(
+      wsCsv(
+        "2025-01-02,2025-01-03,acc1,Margin Account,Trade,BUY,LONG,XEQT,iShares,CAD,5,30.00,0,-150.00",
+      ),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.transactions[0].accountType).toBe("Margin Account");
+    expect(result.transactions[0].netCashAmount).toBe(-150);
   });
 
   it("skips Trade rows with unexpected sub-type/direction combinations", () => {
@@ -465,23 +492,189 @@ describe("applyT3Adjustment", () => {
 });
 
 describe("applyAdjustments", () => {
-  it("adds the opening lot before subtracting ROC", () => {
+  it("adds the opening lot and a negative T3 net (box 42 ROC)", () => {
     // 5 transferred shares + buy 10 @ $40 = 15 shares, $400 pool.
-    // Opening lot $150 → $550; ROC $50 → $500; ACB/share = 500/15.
+    // Opening lot $150 → $550; net T3 −$50 → $500; ACB/share = 500/15.
     const holding = computeHoldings([
       { symbol: "VEQT", quantity: 5, price: 0, type: "transfer" },
       { symbol: "VEQT", quantity: 10, price: 40, type: "buy" },
     ])[0];
-    const adjusted = applyAdjustments(holding, 150, 50);
+    const adjusted = applyAdjustments(holding, 150, -50);
     expect(adjusted.costBasis).toBe(500);
     expect(adjusted.acbPerShare).toBeCloseTo(500 / 15);
+  });
+
+  it("adds a positive T3 net (box 21 capital gains distributions)", () => {
+    // 10 shares @ $40 = $400. Net T3 +$100 → $500, ACB/share = $50.
+    const holding = computeHoldings([
+      { symbol: "VEQT", quantity: 10, price: 40, type: "buy" },
+    ])[0];
+    const adjusted = applyAdjustments(holding, 0, 100);
+    expect(adjusted.costBasis).toBe(500);
+    expect(adjusted.acbPerShare).toBe(50);
   });
 
   it("clamps the combined adjustment at zero", () => {
     const holding = computeHoldings([
       { symbol: "VEQT", quantity: 10, price: 40, type: "buy" },
     ])[0];
-    const adjusted = applyAdjustments(holding, 100, 9999);
+    const adjusted = applyAdjustments(holding, 100, -9999);
     expect(adjusted.costBasis).toBe(0);
+  });
+});
+
+describe("t3NetAdjustment", () => {
+  it("returns zero for no entries", () => {
+    expect(t3NetAdjustment([])).toBe(0);
+  });
+
+  it("sums box 21 minus box 42 across years", () => {
+    expect(
+      t3NetAdjustment([
+        { year: 2023, box21: 120, box42: 30 },
+        { year: 2024, box21: 0, box42: 50 },
+      ]),
+    ).toBe(40);
+  });
+
+  it("can be negative when ROC dominates", () => {
+    expect(t3NetAdjustment([{ year: 2024, box21: 10, box42: 60 }])).toBe(-50);
+  });
+});
+
+describe("computeMarginInterest", () => {
+  const interest = (
+    date: string | undefined,
+    netCashAmount: number | undefined,
+    accountType: string | undefined,
+  ): AcbTransaction => ({
+    symbol: "",
+    quantity: 0,
+    price: 0,
+    type: "interest",
+    rawActivityType: "InterestCharged",
+    ...(date !== undefined ? { date } : {}),
+    ...(netCashAmount !== undefined ? { netCashAmount } : {}),
+    ...(accountType !== undefined ? { accountType } : {}),
+  });
+
+  it("groups absolute interest amounts by calendar year", () => {
+    const result = computeMarginInterest([
+      interest("2025-03-31", -57.33, "margin"),
+      interest("2025-04-30", -42.67, "margin"),
+      interest("2026-01-31", -102.14, "margin"),
+    ]);
+    expect(result).toEqual({ 2025: 100, 2026: 102.14 });
+  });
+
+  it("matches account types containing 'margin' case-insensitively", () => {
+    const result = computeMarginInterest([
+      interest("2025-01-31", -10, "Margin Account"),
+      interest("2025-02-28", -20, "NON-REGISTERED-MARGIN"),
+      interest("2025-03-31", -99, "tfsa"),
+    ]);
+    expect(result).toEqual({ 2025: 30 });
+  });
+
+  it("skips rows with a missing date or accountType", () => {
+    const result = computeMarginInterest([
+      interest(undefined, -10, "margin"),
+      interest("", -10, "margin"),
+      interest("2025-01-31", -10, undefined),
+      interest("2025-02-28", -10, "margin"),
+    ]);
+    expect(result).toEqual({ 2025: 10 });
+  });
+
+  it("ignores non-interest activity types", () => {
+    const buy: AcbTransaction = {
+      symbol: "XEQT",
+      quantity: 5,
+      price: 30,
+      type: "buy",
+      rawActivityType: "Trade",
+      accountType: "margin",
+      date: "2025-01-02",
+      netCashAmount: -150,
+    };
+    expect(computeMarginInterest([buy])).toEqual({});
+  });
+
+  it("falls back to |quantity × price| when net_cash_amount is absent", () => {
+    const tx = interest("2025-01-31", undefined, "margin");
+    expect(
+      computeMarginInterest([{ ...tx, quantity: 1, price: 12.5 }]),
+    ).toEqual({ 2025: 12.5 });
+  });
+
+  it("computes from a parsed Wealthsimple export end to end", () => {
+    const result = parseWealthsimpleCsv(
+      wsCsv(
+        "2025-01-02,2025-01-03,acc1,margin,Trade,BUY,LONG,XEQT,iShares,CAD,5,30.00,0,-150.00",
+        "2025-03-31,2025-03-31,acc1,margin,InterestCharged,,,,,CAD,,,0,-57.33",
+        "2026-01-31,2026-01-31,acc1,margin,InterestCharged,,,,,CAD,,,0,-102.14",
+      ),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(computeMarginInterest(result.transactions)).toEqual({
+      2025: 57.33,
+      2026: 102.14,
+    });
+  });
+});
+
+describe("parseFiles", () => {
+  const fakeFile = (name: string, content: string): File =>
+    ({ name, text: () => Promise.resolve(content) }) as unknown as File;
+
+  it("parses each file and keeps results separate, in order", async () => {
+    const { parsed, errors } = await parseFiles([
+      fakeFile("a.csv", csv("2024-01-02,VEQT,10,40.00,buy,Bought")),
+      fakeFile("b.csv", csv("2025-01-02,VEQT,5,50.00,buy,Bought")),
+    ]);
+    expect(errors).toEqual([]);
+    expect(parsed.map((file) => file.name)).toEqual(["a.csv", "b.csv"]);
+    expect(parsed[0].transactions).toHaveLength(1);
+    expect(parsed[1].transactions).toHaveLength(1);
+  });
+
+  it("collects per-file errors and still returns the valid files", async () => {
+    const { parsed, errors } = await parseFiles([
+      fakeFile("bad.csv", ""),
+      fakeFile("good.csv", csv("2025-01-02,VEQT,10,40.00,buy,Bought")),
+    ]);
+    expect(errors).toEqual(["bad.csv: No transactions found"]);
+    expect(parsed.map((file) => file.name)).toEqual(["good.csv"]);
+  });
+
+  it("reports unreadable files", async () => {
+    const unreadable = {
+      name: "broken.csv",
+      text: () => Promise.reject(new Error("nope")),
+    } as unknown as File;
+    const { parsed, errors } = await parseFiles([unreadable]);
+    expect(parsed).toEqual([]);
+    expect(errors).toEqual(["broken.csv: could not read the file."]);
+  });
+
+  it("supports additive uploads: appending preserves earlier files", async () => {
+    // Simulates Main.tsx adding files across two picker opens.
+    const first = await parseFiles([
+      fakeFile("2024.csv", csv("2024-01-02,VEQT,10,40.00,buy,Bought")),
+    ]);
+    const second = await parseFiles([
+      fakeFile("2025.csv", csv("2025-01-02,VEQT,5,50.00,buy,Bought")),
+    ]);
+    const all = [...first.parsed, ...second.parsed];
+    expect(all.map((file) => file.name)).toEqual(["2024.csv", "2025.csv"]);
+    const merged = all
+      .flatMap((file) => file.transactions)
+      .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+    expect(computeHoldings(merged)[0]).toMatchObject({
+      symbol: "VEQT",
+      shares: 15,
+      costBasis: 650,
+    });
   });
 });

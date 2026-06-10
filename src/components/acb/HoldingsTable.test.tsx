@@ -45,8 +45,8 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS}
-        t3Adjustments={{}}
-        onT3Change={noop}
+        t3Slips={{}}
+        onEditT3={noop}
         openingLots={{}}
         onOpeningLotChange={noop}
       />,
@@ -62,8 +62,8 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS}
-        t3Adjustments={{}}
-        onT3Change={noop}
+        t3Slips={{}}
+        onEditT3={noop}
         openingLots={{}}
         onOpeningLotChange={noop}
       />,
@@ -73,12 +73,12 @@ describe("HoldingsTable", () => {
     expect(within(xeqtRow).getByText("—")).toBeInTheDocument();
   });
 
-  it("applies a T3 adjustment to cost basis and ACB per share", () => {
+  it("applies the net T3 adjustment to cost basis and ACB per share", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS}
-        t3Adjustments={{ VEQT: 100 }}
-        onT3Change={noop}
+        t3Slips={{ VEQT: [{ year: 2024, box21: 0, box42: 100 }] }}
+        onEditT3={noop}
         openingLots={{}}
         onOpeningLotChange={noop}
       />,
@@ -90,30 +90,86 @@ describe("HoldingsTable", () => {
     expect(within(veqtRow).getByText("$30.00")).toBeInTheDocument();
   });
 
-  it("calls onT3Change with the symbol when a T3 amount is entered", async () => {
-    const user = userEvent.setup();
-    const onT3Change = vi.fn();
+  it("nets box 21 against box 42 across years", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS}
-        t3Adjustments={{}}
-        onT3Change={onT3Change}
+        t3Slips={{
+          VEQT: [
+            { year: 2023, box21: 150, box42: 0 },
+            { year: 2024, box21: 0, box42: 50 },
+          ],
+        }}
+        onEditT3={noop}
         openingLots={{}}
         onOpeningLotChange={noop}
       />,
     );
 
-    const input = screen.getByLabelText("T3 ROC (box 42) for VEQT");
-    await user.type(input, "25");
-    expect(onT3Change).toHaveBeenLastCalledWith("VEQT", 25);
+    // Net +$100 raises pool: $400 + $100 = $500, ACB/share = $50
+    const veqtRow = screen.getByText("VEQT").closest("tr")!;
+    expect(within(veqtRow).getByText("$500")).toBeInTheDocument();
+    expect(within(veqtRow).getByText("$50.00")).toBeInTheDocument();
+  });
+
+  it("shows a signed badge next to Edit T3 when the net is non-zero", () => {
+    renderWithMantine(
+      <HoldingsTable
+        holdings={HOLDINGS}
+        t3Slips={{
+          VEQT: [{ year: 2024, box21: 0, box42: 50 }],
+          XEQT: [{ year: 2024, box21: 120, box42: 0 }],
+        }}
+        onEditT3={noop}
+        openingLots={{}}
+        onOpeningLotChange={noop}
+      />,
+    );
+
+    const veqtRow = screen.getByText("VEQT").closest("tr")!;
+    expect(within(veqtRow).getByText("−$50")).toBeInTheDocument();
+    const xeqtRow = screen.getByText("XEQT").closest("tr")!;
+    expect(within(xeqtRow).getByText("+$120")).toBeInTheDocument();
+  });
+
+  it("shows no badge when there are no T3 entries or the net is zero", () => {
+    renderWithMantine(
+      <HoldingsTable
+        holdings={HOLDINGS}
+        t3Slips={{ VEQT: [{ year: 2024, box21: 25, box42: 25 }] }}
+        onEditT3={noop}
+        openingLots={{}}
+        onOpeningLotChange={noop}
+      />,
+    );
+
+    expect(screen.queryByText(/^[+−]\$/)).not.toBeInTheDocument();
+  });
+
+  it("calls onEditT3 with the symbol when Edit T3 is clicked", async () => {
+    const user = userEvent.setup();
+    const onEditT3 = vi.fn();
+    renderWithMantine(
+      <HoldingsTable
+        holdings={HOLDINGS}
+        t3Slips={{}}
+        onEditT3={onEditT3}
+        openingLots={{}}
+        onOpeningLotChange={noop}
+      />,
+    );
+
+    const veqtRow = screen.getByText("VEQT").closest("tr")!;
+    await user.click(within(veqtRow).getByRole("button", { name: "Edit T3" }));
+    expect(onEditT3).toHaveBeenCalledWith("VEQT");
   });
 
   it("hides the opening lot column when no holding has transferred shares", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS}
-        t3Adjustments={{}}
-        onT3Change={noop}
+        t3Slips={{}}
+        onEditT3={noop}
         openingLots={{}}
         onOpeningLotChange={noop}
       />,
@@ -126,8 +182,8 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS_WITH_TRANSFER}
-        t3Adjustments={{}}
-        onT3Change={noop}
+        t3Slips={{}}
+        onEditT3={noop}
         openingLots={{}}
         onOpeningLotChange={noop}
       />,
@@ -146,12 +202,12 @@ describe("HoldingsTable", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("adds the opening lot to the cost basis pool before the T3 ROC deduction", () => {
+  it("adds the opening lot to the cost basis pool before the T3 net", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS_WITH_TRANSFER}
-        t3Adjustments={{ XEQT: 50 }}
-        onT3Change={noop}
+        t3Slips={{ XEQT: [{ year: 2024, box21: 0, box42: 50 }] }}
+        onEditT3={noop}
         openingLots={{ XEQT: 200 }}
         onOpeningLotChange={noop}
       />,
@@ -169,8 +225,8 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS_WITH_TRANSFER}
-        t3Adjustments={{}}
-        onT3Change={noop}
+        t3Slips={{}}
+        onEditT3={noop}
         openingLots={{}}
         onOpeningLotChange={onOpeningLotChange}
       />,
