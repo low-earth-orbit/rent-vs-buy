@@ -6,17 +6,19 @@ import FileUpload from "./FileUpload";
 const noop = () => {};
 
 describe("FileUpload", () => {
-  it("lists each uploaded file with a remove button", () => {
+  it("lists each uploaded file with preview and remove buttons", () => {
     renderWithMantine(
       <FileUpload
         fileNames={["2024.csv", "2025.csv"]}
         onFilesAdded={noop}
         onRemoveFile={noop}
+        onPreview={noop}
       />,
     );
 
     expect(screen.getByText("2024.csv")).toBeInTheDocument();
     expect(screen.getByText("2025.csv")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Preview" })).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: "Remove 2024.csv" }),
     ).toBeInTheDocument();
@@ -27,9 +29,15 @@ describe("FileUpload", () => {
 
   it("shows no file list when nothing is uploaded", () => {
     renderWithMantine(
-      <FileUpload fileNames={[]} onFilesAdded={noop} onRemoveFile={noop} />,
+      <FileUpload
+        fileNames={[]}
+        onFilesAdded={noop}
+        onRemoveFile={noop}
+        onPreview={noop}
+      />,
     );
     expect(screen.queryByRole("button", { name: /^Remove / })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Preview" })).toBeNull();
   });
 
   it("calls onRemoveFile with the index of the deleted file", async () => {
@@ -40,10 +48,27 @@ describe("FileUpload", () => {
         fileNames={["2024.csv", "2025.csv"]}
         onFilesAdded={noop}
         onRemoveFile={onRemoveFile}
+        onPreview={noop}
       />,
     );
 
     await user.click(screen.getByRole("button", { name: "Remove 2025.csv" }));
     expect(onRemoveFile).toHaveBeenCalledWith(1);
+  });
+
+  it("calls onPreview with the index of the previewed file", async () => {
+    const user = userEvent.setup();
+    const onPreview = vi.fn();
+    renderWithMantine(
+      <FileUpload
+        fileNames={["2024.csv", "2025.csv"]}
+        onFilesAdded={noop}
+        onRemoveFile={noop}
+        onPreview={onPreview}
+      />,
+    );
+
+    await user.click(screen.getAllByRole("button", { name: "Preview" })[1]);
+    expect(onPreview).toHaveBeenCalledWith(1);
   });
 });

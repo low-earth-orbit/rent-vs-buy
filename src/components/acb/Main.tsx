@@ -4,11 +4,14 @@ import {
   Container,
   List,
   Paper,
+  SegmentedControl,
   Stack,
   Table,
   Text,
   Title,
 } from "@mantine/core";
+import AccountView from "./AccountView";
+import FilePreviewModal from "./FilePreviewModal";
 import FileUpload from "./FileUpload";
 import HoldingsTable, { type OpeningLots } from "./HoldingsTable";
 import T3Modal from "./T3Modal";
@@ -16,8 +19,10 @@ import {
   computeHoldings,
   computeMarginInterest,
   detectOverlappingFiles,
+  groupByAccount,
   hasMixedCurrencies,
   parseFiles,
+  type AcbTransaction,
   type ParsedFile,
   type T3Entry,
   type T3Slips,
@@ -36,6 +41,10 @@ const Main = () => {
   const [t3Slips, setT3Slips] = useState<T3Slips>({});
   const [t3ModalSymbol, setT3ModalSymbol] = useState<string | null>(null);
   const [openingLots, setOpeningLots] = useState<OpeningLots>({});
+  const [previewFileIndex, setPreviewFileIndex] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"combined" | "byAccount">(
+    "combined",
+  );
 
   async function handleFilesAdded(newFiles: File[]) {
     const { parsed, errors } = await parseFiles(newFiles);
@@ -47,6 +56,46 @@ const Main = () => {
 
   function handleRemoveFile(index: number) {
     setLoadedFiles((prev) => prev.filter((_, i) => i !== index));
+    // Keep the preview pointing at the same file (or close it if removed).
+    setPreviewFileIndex((prev) => {
+      if (prev === null || prev < index) return prev;
+      if (prev === index) return null;
+      return prev - 1;
+    });
+  }
+
+  function handleUpdateTransaction(
+    fileIndex: number,
+    rowIndex: number,
+    patch: Partial<AcbTransaction>,
+  ) {
+    // Holdings, overlap detection, and margin interest are all derived from
+    // loadedFiles below, so they recompute automatically on this update.
+    setLoadedFiles((prev) =>
+      prev.map((file, i) =>
+        i === fileIndex
+          ? {
+              ...file,
+              transactions: file.transactions.map((tx, j) =>
+                j === rowIndex ? { ...tx, ...patch } : tx,
+              ),
+            }
+          : file,
+      ),
+    );
+  }
+
+  function handleDeleteTransaction(fileIndex: number, rowIndex: number) {
+    setLoadedFiles((prev) =>
+      prev.map((file, i) =>
+        i === fileIndex
+          ? {
+              ...file,
+              transactions: file.transactions.filter((_, j) => j !== rowIndex),
+            }
+          : file,
+      ),
+    );
   }
 
   function handleEditT3(symbol: string) {
@@ -83,6 +132,9 @@ const Main = () => {
   const marginYears = Object.keys(marginInterest)
     .map(Number)
     .sort((a, b) => a - b);
+  const accountGroups = transactions ? groupByAccount(transactions) : null;
+  const previewFile =
+    previewFileIndex !== null ? (loadedFiles[previewFileIndex] ?? null) : null;
   const modalEntries =
     t3ModalSymbol !== null ? (t3Slips[t3ModalSymbol] ?? []) : [];
 
@@ -94,6 +146,7 @@ const Main = () => {
             fileNames={loadedFiles.map((file) => file.name)}
             onFilesAdded={handleFilesAdded}
             onRemoveFile={handleRemoveFile}
+            onPreview={setPreviewFileIndex}
           />
         </Paper>
         {parseErrors.length > 0 && (
@@ -124,6 +177,19 @@ const Main = () => {
           </Alert>
         )}
         {holdings && (
+          <SegmentedControl
+            value={viewMode}
+            onChange={(value) =>
+              setViewMode(value === "byAccount" ? "byAccount" : "combined")
+            }
+            data={[
+              { label: "Combined", value: "combined" },
+              { label: "By Account", value: "byAccount" },
+            ]}
+            w="fit-content"
+          />
+        )}
+        {holdings && viewMode === "combined" && (
           <Paper withBorder p="md" radius="md">
             <Stack gap="sm">
               <Title order={2} fz="lg">
@@ -150,7 +216,16 @@ const Main = () => {
             </Stack>
           </Paper>
         )}
-        {marginYears.length > 0 && (
+        {accountGroups && viewMode === "byAccount" && (
+          <AccountView
+            groups={accountGroups}
+            t3Slips={t3Slips}
+            onEditT3={handleEditT3}
+            openingLots={openingLots}
+            onOpeningLotChange={handleOpeningLotChange}
+          />
+        )}
+        {viewMode === "combined" && marginYears.length > 0 && (
           <Paper withBorder p="md" radius="md">
             <Stack gap="sm">
               <Title order={2} fz="lg">
@@ -180,6 +255,13 @@ const Main = () => {
             </Stack>
           </Paper>
         )}
+        <FilePreviewModal
+          file={previewFile}
+          fileIndex={previewFileIndex}
+          onUpdateTransaction={handleUpdateTransaction}
+          onDeleteTransaction={handleDeleteTransaction}
+          onClose={() => setPreviewFileIndex(null)}
+        />
         <T3Modal
           symbol={t3ModalSymbol}
           entries={modalEntries}

@@ -83,7 +83,7 @@ export default function Headline({ input, result, planSWR }: HeadlineProps) {
       <Stack gap="sm">
         {/* Hero: the retirement age */}
         <Stack gap={2}>
-          <Text size="sm">
+          <Text size="sm" fw="600">
             {retireNow ? "You can retire" : "You can retire at"}
           </Text>
           <Group gap="xs" align="baseline" wrap="nowrap">

@@ -4,7 +4,9 @@ import {
   applyT3Adjustment,
   computeHoldings,
   computeMarginInterest,
+  computeYearlyACB,
   detectOverlappingFiles,
+  groupByAccount,
   hasMixedCurrencies,
   parseFiles,
   parseWealthsimpleCsv,
@@ -180,6 +182,7 @@ describe("parseWealthsimpleCsv (Wealthsimple activity columns)", () => {
       currency: "CAD",
       date: "2025-01-02",
       rawActivityType: "Trade",
+      accountId: "acc1",
       accountType: "non-registered",
       netCashAmount: -400,
     });
@@ -621,6 +624,237 @@ describe("computeMarginInterest", () => {
       2025: 57.33,
       2026: 102.14,
     });
+  });
+});
+
+describe("groupByAccount", () => {
+  const tx = (
+    accountId: string | undefined,
+    accountType: string | undefined,
+    symbol = "VEQT",
+  ): AcbTransaction => ({
+    symbol,
+    quantity: 1,
+    price: 10,
+    type: "buy",
+    ...(accountId !== undefined ? { accountId } : {}),
+    ...(accountType !== undefined ? { accountType } : {}),
+  });
+
+  it("returns an empty list for no transactions", () => {
+    expect(groupByAccount([])).toEqual([]);
+  });
+
+  it("groups by (accountId, accountType) composite key", () => {
+    const a1 = tx("acc1", "non-registered");
+    const a2 = tx("acc1", "non-registered", "XEQT");
+    const b1 = tx("acc2", "non-registered");
+    const c1 = tx("acc1", "margin");
+    const groups = groupByAccount([a1, b1, a2, c1]);
+    expect(groups).toHaveLength(3);
+    const accA = groups.find(
+      (g) => g.accountId === "acc1" && g.accountType === "non-registered",
+    );
+    expect(accA?.transactions).toEqual([a1, a2]);
+    const accB = groups.find((g) => g.accountId === "acc2");
+    expect(accB?.transactions).toEqual([b1]);
+    const accC = groups.find((g) => g.accountType === "margin");
+    expect(accC?.transactions).toEqual([c1]);
+  });
+
+  it("uses empty strings for the legacy format (no account columns)", () => {
+    const legacy = tx(undefined, undefined);
+    const groups = groupByAccount([legacy]);
+    expect(groups).toEqual([
+      {
+        accountId: "",
+        accountType: "",
+        isRegistered: false,
+        transactions: [legacy],
+      },
+    ]);
+  });
+
+  it("detects registered accounts case-insensitively (TFSA/RRSP/FHSA)", () => {
+    const groups = groupByAccount([
+      tx("a", "tfsa"),
+      tx("b", "RRSP Savings"),
+      tx("c", "My fhsa account"),
+      tx("d", "Margin Account"),
+      tx("e", "non-registered"),
+    ]);
+    const registeredById = new Map(
+      groups.map((g) => [g.accountId, g.isRegistered]),
+    );
+    expect(registeredById.get("a")).toBe(true);
+    expect(registeredById.get("b")).toBe(true);
+    expect(registeredById.get("c")).toBe(true);
+    expect(registeredById.get("d")).toBe(false);
+    expect(registeredById.get("e")).toBe(false);
+  });
+
+  it("sorts non-registered accounts before registered ones", () => {
+    const groups = groupByAccount([
+      tx("a", "TFSA"),
+      tx("b", "margin"),
+      tx("c", "RRSP"),
+      tx("d", "non-registered"),
+    ]);
+    expect(groups.map((g) => g.accountId)).toEqual(["b", "d", "a", "c"]);
+  });
+});
+
+describe("computeYearlyACB", () => {
+  const tx = (
+    date: string | undefined,
+    quantity: number,
+    price: number,
+    type: AcbTransaction["type"],
+    symbol = "VEQT",
+  ): AcbTransaction => ({
+    symbol,
+    quantity,
+    price,
+    type,
+    ...(date !== undefined ? { date } : {}),
+  });
+
+  it("returns an empty list when the symbol has no transactions", () => {
+    expect(computeYearlyACB([tx("2024-01-02", 10, 40, "buy")], "XEQT")).toEqual(
+      [],
+    );
+  });
+
+  it("accumulates buys year by year with a running pool", () => {
+    const snapshots = computeYearlyACB(
+      [
+        tx("2024-01-02", 10, 40, "buy"),
+        tx("2024-06-01", 10, 50, "buy"),
+        tx("2025-03-01", 5, 60, "buy"),
+      ],
+      "VEQT",
+    );
+    expect(snapshots).toEqual([
+      {
+        year: 2024,
+        buyQty: 20,
+        sellQty: 0,
+        endShares: 20,
+        costBasis: 900,
+        acbPerShare: 45,
+      },
+      {
+        year: 2025,
+        buyQty: 5,
+        sellQty: 0,
+        endShares: 25,
+        costBasis: 1200,
+        acbPerShare: 48,
+      },
+    ]);
+  });
+
+  it("applies pro-rata pool reduction on sells (ACB/share unchanged)", () => {
+    const snapshots = computeYearlyACB(
+      [tx("2024-01-02", 10, 40, "buy"), tx("2025-06-01", 4, 90, "sell")],
+      "VEQT",
+    );
+    expect(snapshots).toEqual([
+      {
+        year: 2024,
+        buyQty: 10,
+        sellQty: 0,
+        endShares: 10,
+        costBasis: 400,
+        acbPerShare: 40,
+      },
+      {
+        year: 2025,
+        buyQty: 0,
+        sellQty: 4,
+        endShares: 6,
+        costBasis: 240,
+        acbPerShare: 40,
+      },
+    ]);
+  });
+
+  it("skips years with no activity for the symbol", () => {
+    const snapshots = computeYearlyACB(
+      [tx("2022-01-02", 10, 40, "buy"), tx("2025-01-02", 5, 50, "buy")],
+      "VEQT",
+    );
+    expect(snapshots.map((s) => s.year)).toEqual([2022, 2025]);
+  });
+
+  it("sorts out-of-order transactions by date before accumulating", () => {
+    const snapshots = computeYearlyACB(
+      [tx("2025-01-02", 5, 50, "buy"), tx("2024-01-02", 10, 40, "buy")],
+      "VEQT",
+    );
+    expect(snapshots.map((s) => s.year)).toEqual([2024, 2025]);
+    expect(snapshots[1].endShares).toBe(15);
+    expect(snapshots[1].costBasis).toBe(650);
+  });
+
+  it("ignores dividend and interest rows", () => {
+    const snapshots = computeYearlyACB(
+      [
+        tx("2024-01-02", 10, 40, "buy"),
+        tx("2024-02-01", 5, 40, "dividend"),
+        tx("2024-03-01", 0, 0, "interest"),
+      ],
+      "VEQT",
+    );
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]).toMatchObject({ buyQty: 10, endShares: 10 });
+  });
+
+  it("counts transferred shares without adding cost basis", () => {
+    const snapshots = computeYearlyACB(
+      [tx("2024-01-02", 5, 0, "transfer"), tx("2024-06-01", 10, 40, "buy")],
+      "VEQT",
+    );
+    expect(snapshots[0]).toMatchObject({
+      endShares: 15,
+      costBasis: 400,
+      acbPerShare: 400 / 15,
+    });
+  });
+
+  it("groups rows without a parseable date under year 0 (Unknown)", () => {
+    const snapshots = computeYearlyACB(
+      [
+        tx(undefined, 10, 40, "buy"),
+        tx("", 5, 50, "buy"),
+        tx("2025-01-02", 5, 60, "buy"),
+      ],
+      "VEQT",
+    );
+    expect(snapshots.map((s) => s.year)).toEqual([0, 2025]);
+    expect(snapshots[0]).toMatchObject({
+      buyQty: 15,
+      endShares: 15,
+      costBasis: 650,
+    });
+    expect(snapshots[1]).toMatchObject({ endShares: 20, costBasis: 950 });
+  });
+
+  it("returns null ACB/share for a year ending with zero shares", () => {
+    const snapshots = computeYearlyACB(
+      [tx("2024-01-02", 10, 40, "buy"), tx("2024-06-01", 10, 60, "sell")],
+      "VEQT",
+    );
+    expect(snapshots).toEqual([
+      {
+        year: 2024,
+        buyQty: 10,
+        sellQty: 10,
+        endShares: 0,
+        costBasis: 0,
+        acbPerShare: null,
+      },
+    ]);
   });
 });
 

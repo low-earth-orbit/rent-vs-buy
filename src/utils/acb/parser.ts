@@ -29,6 +29,8 @@ export type AcbTransaction = {
   date?: string;
   /** Raw `activity_type` (or legacy `Type`) value as it appeared in the CSV. */
   rawActivityType?: string;
+  /** Raw `account_id` column value; undefined when the column is absent. */
+  accountId?: string;
   /** Raw `account_type` column value; undefined when the column is absent. */
   accountType?: string;
   /** Parsed `net_cash_amount` column value; undefined when absent. */
@@ -152,6 +154,7 @@ export function parseWealthsimpleCsv(text: string): ParseResult {
   const directionIdx = col("direction");
   const currencyIdx = col("currency");
   const dateIdx = col("transaction_date");
+  const accountIdIdx = col("account_id");
   const accountTypeIdx = col("account_type");
   const netCashAmountIdx = col("net_cash_amount");
 
@@ -208,6 +211,7 @@ export function parseWealthsimpleCsv(text: string): ParseResult {
     const quantity = parseNumber(fields[quantityIdx]);
     const price = parseNumber(fields[priceIdx]);
     const rawCurrency = field(currencyIdx);
+    const accountId = field(accountIdIdx);
     const accountType = field(accountTypeIdx);
     const rawNetCash = field(netCashAmountIdx);
     transactions.push({
@@ -218,6 +222,7 @@ export function parseWealthsimpleCsv(text: string): ParseResult {
       currency: rawCurrency === "" ? "CAD" : rawCurrency.toUpperCase(),
       date: field(dateIdx),
       rawActivityType,
+      ...(accountId !== "" ? { accountId } : {}),
       ...(accountType !== "" ? { accountType } : {}),
       ...(rawNetCash !== "" ? { netCashAmount: parseNumber(rawNetCash) } : {}),
     });
@@ -371,6 +376,125 @@ export function computeMarginInterest(
     byYear[year] = (byYear[year] ?? 0) + amount;
   }
   return byYear;
+}
+
+/** Transactions belonging to one `(accountId, accountType)` pair. */
+export type AccountGroup = {
+  /** From the `account_id` column; "" for the legacy format. */
+  accountId: string;
+  /** From the `account_type` column; "" for the legacy format. */
+  accountType: string;
+  /** True when accountType contains "TFSA", "RRSP", or "FHSA". */
+  isRegistered: boolean;
+  transactions: AcbTransaction[];
+};
+
+/**
+ * Group transactions by `(accountId, accountType)` composite key, preserving
+ * each group's transaction order. Non-registered accounts sort before
+ * registered ones (TFSA / RRSP / FHSA, case-insensitive).
+ */
+export function groupByAccount(transactions: AcbTransaction[]): AccountGroup[] {
+  const groups = new Map<string, AccountGroup>();
+  for (const tx of transactions) {
+    const accountId = tx.accountId ?? "";
+    const accountType = tx.accountType ?? "";
+    const key = `${accountId} ${accountType}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        accountId,
+        accountType,
+        isRegistered: /tfsa|rrsp|fhsa/i.test(accountType),
+        transactions: [],
+      };
+      groups.set(key, group);
+    }
+    group.transactions.push(tx);
+  }
+  // Stable sort: non-registered first, registered after, otherwise keeping
+  // first-seen order.
+  return [...groups.values()].sort(
+    (a, b) => Number(a.isRegistered) - Number(b.isRegistered),
+  );
+}
+
+/** Running ACB state for one symbol at the end of one calendar year. */
+export type YearlySnapshot = {
+  /** Calendar year; 0 when the transactions carry no parseable date. */
+  year: number;
+  /** Shares bought during the year. */
+  buyQty: number;
+  /** Shares sold during the year. */
+  sellQty: number;
+  /** Net shares held at year end. */
+  endShares: number;
+  /** Running cost basis pool at year end. */
+  costBasis: number;
+  /** costBasis / endShares, or null when no shares remain. */
+  acbPerShare: number | null;
+};
+
+/**
+ * Year-by-year ACB for one symbol. Applies the same buy / sell / transfer
+ * rules as `computeHoldings` in date order and emits one snapshot per
+ * calendar year with activity (years without transactions are skipped).
+ * Rows without a parseable date are grouped under year 0 ("Unknown").
+ */
+export function computeYearlyACB(
+  transactions: AcbTransaction[],
+  symbol: string,
+): YearlySnapshot[] {
+  const relevant = transactions
+    .filter(
+      (tx) =>
+        tx.symbol === symbol &&
+        (tx.type === "buy" || tx.type === "sell" || tx.type === "transfer"),
+    )
+    .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+
+  const snapshots: YearlySnapshot[] = [];
+  let shares = 0;
+  let costBasis = 0;
+  let current: YearlySnapshot | null = null;
+
+  for (const tx of relevant) {
+    const parsedYear = Number((tx.date ?? "").slice(0, 4));
+    const year =
+      Number.isInteger(parsedYear) && parsedYear > 0 ? parsedYear : 0;
+    if (current === null || current.year !== year) {
+      if (current !== null) snapshots.push(current);
+      current = {
+        year,
+        buyQty: 0,
+        sellQty: 0,
+        endShares: shares,
+        costBasis,
+        acbPerShare: shares > 0 ? costBasis / shares : null,
+      };
+    }
+    if (tx.type === "buy") {
+      shares += tx.quantity;
+      costBasis += tx.quantity * tx.price;
+      current.buyQty += tx.quantity;
+    } else if (tx.type === "transfer") {
+      // Same as computeHoldings: shares with no cost basis.
+      shares += tx.quantity;
+      current.buyQty += tx.quantity;
+    } else {
+      // CRA rule: sell reduces the pool pro-rata so ACB/share is unchanged.
+      const sharesAfter = shares - tx.quantity;
+      costBasis = shares > 0 ? costBasis * (sharesAfter / shares) : 0;
+      shares = sharesAfter;
+      current.sellQty += tx.quantity;
+    }
+    current.endShares = shares;
+    current.costBasis = costBasis;
+    current.acbPerShare = shares > 0 ? costBasis / shares : null;
+  }
+  if (current !== null) snapshots.push(current);
+
+  return snapshots;
 }
 
 /** One successfully parsed upload: the file's name and its transactions. */

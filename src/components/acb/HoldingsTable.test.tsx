@@ -55,7 +55,7 @@ describe("HoldingsTable", () => {
     const veqtRow = screen.getByText("VEQT").closest("tr")!;
     expect(within(veqtRow).getByText("10")).toBeInTheDocument();
     expect(within(veqtRow).getByText("$40.00")).toBeInTheDocument();
-    expect(within(veqtRow).getByText("$400")).toBeInTheDocument();
+    expect(within(veqtRow).getByText("$400.00")).toBeInTheDocument();
   });
 
   it("shows an em dash for ACB when all shares are sold", () => {
@@ -86,7 +86,7 @@ describe("HoldingsTable", () => {
 
     // ROC of $100 reduces pool: $400 - $100 = $300, ACB/share = $30
     const veqtRow = screen.getByText("VEQT").closest("tr")!;
-    expect(within(veqtRow).getByText("$300")).toBeInTheDocument();
+    expect(within(veqtRow).getByText("$300.00")).toBeInTheDocument();
     expect(within(veqtRow).getByText("$30.00")).toBeInTheDocument();
   });
 
@@ -108,7 +108,7 @@ describe("HoldingsTable", () => {
 
     // Net +$100 raises pool: $400 + $100 = $500, ACB/share = $50
     const veqtRow = screen.getByText("VEQT").closest("tr")!;
-    expect(within(veqtRow).getByText("$500")).toBeInTheDocument();
+    expect(within(veqtRow).getByText("$500.00")).toBeInTheDocument();
     expect(within(veqtRow).getByText("$50.00")).toBeInTheDocument();
   });
 
@@ -215,7 +215,7 @@ describe("HoldingsTable", () => {
 
     // $300 + $200 opening lot - $50 ROC = $450; ACB/share = 450/15 = $30
     const xeqtRow = screen.getByText("XEQT").closest("tr")!;
-    expect(within(xeqtRow).getByText("$450")).toBeInTheDocument();
+    expect(within(xeqtRow).getByText("$450.00")).toBeInTheDocument();
     expect(within(xeqtRow).getByText("$30.00")).toBeInTheDocument();
   });
 
