@@ -4,21 +4,22 @@ Developer/research note for the Lifetime Allocation Optimizer. Companion to the
 [`retirement` SWR methodology](../retirement/swr-methodology.md). It asks: **what equity weight
 should you hold at each age — before and after retirement — to maximize lifetime welfare?**
 
-The research sweep and reported results in Sections 2–4 use our forward Canadian capital-market
-assumptions and plain **iid Monte Carlo**. The productized Python recommender and the web app both
-now default to **forward-block pooled** — historical single-country return sequences affine-rescaled
-to the forward-CMA marginals, then stationary-block-bootstrapped — so the results capture sequence
-risk while honoring the user's return assumptions. **IID Monte Carlo** remains available as an
-optional mode in both interfaces.
+The iid research baseline (Sections 2a–2e) uses our forward Canadian capital-market assumptions and
+plain **iid Monte Carlo**. The productized Python recommender and the web app both **default to
+forward-block pooled** — historical single-country return sequences affine-rescaled to the forward-CMA
+marginals, then stationary-block-bootstrapped — so the results capture sequence risk while honoring the
+user's return assumptions. **§2f re-runs the key scenarios under that default**, where the constant-$
+bond tent largely disappears and the optimum becomes flat ~100% equity (the headline shift; see §2f and
+§3a). **IID Monte Carlo** remains available as an optional mode in both interfaces.
 
 The web and Python recommender share the baseline household/model defaults: flexibility 0,
-γ = 4, β = 0.985, a 4% flexible withdrawal rate, and a 2% real borrowing cost. Their product
+γ = 4, β = 0.985, and a 4% flexible withdrawal rate. Their product
 surfaces intentionally differ: the web app fixes the glide cadence at 5-year steps, uses
 browser-sized path/pass caps, exposes fewer controls, and requires at least $10,000 of guaranteed
 income. Python exposes the interval and historical return modes (with world/pooled dataset
 choices), and accepts zero guaranteed income for research and CLI sensitivity cases.
 
-This work is a deliberate cross-check on two influential backtest-based studies:
+This work is a deliberate cross-check on two backtest-based studies:
 
 - **ACO** — Anarkulova, Cederburg, O'Doherty, _Beyond the Status Quo_ ([SSRN 4590406](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4590406)):
   a 38-country block bootstrap concludes the lifetime-utility optimum is **~100% equity, held
@@ -38,7 +39,7 @@ gitignored `analysis/artifacts/glide_path/research/`.
 1. [Method](#1-method)
 2. [Results](#2-results)
 3. [Comparison with ACO and ERN](#3-does-this-validate-or-reject-aco-and-ern)
-4. [Caveats](#4-caveats--what-an-iid-model-on-our-cmas-cannot-see)
+4. [Caveats](#4-caveats--what-the-iid-baseline-cannot-see)
 5. [Python recommender](#5-recommender-script)
 6. [Reproducing the analysis](#6-reproduce)
 
@@ -53,7 +54,7 @@ python3 analysis/recommend_glide.py                         # forward-block pool
 # Forward-CMA normal iid Monte Carlo (original behavior)
 python3 analysis/recommend_glide.py --mode iid-mc
 
-# Raw paired world stock/fixed-income years, sampled independently with replacement
+# Raw paired world stock/bond years, sampled independently with replacement
 python3 analysis/recommend_glide.py --mode historical-iid
 
 # Raw paired world stock/bond years, sampled in stationary circular blocks
@@ -80,21 +81,25 @@ already-diversified world series, not of the (stock/bond) candidate set.
 
 ## TL;DR
 
-1. **The spending rule decides the shape.**
-   - **Constant real-dollar withdrawal** → the optimum **derisks into retirement** to a low at/just after the retirement date (a **bond tent**), then drifts equity back up. This appears under **pure iid**, so it is a genuine **sequence-of-returns** effect, not a valuation/mean-reversion artifact.
-   - **Flexible withdrawal** (income allowed to move with the market) → optimum is **flat, high equity (~100%)** essentially throughout — exactly **ACO's** prescription.
-2. **The glide _shape_ is worth very little; the _level_ is what matters.** Tested out-of-sample, the full per-age glide beats the best single **flat** weight by only **~$300/yr of certainty-equivalent (CE) income (~0.5%)**, and ≈ $0 when spending is flexible. But for constant-$ the right _level_ is **~60–80% equity, not 100%** — holding 100% (in accumulation or retirement) is genuinely dominated, by **$650–$2,000/yr**.
+0. **The return model decides whether there's a tent at all.** Under **iid** (no recovery), constant-$
+   spending wants a **derisking bond tent** and an interior **60–80%** level. Under the **default
+   forward-block pooled** engine — which restores JST's empirical equity mean reversion — the tent
+   **largely disappears**: the optimum is **flat ~100% equity**, best-flat is 100% in every cell, and the
+   glide shape is worth **≈ $0** (§2f). The iid tent is a sequence-risk artifact of _assuming no
+   recovery_; the recovery is real in history, and it reproduces **ACO's flat-100%** on our own CMAs.
 
-3. **Where the constant-$ tent sits — and why it differs from ACO.** Our constant-$ tent bottoms
-   at/just after retirement (age 65–69), matching ACO's location, but our iid-CMA accumulation path
-   **falls** rather than staying flat near 100%. The difference reflects the complete model: our
-   lower forward equity premium, fixed-horizon household, and default no-bequest objective versus
-   ACO's developed-country block bootstrap, stochastic mortality, and bequest utility. Under our
-   rigid spending floor with no bequest, upside beyond the target has little value while depletion
-   is severely penalized. Adding a bequest motive or raising the premium moves our path toward
-   ACO's flat-high result.
+1. **The spending rule decides the shape (within either model).**
+   - **Constant real-dollar withdrawal** → _under iid_ the optimum **derisks into retirement** (a **bond tent**) then drifts up; _under the default forward-block_ this collapses to a shallow dip near 100%.
+   - **Flexible withdrawal** (income allowed to move with the market) → optimum is **flat, high equity (~100%)** essentially throughout in **both** models — exactly **ACO's** prescription.
+2. **The glide _shape_ is worth very little.** Tested out-of-sample, the per-age glide beats the best single **flat** weight by only **~$300/yr (~0.5%)** under iid, and **≈ $0 under the default forward-block** (and ≈ $0 whenever spending is flexible). The _level_ is what matters — and which level is right depends on the return model: **60–80%** under iid constant-$, **100%** under the default.
 
-4. **Both studies are right in their own world.** ACO's flat-100% is optimal _when spending is flexible (or wealth is valued)_; ERN/Kitces–Pfau's rising retirement glide is optimal _when spending is rigid_ — and the sequence-risk rationale survives iid even though ERN's CAPE-conditional SWR _boost_ cannot.
+3. **Why the iid tent and ACO differ — and why the default closes the gap.** The iid constant-$ tent
+   bottoms at/just after retirement (matching ACO's location) but its accumulation path **falls** rather
+   than staying flat near 100%. That gap is the **missing recovery**: iid removes the multi-decade mean
+   reversion ACO's history carries, so derisking looks worth it. Restore the recovery (forward-block, §2f)
+   or add a bequest motive / higher premium, and our path moves to **ACO's flat-high** result.
+
+4. **Both studies are right in their own world.** ACO's flat-100% is optimal _when spending is flexible (or wealth is valued), or once realistic mean reversion is in the model_; ERN/Kitces–Pfau's rising retirement glide is the _iid, rigid-spending_ shape — and even there ERN's CAPE-conditional SWR _boost_ does not reproduce under iid.
 
 5. **A CRRA allocation recommendation requires some guaranteed retirement income.** If guaranteed
    income is zero, even a rare depleted year drives consumption to the numerical floor and makes CE
@@ -106,9 +111,11 @@ already-diversified world series, not of the (stock/bond) candidate set.
 
 ## 1. Method
 
-Real (today's) dollars throughout. The documented research results below use iid normal returns,
-drawn each year — **no** serial correlation, **no** valuation signal — so anything the optimizer
-likes here is robust to the absence of mean reversion, by construction.
+Real (today's) dollars throughout. The **iid baseline** (§2a–§2e) uses iid normal returns, drawn each
+year — **no** serial correlation, **no** valuation signal — so anything the optimizer likes there is
+robust to the absence of mean reversion, by construction. §2f and the product default instead use
+**forward-block pooled**, which reintroduces the historical sequencing iid strips out; the two together
+bracket the answer (no-recovery bound vs realistic mean reversion).
 
 ### Python recommender return modes
 
@@ -259,13 +266,15 @@ Two honesty checks accompany every result:
 
 ## 2. Results
 
-> **All tables in §2 are iid Monte Carlo results** (forward-CMA normal draws, no sequencing).
-> The web app and Python recommender now default to **forward-block pooled**, which preserves
-> historical sequence structure. Under forward-block, the constant-$ bond tent is substantially
-> weaker or absent — the empirical equity mean reversion in JST history means a high-equity
-> accumulation path recovers in time more reliably than iid suggests, reducing the value of
-> derisking into retirement. The forward-block default is the recommendation surface; §2 documents
-> the iid baseline for comparison and for validating the model against ERN/ACO under iid assumptions.
+> **Two return models, two answers — and the difference _is_ the result.** §2a–§2e below are the
+> **iid** sweep (forward-CMA normal draws, no sequencing): under iid, constant-$ spending produces a
+> **derisking bond tent** and an interior **60–80%** optimal level. §2f re-runs the same scenarios
+> under **forward-block pooled** — the **actual default** of the web app and Python recommender — and
+> the tent **largely disappears**: the optimum is **flat ~100% equity** with best-flat = 100% in every
+> cell. The flip is the headline finding (§2f, §3a): the iid tent is a sequence-risk artifact of
+> assuming **no recovery**, and JST's empirical equity mean reversion (VR(10y)≈0.91) restores the
+> recovery that makes ACO's flat-100% optimal. Read §2a–§2e as the iid baseline; read §2f for what the
+> product actually recommends.
 
 ### 2a. SWR anchor (validates the engine; tests ERN under iid)
 
@@ -283,7 +292,7 @@ Matches the methodology doc (30y 3.67%, 50y 2.61%). The SWR-maximizing weight is
 flat weight to two decimals; **it earns no SWR premium under iid**, confirming ERN's effect is a
 CAPE/mean-reversion phenomenon absent from an iid world. (See `swr_anchor.png`.)
 
-### 2b. Per-age optimal glide — retirement-horizon sweep
+### 2b. Per-age optimal glide — retirement-horizon sweep (iid)
 
 γ = 4, 30y accumulation. All columns are **equity %**. `tent` = lowest equity within 15y of
 retirement (the retirement-date tent bottom) and the age it hits; `end` = terminal-year equity (a
@@ -315,7 +324,7 @@ approach into the tent.
   terminal artifact, not a recommendation.)
 - **Semi-flex is intermediate**, tipping from flat toward a mild tent as the horizon lengthens.
 
-### 2c. Per-age optimal glide — accumulation-horizon sweep
+### 2c. Per-age optimal glide — accumulation-horizon sweep (iid)
 
 γ = 4, 30y retirement. Same columns.
 
@@ -335,7 +344,7 @@ Longer accumulation lets a constant-$ saver derisk _earlier and deeper_ (more ti
 safer pile to still clear the floor → lower depletion: 26% → 1%). Flexible savers stay ~100%
 regardless of accumulation length.
 
-### 2d. Risk-aversion sensitivity (30y + 30y)
+### 2d. Risk-aversion sensitivity (iid, 30y + 30y)
 
 | Spending      | γ   | start | acc. avg | pre-ret | @ret | tent (age) | end | BEFORE  | AFTER  |
 | ------------- | --- | ----- | -------- | ------- | ---- | ---------- | --- | ------- | ------ |
@@ -350,7 +359,7 @@ The **constant-$ tent is invariant across risk aversion** (the sequence-risk dip
 driven by the spending rule, not by taste). For flexible spending, only at γ = 8 does
 consumption-volatility aversion pull the saver off the 100% corner.
 
-### 2e. Shape value — is the glide actually worth anything? (out-of-sample)
+### 2e. Shape value — is the glide actually worth anything? (iid, out-of-sample)
 
 Re-scored on an **independent** shock draw. CE = certainty-equivalent annual retirement
 consumption. `opt ret / 100 acc` keeps the optimal retirement glide but forces flat 100% in
@@ -379,15 +388,63 @@ Two readings, both important:
   100% equity in accumulation is genuinely dominated** for a rigid-spending, no-bequest retiree. For
   flexible spending the best flat weight _is_ 100%, so there is nothing to gain anywhere.
 
+### 2f. The default model: forward-block pooled — the tent largely disappears
+
+The web app and Python recommender **default to forward-block pooled**, not iid. Re-running the §2b–§2e
+scenarios under that engine (JST single-country sequences affine-rescaled to the forward CMAs, then
+stationary-block-bootstrapped; per-age glide; γ = 4) changes the constant-$ answer qualitatively. The
+empirical equity mean reversion forward-block preserves (VR(10y)≈0.91 — see §4) lets a high-equity path
+recover in time, so the iid derisking incentive mostly evaporates.
+
+**Retirement-horizon sweep (acc = 30y).** Compare directly to §2b.
+
+| Spending      | Ret. horizon | start | acc. avg | pre-ret | @ret | tent (age) | end | BEFORE | AFTER   | CE income | Deplete |
+| ------------- | ------------ | ----- | -------- | ------- | ---- | ---------- | --- | ------ | ------- | --------- | ------- |
+| constant $    | 30y          | 100   | 98       | 95      | 85   | 70 (@67)   | 100 | Flat   | Rising  | $54,881   | 5.4%    |
+| constant $    | 40y          | 100   | 99       | 100     | 95   | 90 (@69)   | 45  | Flat   | Falling | $51,224   | 9.1%    |
+| constant $    | 50y          | 100   | 99       | 100     | 95   | 95 (@65)   | 100 | Flat   | Flat    | $48,364   | 12.1%   |
+| semi-flex 50% | 30y          | 100   | 100      | 100     | 100  | 100 (@65)  | 100 | Flat   | Flat    | $70,682   | 1.3%    |
+| flexible 100% | 30y          | 100   | 100      | 100     | 100  | 100 (@65)  | 0   | Flat   | Falling | $70,747   | 0.0%    |
+
+**Shape value, out-of-sample (compare §2e).** The recommender's own independent-evaluation CE for the
+optimized glide vs the best single constant weight:
+
+| Spending   | Ret. horizon | optimum | best flat (w\*) | **glide vs best-flat** |
+| ---------- | ------------ | ------- | --------------- | ---------------------- |
+| constant $ | 30y          | $54,881 | $54,878 (100%)  | **+$3**                |
+| constant $ | 40y          | $51,224 | $51,288 (100%)  | **−$64**               |
+| constant $ | 50y          | $48,364 | $48,388 (100%)  | **−$24**               |
+| semi-flex  | 30y          | $70,682 | $70,682 (100%)  | $0                     |
+| flexible   | 30y          | $70,747 | $70,747 (100%)  | $0                     |
+
+**What changed from iid:**
+
+- **The constant-$ accumulation path goes flat ~100%**, not falling-to-68. Equity at retirement is
+  **85–95%** (iid: 50–70%), and the residual "tent" bottoms at **70–95%** (iid: 40–70%) — a shallow dip,
+  not a bond tent.
+- **Best-flat is 100% in every cell** (iid constant-$: 60–80%), and the **glide is worth ≈ $0** over it
+  (−$64 to +$3). The §2e "level matters — hold 60–80%, not 100%" conclusion is **specific to iid**; under
+  the default, **flat 100% wins** and the glide shape adds nothing measurable.
+- **CE income is essentially unchanged** ($54.9k vs iid $55.8k at 30y) — the sequence model barely moves
+  the achievable welfare; it moves the _allocation that achieves it_.
+
+This is ACO's flat-~100% accumulation, reproduced on our own CMAs once historical sequencing is restored
+(§3a). The cost of the higher equity now shows up almost entirely as **depletion risk** (5–12% for
+constant-$, rising with horizon), which is the honest residual the recommender still reports. The mode
+factorial in [`research_history.py`](../../analysis/glide_path/research_history.py) confirms the lever is
+**pooled single-country sequencing**, not the marginals: `forward-block (pooled)` lands the same
+high-equity optimum as `forward-block (world)`, while the raw-history `historical-block` modes (lower
+premium) sit lower.
+
 ---
 
 ## 3. Does this validate or reject ACO and ERN?
 
-| Claim                                                    | Verdict under our iid model                                                                                                                                                                                                                                                                                                                                                                       |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **ACO:** ~100% equity, flat across life                  | **Validated — conditional on flexible spending** (or, as in ACO's utility, a bequest/terminal-wealth motive). When income moves with the market, flat ~100% is optimal here too, even on our smaller ~3.3pp premium. With _rigid_ spending and no bequest motive it is **not** optimal: a ~60–80% level with a derisking tent into retirement beats flat 100% by $650–$2,000/yr.                  |
-| **ERN / Kitces–Pfau:** rising equity glide in retirement | **Validated as a shape, for constant-$ spending — and shown to be sequence-risk, not valuation.** The derisk-then-rise glide emerges under pure iid, so it needs no CAPE>20. _But_ ERN's specific claim — that the glide _raises the SWR_ — does **not** reproduce (§2a): under iid it only ties the best flat weight. That boost is the valuation-conditional slice an iid model cannot contain. |
-| Both: beat the conventional **declining** (TDF) glide    | **Direction agreed, magnitude tiny.** A monotone-declining retirement glide is dominated in every cell — but the glide _shape_ is worth ≤ ~0.5% of CE. The spending rule and the equity _level_ dwarf it.                                                                                                                                                                                         |
+| Claim                                                    | Verdict (iid baseline vs forward-block default)                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ACO:** ~100% equity, flat across life                  | **Validated under the default forward-block model, and under iid conditional on flexible spending.** With flexible spending, flat ~100% is optimal in both models. With _rigid_ spending: under **iid** it is _not_ optimal (a ~60–80% derisking tent beats flat 100% by $650–$2,000/yr), but under the **default forward-block** model the tent collapses and **flat ~100% wins** (§2f) — ACO's result reproduced on our smaller ~3.3pp premium.  |
+| **ERN / Kitces–Pfau:** rising equity glide in retirement | **An iid, rigid-spending shape — and shown to be sequence-risk, not valuation.** The derisk-then-rise glide emerges under pure iid (no CAPE>20 needed) but **largely vanishes under the default forward-block model** (§2f), because real mean reversion removes the no-recovery premium that creates it. ERN's specific claim — that the glide _raises the SWR_ — does **not** reproduce even under iid (§2a): it only ties the best flat weight. |
+| Both: beat the conventional **declining** (TDF) glide    | **Direction agreed, magnitude tiny.** A monotone-declining retirement glide is dominated in every cell — but the glide _shape_ is worth ≤ ~0.5% of CE under iid and **≈ $0 under the default** (§2f). The spending rule and the equity _level_ dwarf it.                                                                                                                                                                                           |
 
 ### 3a. Reconciling our constant-$ profile with ACO's
 
@@ -404,28 +461,35 @@ per-age optima — it is the assumptions:
    still values terminal wealth, so the upside isn't wasted and 100% accumulation pays.
 2. **Premium + mean reversion.** ACO's realized history carries a higher equity premium and
    multi-decade mean reversion, so a 100% accumulation almost always recovers in time — cheap
-   insurance to stay aggressive. Our iid + ~3.3pp premium removes the recovery guarantee, so the
-   sequence protection of derisking is worth more.
+   insurance to stay aggressive. **Pure iid removes that recovery guarantee**, so the sequence
+   protection of derisking is worth more under iid than in history.
 
-Both assumptions point the same way: a terminal-wealth/bequest motive (as in ACO) or a higher
-premium would raise our accumulation path back toward ACO's flat 100%. This model has no bequest
-motive (pure consumption), so within the tool **spending flexibility** is the switchable lever. The
-robust, assumption-light conclusion is the one in §2e — for constant-$, hold a **moderate** level
-and **derisk into retirement**; the precise curve is worth ~0.5%.
+**§2f resolves this empirically, not just in theory.** Restoring the historical mean reversion —
+without touching the bequest motive or the premium — is exactly what the default **forward-block
+pooled** engine does, and it moves our constant-$ accumulation path from iid's _falling-to-68_ back to
+**flat ~100%**, matching ACO. So of the two assumptions above, **(2) the missing recovery is the
+operative one**: the iid tent is mostly a no-recovery artifact, and the model's _default_ already
+behaves like ACO. The bequest channel (1) remains a secondary lever — adding a terminal-wealth motive
+would push even the iid path up. The honest, default-model conclusion for constant-$ is therefore
+**flat ~100% with a shallow dip near retirement** (§2f), with the residual cost borne as depletion
+risk; the iid "hold a moderate level and derisk" result (§2e) is the no-mean-reversion bound, useful as
+a stress case but not the recommendation.
 
 ---
 
-## 4. Caveats — what the iid research sweep (§2–§3) cannot see
+## 4. Caveats — what the iid baseline cannot see
 
-The research sweep (§2–§3) used iid Monte Carlo; the web app and Python recommender now default to
-**forward-block pooled**, which captures historical sequence structure (equity mean reversion, bond
-persistence, single-country clustering). The caveats below apply to the §2–§3 iid results; the
-forward-block default addresses the first two directly.
+The §2a–§2e sweep is iid Monte Carlo; **§2f and the web app / Python recommender default to
+forward-block pooled**, which captures historical sequence structure (equity mean reversion, bond
+persistence, single-country clustering) and is what flips the constant-$ result to flat ~100%. The
+caveats below apply to the **iid** results (§2a–§2e); the forward-block default already addresses the
+first two — they are listed here to bound the iid baseline, not the product.
 
-- **No valuation signal / no mean reversion (iid only).** The research sweep is by design iid, so
-  it cannot reproduce ERN's _CAPE-conditional_ SWR boost. Forward-block preserves the empirical
-  equity mean reversion from JST history (~VR(10y)≈0.91) and bond persistence (VR>1) in the
-  bootstrap sequences.
+- **No valuation signal / no mean reversion (iid only).** The iid sweep cannot reproduce ERN's
+  _CAPE-conditional_ SWR boost, and (as §2f shows) overstates the constant-$ derisking incentive by
+  assuming no recovery. The default forward-block engine preserves the empirical equity mean reversion
+  from JST history (~VR(10y)≈0.91) and bond persistence (VR>1) in the bootstrap sequences; neither the
+  CAPE-_timing_ signal nor a tradable valuation rule is modeled in either engine.
 - **One equity asset, our curve.** No domestic/international split, so ACO's ⅓/⅔ tilt and its
   diversification benefit are out of scope — we test only the _stock-vs-bond_ and _flat-vs-glide_
   axes, on a ~3.3pp premium deliberately lower than ACO's US-tilted history.
