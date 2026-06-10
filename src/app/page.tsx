@@ -45,7 +45,7 @@ const TOOLS: Tool[] = [
     description:
       "Find your optimal stock allocation across your lifetime. FOR NERDS.",
     href: "/glide-path",
-    status: "preview",
+    status: "new",
   },
   {
     emoji: "🧾",
@@ -53,7 +53,7 @@ const TOOLS: Tool[] = [
     description:
       "Compute the adjusted cost basis of your non-registered holdings from a Wealthsimple activity export.",
     href: "/acb",
-    status: "new",
+    status: "preview",
   },
 ];
 

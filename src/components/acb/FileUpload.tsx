@@ -1,34 +1,33 @@
 import { useState } from "react";
-import {
-  Alert,
-  Anchor,
-  Collapse,
-  FileInput,
-  List,
-  Stack,
-  Text,
-} from "@mantine/core";
+import { Anchor, Collapse, FileInput, List, Stack } from "@mantine/core";
 
 type FileUploadProps = {
-  file: File | null;
-  error: string | null;
-  onFileChange: (file: File | null) => void;
+  files: File[];
+  onFileChange: (files: File[]) => void;
 };
 
-const FileUpload = ({ file, error, onFileChange }: FileUploadProps) => {
+const FileUpload = ({ files, onFileChange }: FileUploadProps) => {
   const [showInstructions, setShowInstructions] = useState(false);
 
   return (
     <Stack gap="xs">
       <FileInput
         label="Wealthsimple activity export (CSV)"
-        description="Non-registered account activity export. Parsed entirely in your browser — nothing is uploaded."
-        placeholder="Select CSV file"
+        description="Non-registered account activity exports. Select one or more files covering distinct date ranges. Parsed entirely in your browser — nothing is uploaded."
+        placeholder="Select CSV file(s)"
         accept=".csv,text/csv"
-        value={file}
+        multiple
+        value={files}
         onChange={onFileChange}
         clearable
       />
+      {files.length > 0 && (
+        <List size="sm" c="dimmed" spacing={2}>
+          {files.map((file) => (
+            <List.Item key={file.name}>{file.name}</List.Item>
+          ))}
+        </List>
+      )}
       <Anchor
         component="button"
         type="button"
@@ -52,14 +51,9 @@ const FileUpload = ({ file, error, onFileChange }: FileUploadProps) => {
             Click <strong>Download</strong> (top right) →{" "}
             <strong>Export as CSV</strong>
           </List.Item>
-          <List.Item>Upload the downloaded file here</List.Item>
+          <List.Item>Upload the downloaded file(s) here</List.Item>
         </List>
       </Collapse>
-      {error && (
-        <Alert color="red" title="Could not read file">
-          <Text size="sm">{error}</Text>
-        </Alert>
-      )}
     </Stack>
   );
 };
