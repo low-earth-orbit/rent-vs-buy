@@ -116,8 +116,8 @@ All four modes feed the same lifecycle cash flows, utility objective, coordinate
 and independent evaluation-sample comparison:
 
 - **`iid-mc`** maps each allocation to the app's forward-CMA real mean and volatility, then draws
-  independent normal returns. This remains the default and the only mode used by the web app and
-  `analysis/glide_path/research.py`.
+  independent normal returns. Used by `analysis/glide_path/research.py` for the §2–§3 research
+  sweep; the web app and Python recommender now default to `forward-block`.
 - **`historical-iid`** samples raw historical years independently with replacement. Stock and the
   selected asset returns remain paired within a sampled year, but year-to-year ordering is removed.
 - **`historical-block`** uses a stationary circular block bootstrap of paired asset-return years.
@@ -258,6 +258,14 @@ Two honesty checks accompany every result:
 ---
 
 ## 2. Results
+
+> **All tables in §2 are iid Monte Carlo results** (forward-CMA normal draws, no sequencing).
+> The web app and Python recommender now default to **forward-block pooled**, which preserves
+> historical sequence structure. Under forward-block, the constant-$ bond tent is substantially
+> weaker or absent — the empirical equity mean reversion in JST history means a high-equity
+> accumulation path recovers in time more reliably than iid suggests, reducing the value of
+> derisking into retirement. The forward-block default is the recommendation surface; §2 documents
+> the iid baseline for comparison and for validating the model against ERN/ACO under iid assumptions.
 
 ### 2a. SWR anchor (validates the engine; tests ERN under iid)
 

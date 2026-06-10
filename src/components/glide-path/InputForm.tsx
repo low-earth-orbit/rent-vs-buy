@@ -244,7 +244,7 @@ export default function InputForm({
                   onChange={(v) => onReturnModeChange(v as GlidePathReturnMode)}
                   data={[
                     { value: "forward-block", label: "Sequence-aware" },
-                    { value: "iid-mc", label: "Independent (IID)" },
+                    { value: "iid-mc", label: "Independent" },
                   ]}
                   size="sm"
                 />
