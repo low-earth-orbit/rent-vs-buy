@@ -3,15 +3,20 @@
  *
  * Optimizes the equity weight at each interval step by Monte Carlo coordinate ascent under
  * common random numbers, maximizing expected discounted CRRA utility of retirement
- * consumption. Real (today's) dollars; iid normal returns; mid-year cash flow earns a
- * half-year; a depleted portfolio absorbs at zero. Guaranteed income is paid every
- * retirement year. Supports leverage (equity weight > 1, borrowing at a real cost).
+ * consumption. Real (today's) dollars; mid-year cash flow earns a half-year; a depleted
+ * portfolio absorbs at zero. Guaranteed income is paid every retirement year. Supports
+ * leverage (equity weight > 1, borrowing at a real cost).
  *
- * The hot path (`meanUtility`) runs on grid-index arrays with precomputed per-grid (mean, vol)
- * so the inner loop is plain float math. Intended to run inside a Web Worker.
+ * Two sampling modes:
+ *   "forward-block" — stationary block bootstrap from JST pooled history rescaled to
+ *     forward-CMA marginals (captures sequence structure; default).
+ *   "iid-mc" — iid normal returns from the forward-CMA curve (original behavior).
+ *
+ * The hot path (`meanUtility`) is specialized per mode. Intended to run inside a Web Worker.
  */
 
 import { fillNormals } from "./rng";
+import { sampleBlockPaths } from "./blockBootstrap";
 import {
   DEFAULT_ALLOC_CURVE,
   GRID_STEP,
@@ -21,6 +26,7 @@ import {
 import type {
   GlidePathInput,
   GlidePathResult,
+  GlidePathReturnMode,
   ScheduleBlock,
   SlopeDir,
 } from "./types";
@@ -93,8 +99,17 @@ function buildGridStats(
 
 // ── simulation context ────────────────────────────────────────────────────────
 interface SimCtx {
+  /** Sampling mode: "iid" = normal draws from curve; "block" = historical block paths. */
+  mode: "iid" | "block";
+  // iid mode — per-grid precomputed (mean, vol)
   gridMean: Float64Array;
   gridVol: Float64Array;
+  // block mode — equity weights per grid index + realized return paths
+  grid: Float64Array;
+  eqPaths: Float32Array; // [nYears * nPaths] row-major
+  bdPaths: Float32Array; // [nYears * nPaths] row-major
+  borrowReal: number; // real cost of leverage (fraction)
+  // common
   accumYears: number;
   retireYears: number;
   disc: Float64Array; // beta^t, length retireYears
@@ -120,8 +135,13 @@ function meanUtility(
   n: number,
 ): number {
   const {
+    mode,
     gridMean,
     gridVol,
+    grid,
+    eqPaths,
+    bdPaths,
+    borrowReal,
     accumYears,
     retireYears,
     disc,
@@ -135,12 +155,21 @@ function meanUtility(
     oneMinusGamma,
     invOneMinusGamma,
   } = ctx;
+  const isBlock = mode === "block";
   let sum = 0;
   for (let p = 0; p < n; p++) {
     let bal = startSavings;
     for (let i = 0; i < accumYears; i++) {
       const idx = yearIdx[i];
-      const r = gridMean[idx] + gridVol[idx] * Z[i * n + p];
+      let r: number;
+      if (isBlock) {
+        const w = grid[idx];
+        const ep = eqPaths[i * n + p];
+        const bp = bdPaths[i * n + p];
+        r = w > 1 ? w * ep - (w - 1) * borrowReal : w * ep + (1 - w) * bp;
+      } else {
+        r = gridMean[idx] + gridVol[idx] * Z[i * n + p];
+      }
       const grown = bal * (1 + r);
       bal = (grown < 0 ? 0 : grown) + contrib * (1 + r / 2);
     }
@@ -148,7 +177,15 @@ function meanUtility(
     for (let t = 0; t < retireYears; t++) {
       const i = accumYears + t;
       const idx = yearIdx[i];
-      const r = gridMean[idx] + gridVol[idx] * Z[i * n + p];
+      let r: number;
+      if (isBlock) {
+        const w = grid[idx];
+        const ep = eqPaths[i * n + p];
+        const bp = bdPaths[i * n + p];
+        r = w > 1 ? w * ep - (w - 1) * borrowReal : w * ep + (1 - w) * bp;
+      } else {
+        r = gridMean[idx] + gridVol[idx] * Z[i * n + p];
+      }
       let grown = bal * (1 + r);
       if (grown < 0) grown = 0;
       const target = (1 - flex) * gapArr[t] + flex * (wr * bal);
@@ -186,8 +223,13 @@ function computeStats(
   gamma: number,
 ): PathStats {
   const {
+    mode,
     gridMean,
     gridVol,
+    grid,
+    eqPaths,
+    bdPaths,
+    borrowReal,
     accumYears,
     retireYears,
     disc,
@@ -201,6 +243,7 @@ function computeStats(
     oneMinusGamma,
     invOneMinusGamma,
   } = ctx;
+  const isBlock = mode === "block";
   let discSum = 0;
   for (let t = 0; t < retireYears; t++) discSum += disc[t];
 
@@ -212,7 +255,15 @@ function computeStats(
     let bal = startSavings;
     for (let i = 0; i < accumYears; i++) {
       const idx = yearIdx[i];
-      const r = gridMean[idx] + gridVol[idx] * Z[i * n + p];
+      let r: number;
+      if (isBlock) {
+        const w = grid[idx];
+        const ep = eqPaths[i * n + p];
+        const bp = bdPaths[i * n + p];
+        r = w > 1 ? w * ep - (w - 1) * borrowReal : w * ep + (1 - w) * bp;
+      } else {
+        r = gridMean[idx] + gridVol[idx] * Z[i * n + p];
+      }
       const grown = bal * (1 + r);
       bal = (grown < 0 ? 0 : grown) + contrib * (1 + r / 2);
     }
@@ -223,7 +274,15 @@ function computeStats(
     for (let t = 0; t < retireYears; t++) {
       const i = accumYears + t;
       const idx = yearIdx[i];
-      const r = gridMean[idx] + gridVol[idx] * Z[i * n + p];
+      let r: number;
+      if (isBlock) {
+        const w = grid[idx];
+        const ep = eqPaths[i * n + p];
+        const bp = bdPaths[i * n + p];
+        r = w > 1 ? w * ep - (w - 1) * borrowReal : w * ep + (1 - w) * bp;
+      } else {
+        r = gridMean[idx] + gridVol[idx] * Z[i * n + p];
+      }
       let grown = bal * (1 + r);
       if (grown < 0) grown = 0;
       const target = (1 - flex) * gapArr[t] + flex * (wr * bal);
@@ -279,8 +338,13 @@ function computeDrawdownStats(
   gamma: number,
 ): DrawdownStats {
   const {
+    mode,
     gridMean,
     gridVol,
+    grid,
+    eqPaths,
+    bdPaths,
+    borrowReal,
     accumYears,
     retireYears,
     disc,
@@ -292,6 +356,7 @@ function computeDrawdownStats(
     oneMinusGamma,
     invOneMinusGamma,
   } = ctx;
+  const isBlock = mode === "block";
   let discSum = 0;
   for (let t = 0; t < retireYears; t++) discSum += disc[t];
 
@@ -309,7 +374,15 @@ function computeDrawdownStats(
     for (let t = 0; t < retireYears; t++) {
       const i = accumYears + t;
       const idx = yearIdx[i];
-      const r = gridMean[idx] + gridVol[idx] * Z[i * n + p];
+      let r: number;
+      if (isBlock) {
+        const w = grid[idx];
+        const ep = eqPaths[i * n + p];
+        const bp = bdPaths[i * n + p];
+        r = w > 1 ? w * ep - (w - 1) * borrowReal : w * ep + (1 - w) * bp;
+      } else {
+        r = gridMean[idx] + gridVol[idx] * Z[i * n + p];
+      }
       let grown = bal * (1 + r);
       if (grown < 0) grown = 0;
       const target = (1 - flex) * gapArr[t] + flex * (wr * bal);
@@ -433,11 +506,18 @@ export function buildEquityGrid(maxLeverage: number): Float64Array {
  * deterministic for a given `seed`. `seed = 0` is the canonical draw; bumping it reseeds the
  * Monte Carlo to a different-but-reproducible draw (the opt-in "re-roll"). Runs the optimizer
  * and the out-of-sample stats. Intended to be called from the Web Worker.
+ *
+ * `returnMode`:
+ *   "forward-block" (default) — stationary block bootstrap from JST pooled history rescaled to
+ *     forward-CMA marginals. Captures sequence risk (mean reversion, bond persistence) while
+ *     honoring the user's return assumptions.
+ *   "iid-mc" — iid normal draws from the forward-CMA curve (original behavior).
  */
 export function recommendGlidePath(
   input: GlidePathInput,
   curve: AllocAnchor[] = DEFAULT_ALLOC_CURVE,
   seed = 0,
+  returnMode: GlidePathReturnMode = "forward-block",
 ): GlidePathResult {
   const accumYears = Math.max(
     1,
@@ -482,9 +562,55 @@ export function recommendGlidePath(
     blockEnd[b] = b < nBlocks - 1 ? (b + 1) * interval : nYears;
   }
 
-  const ctx: SimCtx = {
+  const nOpt = clampPathCount(input.numPaths, MIN_OPT_PATHS, MAX_OPT_PATHS);
+  const nStats = MAX_STATS_PATHS;
+  const passes = 6;
+  // Offset both seeds by the re-roll nonce so a new draw is independent yet reproducible.
+  // seed = 0 leaves SEED/STATS_SEED untouched (the canonical draw).
+  const optSeed = (SEED + Math.imul(seed, 0x9e3779b9)) >>> 0;
+  const statsSeed = (STATS_SEED + Math.imul(seed, 0x85ebca6b)) >>> 0;
+
+  // Build mode-specific samples for optimization and stats.
+  // iid: Box-Muller normals; block: stationary bootstrap from pre-rescaled JST history.
+  const isBlock = returnMode === "forward-block";
+  const borrowReal = input.borrowCost / 100;
+  let Z: Float64Array;
+  let Zf: Float64Array;
+  let optEqPaths: Float32Array;
+  let optBdPaths: Float32Array;
+  let stEqPaths: Float32Array;
+  let stBdPaths: Float32Array;
+
+  if (isBlock) {
+    Z = new Float64Array(0);
+    Zf = new Float64Array(0);
+    ({ eqPaths: optEqPaths, bdPaths: optBdPaths } = sampleBlockPaths(
+      nYears,
+      nOpt,
+      optSeed,
+    ));
+    ({ eqPaths: stEqPaths, bdPaths: stBdPaths } = sampleBlockPaths(
+      nYears,
+      nStats,
+      statsSeed,
+    ));
+  } else {
+    Z = fillNormals(optSeed, nYears * nOpt);
+    Zf = fillNormals(statsSeed, nYears * nStats);
+    optEqPaths = new Float32Array(0);
+    optBdPaths = new Float32Array(0);
+    stEqPaths = new Float32Array(0);
+    stBdPaths = new Float32Array(0);
+  }
+
+  // Build the optimization context (opt paths) and stats context (stats paths).
+  // The two share everything except the sampled paths.
+  const ctxBase = {
+    mode: isBlock ? ("block" as const) : ("iid" as const),
     gridMean,
     gridVol,
+    grid,
+    borrowReal,
     accumYears,
     retireYears,
     disc,
@@ -498,13 +624,16 @@ export function recommendGlidePath(
     oneMinusGamma: 1 - gamma,
     invOneMinusGamma: 1 / (1 - gamma),
   };
-
-  const nOpt = clampPathCount(input.numPaths, MIN_OPT_PATHS, MAX_OPT_PATHS);
-  const passes = 6;
-  // Offset both seeds by the re-roll nonce so a new draw is independent yet reproducible.
-  // seed = 0 leaves SEED/STATS_SEED untouched (the canonical draw).
-  const optSeed = (SEED + Math.imul(seed, 0x9e3779b9)) >>> 0;
-  const Z = fillNormals(optSeed, nYears * nOpt);
+  const ctx: SimCtx = {
+    ...ctxBase,
+    eqPaths: optEqPaths,
+    bdPaths: optBdPaths,
+  };
+  const ctxStats: SimCtx = {
+    ...ctxBase,
+    eqPaths: stEqPaths,
+    bdPaths: stBdPaths,
+  };
 
   // ── optimization + out-of-sample stats ───────────────────────────────────────
   const blockIdx = optimize(
@@ -521,13 +650,8 @@ export function recommendGlidePath(
   const weights: number[] = [];
   for (let i = 0; i < nYears; i++) weights.push(grid[yearIdx[i]]);
 
-  // Stats paths are capped independently — no reason to run more than 8k out-of-sample
-  // paths just because the user cranked up numPaths for the optimizer.
-  const nStats = MAX_STATS_PATHS;
-  const statsSeed = (STATS_SEED + Math.imul(seed, 0x85ebca6b)) >>> 0;
-  const Zf = fillNormals(statsSeed, nYears * nStats);
-  const st = computeStats(yearIdx, ctx, Zf, nStats, gamma);
-  const drawdownSt = computeDrawdownStats(yearIdx, ctx, Zf, nStats, gamma);
+  const st = computeStats(yearIdx, ctxStats, Zf, nStats, gamma);
+  const drawdownSt = computeDrawdownStats(yearIdx, ctxStats, Zf, nStats, gamma);
 
   // ── best single constant (flat) equity weight ────────────────────────────────
   // The glide path's edge over the best *constant* allocation is typically tiny, so we
@@ -539,10 +663,10 @@ export function recommendGlidePath(
   // it is materially better.
   const flatIdx = new Int32Array(nYears);
   let bestFlatG = 0;
-  let flatStats = computeStats(flatIdx, ctx, Zf, nStats, gamma);
+  let flatStats = computeStats(flatIdx, ctxStats, Zf, nStats, gamma);
   for (let g = 1; g < G; g++) {
     flatIdx.fill(g);
-    const candidate = computeStats(flatIdx, ctx, Zf, nStats, gamma);
+    const candidate = computeStats(flatIdx, ctxStats, Zf, nStats, gamma);
     if (candidate.ceIncome > flatStats.ceIncome) {
       flatStats = candidate;
       bestFlatG = g;
@@ -551,7 +675,7 @@ export function recommendGlidePath(
   flatIdx.fill(bestFlatG);
   const flatDrawdownStats = computeDrawdownStats(
     flatIdx,
-    ctx,
+    ctxStats,
     Zf,
     nStats,
     gamma,
@@ -611,6 +735,7 @@ export function recommendGlidePath(
       borrowCost: input.borrowCost,
       gamma,
       interval,
+      returnMode,
     },
   };
 }

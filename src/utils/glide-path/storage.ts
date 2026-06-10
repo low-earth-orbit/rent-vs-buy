@@ -1,5 +1,9 @@
 import { DEFAULTS } from "./presets";
-import type { GlidePathInput, GlidePathInputKey } from "./types";
+import type {
+  GlidePathInput,
+  GlidePathInputKey,
+  GlidePathReturnMode,
+} from "./types";
 
 const KEY = "glide_input";
 
@@ -41,5 +45,28 @@ export function saveInput(input: GlidePathInput): void {
     window.localStorage.setItem(KEY, JSON.stringify(input));
   } catch {
     // localStorage may be unavailable (private mode, quota); ignore.
+  }
+}
+
+const RETURN_MODE_KEY = "glide_return_mode";
+const DEFAULT_RETURN_MODE: GlidePathReturnMode = "forward-block";
+
+export function loadReturnMode(): GlidePathReturnMode {
+  if (typeof window === "undefined") return DEFAULT_RETURN_MODE;
+  try {
+    const raw = window.localStorage.getItem(RETURN_MODE_KEY);
+    if (raw === "iid-mc" || raw === "forward-block") return raw;
+  } catch {
+    // ignore
+  }
+  return DEFAULT_RETURN_MODE;
+}
+
+export function saveReturnMode(mode: GlidePathReturnMode): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(RETURN_MODE_KEY, mode);
+  } catch {
+    // ignore
   }
 }

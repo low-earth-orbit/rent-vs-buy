@@ -481,12 +481,11 @@ export default function Result({
                   retiring later, reducing retirement spending, or saving more.
                 </Text>
               )}
-              {hasHighFullPathRisk && (
+              {!hasHighDrawdownRisk && hasHighFullPathRisk && (
                 <Text size="sm" c="dimmed">
                   Full-path shortfall is{" "}
                   {FULLPATH_RISK_HIGHLIGHT_THRESHOLD * 100}% or higher, so
-                  pre-retirement market luck has a meaningful effect. Consider
-                  saving more or retiring later.
+                  pre-retirement market luck has a meaningful effect.
                 </Text>
               )}
             </Stack>

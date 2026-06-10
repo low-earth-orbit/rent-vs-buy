@@ -6,6 +6,7 @@ import {
   Button,
   Group,
   Popover,
+  SegmentedControl,
   SimpleGrid,
   Slider,
   Stack,
@@ -19,6 +20,7 @@ import type {
   GlidePathErrors,
   GlidePathInput,
   GlidePathInputKey,
+  GlidePathReturnMode,
 } from "@/utils/glide-path/types";
 import type { FieldValue } from "@/types";
 import FormResetButton from "../shared/FormResetButton";
@@ -26,7 +28,9 @@ import FormResetButton from "../shared/FormResetButton";
 interface InputFormProps {
   input: GlidePathInput;
   errors: GlidePathErrors;
+  returnMode: GlidePathReturnMode;
   onChange: (key: GlidePathInputKey, value: FieldValue) => void;
+  onReturnModeChange: (mode: GlidePathReturnMode) => void;
   onReset: () => void;
   onGenerate: () => void;
   generating: boolean;
@@ -35,7 +39,9 @@ interface InputFormProps {
 export default function InputForm({
   input,
   errors,
+  returnMode,
   onChange,
+  onReturnModeChange,
   onReset,
   onGenerate,
   generating,
@@ -227,34 +233,45 @@ export default function InputForm({
         <Accordion.Item value="engine">
           <Accordion.Control>Simulation</Accordion.Control>
           <Accordion.Panel>
-            <SimpleGrid cols={{ base: 1, sm: 2 }}>
-              <UserInputFormItem
-                {...num("numPaths")}
-                label="Monte Carlo paths"
-                labelHelperText="The number of simulated market histories. More paths give steadier results but take longer."
-                thousandSeparator
-              />
-              <UserInputFormItem
-                {...num("inflation")}
-                label="Inflation"
-                labelHelperText="Used to deflate the return curve to real terms."
-                suffix="%"
-              />
-              <UserInputFormItem
-                {...num("maxEquityPct")}
-                label="Max equity"
-                labelHelperText="The most equity the optimizer may use. Above 100% means borrowing to invest."
-                suffix="%"
-              />
-              {leveraged && (
+            <Stack gap="md">
+              <Stack gap={4}>
+                <FieldHeader
+                  label="Return model"
+                  description="Sequence-aware (forward-block) replays real historical return sequences, rescaled to our forward capital-market assumptions, so multi-year patterns like mean reversion are preserved. Independent (IID Monte Carlo) draws each year independently, ignoring how returns clustered historically."
+                />
+                <SegmentedControl
+                  value={returnMode}
+                  onChange={(v) => onReturnModeChange(v as GlidePathReturnMode)}
+                  data={[
+                    { value: "forward-block", label: "Sequence-aware" },
+                    { value: "iid-mc", label: "Independent" },
+                  ]}
+                  size="sm"
+                />
+              </Stack>
+              <SimpleGrid cols={{ base: 1, sm: 2 }}>
                 <UserInputFormItem
-                  {...num("borrowCost")}
-                  label="Real cost of borrowing"
-                  labelHelperText="Your real (after-inflation) borrowing rate."
+                  {...num("maxEquityPct")}
+                  label="Max equity"
+                  labelHelperText="The most equity the optimizer may use. Above 100% means borrowing to invest."
                   suffix="%"
                 />
-              )}
-            </SimpleGrid>
+                {leveraged && (
+                  <UserInputFormItem
+                    {...num("borrowCost")}
+                    label="Real cost of borrowing"
+                    labelHelperText="Your real (after-inflation) borrowing rate."
+                    suffix="%"
+                  />
+                )}
+                <UserInputFormItem
+                  {...num("numPaths")}
+                  label="Monte Carlo paths"
+                  labelHelperText="The number of simulated market histories. More paths give steadier results but take longer."
+                  thousandSeparator
+                />
+              </SimpleGrid>
+            </Stack>
           </Accordion.Panel>
         </Accordion.Item>
       </Accordion>

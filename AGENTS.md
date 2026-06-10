@@ -74,16 +74,21 @@ A hub landing page at `/` links to each tool, and every tool lives at its own ro
 - **When can I retire?** (`/retirement`): a quick retirement reality check. Projects a single combined portfolio in real (today's) dollars, grows savings until retirement, then draws from the portfolio to top up guaranteed income (CPP/OAS/DB, entered as a flat taxable amount) to a target gross income (a % of current income). Reports the earliest feasible retirement age. Deterministic single-return for now; Monte Carlo planned. Engine in `src/utils/retirement/`, components in `src/components/retirement/`.
 - **Lifetime Allocation Optimizer** (`/glide-path`): compares the welfare-maximizing equity allocation curve across the accumulation and decumulation phases with the best constant allocation. Uses Monte Carlo coordinate ascent to maximize expected discounted CRRA utility of retirement consumption, and separately scores the best constant allocation out of sample as a robust comparator. The raw optimized glide remains the returned/charted schedule; the UI lists both choices and applies a simplicity bias toward the constant comparator when its CE income is within 5%, either depletion rate is within 5 percentage points, or it wins all three comparable outcomes. Reports both full-path and drawdown-only income shortfall (the share of paths with a year the portfolio can't fund the targeted draw) — the latter from the expected retirement balance, matching the `/retirement` headline semantics. Guaranteed income is entered as a flat real annual amount and paid every retirement year — a pre-pension bridge is intentionally out of scope (that funding-feasibility question belongs to `/retirement`). Supports leverage (equity weight > 1). Engine in `src/utils/glide-path/`, components in `src/components/glide-path/`.
 
-  The web/TypeScript optimizer remains forward-CMA iid Monte Carlo. The Python recommender
-  (`analysis/recommend_glide.py`) additionally supports raw equal-weight-world JST historical
-  backtesting via paired-year iid sampling and stationary circular block bootstrap. The block
-  length setting is an average, not a fixed length. Historical modes use stocks plus long
-  government bonds by default; the `bills+bonds` asset set lets the optimizer choose separate
-  stock, bond, and bill weights at each glide step. Shared JST loading and bootstrap helpers live
-  in `analysis/shared/jst_history.py`; downloaded data stays under `analysis/.data/`. The web app
-  intentionally fixes the glide interval at 5 years, uses browser-sized path/pass caps, exposes
-  fewer controls, and requires at least $10,000 of guaranteed income; Python keeps those research
-  controls configurable and accepts zero guaranteed income.
+  The web/TypeScript optimizer defaults to **forward-block** (JST pooled history rescaled to
+  forward-CMA marginals, then stationary-block-bootstrapped; pre-built bundle at
+  `src/utils/glide-path/jstData.ts`). IID Monte Carlo is available as an optional mode via the
+  Simulation toggle. The Python recommender (`analysis/recommend_glide.py`) also defaults to
+  `forward-block --dataset pooled` and additionally supports `historical-iid` and
+  `historical-block` modes. `--dataset` chooses `pooled` (default — each country's own sequence)
+  or `world` (equal-weight cross-country average); `--exclude-countries`/`--exclude-years`
+  (pooled only) drop disasters. The optimizer allocates between stocks and long government bonds
+  only (no bills, no bequest motive). Shared JST loading, pooling, rescaling, the variance-ratio
+  diagnostic, and bootstrap helpers live in `analysis/shared/jst_history.py`; downloaded data
+  stays under `analysis/.data/`. To regenerate the TypeScript bundle after JST updates, run
+  `python3 -m analysis.glide_path.generate_bundle`. The web app intentionally fixes the glide
+  interval at 5 years, uses browser-sized path/pass caps, exposes fewer controls, and requires at
+  least $10,000 of guaranteed income; Python keeps those research controls configurable and accepts
+  zero guaranteed income.
 
 When adding a new tool: add its route under `src/app/<tool>/`, put tool-specific components in `src/components/<tool>/`, and reuse shared chrome/primitives from `src/components/shared/` and shared logic from `src/utils/`. Cross-folder imports use the `@/` alias (`@/* → ./src/*`).
 

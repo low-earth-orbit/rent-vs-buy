@@ -16,6 +16,7 @@ from analysis.glide_path.recommender import (
     PWL_CURVE,
     _HistoricalMarket,
     _build_market,
+    _forward_anchors,
     format_reproduction_command,
     recommend_glide_path,
 )
@@ -26,7 +27,7 @@ from analysis.shared.jst_history import (
     sample_indices,
     sample_return_paths,
 )
-from analysis.glide_path.cli import main as cli_main
+from analysis.glide_path.cli import main as cli_main, parse_year_windows
 
 
 def synthetic_history() -> ReturnHistory:
@@ -39,56 +40,27 @@ def synthetic_history() -> ReturnHistory:
     )
 
 
-def synthetic_bills_and_bonds_history() -> ReturnHistory:
-    return ReturnHistory(
-        years=np.arange(2000, 2005),
-        equity=np.array([0.10, -0.20, 0.30, -0.40, 0.50]),
-        fixed_income=np.array([0.01, 0.02, 0.03, 0.04, 0.05]),
-        bills=np.array([0.005, 0.006, 0.007, 0.008, 0.009]),
-        label="synthetic world (bills+bonds)",
-        country_count=2,
-        fixed_income_asset="bills+bonds",
-    )
-
-
 class JstHistoryTests(unittest.TestCase):
     def test_real_returns_and_world_aggregation(self):
         frame = pd.DataFrame(
             [
-                ("A", 2000, None, None, None, 100.0),
-                ("A", 2001, 0.20, 0.10, 0.05, 110.0),
-                ("B", 2000, None, None, None, 100.0),
-                ("B", 2001, 0.10, 0.00, 0.02, 100.0),
+                ("A", 2000, None, None, 100.0),
+                ("A", 2001, 0.20, 0.10, 110.0),
+                ("B", 2000, None, None, 100.0),
+                ("B", 2001, 0.10, 0.00, 100.0),
             ],
-            columns=["country", "year", "eq_tr", "bond_tr", "bill_rate", "cpi"],
+            columns=["country", "year", "eq_tr", "bond_tr", "cpi"],
         )
-        country = real_stock_fixed_income_returns(frame[frame["country"] == "A"], "bonds")
+        country = real_stock_fixed_income_returns(frame[frame["country"] == "A"])
         self.assertAlmostEqual(country.iloc[0]["equity"], 1.2 / 1.1 - 1)
         self.assertAlmostEqual(country.iloc[0]["fixed_income"], 0.0)
-        bills_and_bonds = real_stock_fixed_income_returns(
-            frame[frame["country"] == "A"], "bills+bonds"
-        )
-        self.assertAlmostEqual(bills_and_bonds.iloc[0]["fixed_income"], 0.0)
-        self.assertAlmostEqual(bills_and_bonds.iloc[0]["bills"], 1.05 / 1.1 - 1)
 
         with patch("analysis.shared.jst_history.load_jst_frame", return_value=frame):
             world = load_world_returns()
-            world_bills_and_bonds = load_world_returns(fixed_income="bills+bonds")
         self.assertEqual(world.country_count, 2)
         self.assertEqual(world.observations, 1)
-        self.assertEqual(world.fixed_income_asset, "bonds")
         self.assertAlmostEqual(world.equity[0], ((1.2 / 1.1 - 1) + 0.10) / 2)
         self.assertAlmostEqual(world.fixed_income[0], 0.0)
-        self.assertEqual(world_bills_and_bonds.fixed_income_asset, "bills+bonds")
-        self.assertAlmostEqual(world_bills_and_bonds.fixed_income[0], 0.0)
-        self.assertAlmostEqual(
-            world_bills_and_bonds.bills[0], ((1.05 / 1.1 - 1) + 0.02) / 2
-        )
-
-        with self.assertRaisesRegex(ValueError, "fixed_income"):
-            real_stock_fixed_income_returns(frame, "cash")
-        with self.assertRaisesRegex(ValueError, "fixed_income"):
-            real_stock_fixed_income_returns(frame, "bills")
 
     def test_historical_iid_preserves_pairs(self):
         history = synthetic_history()
@@ -111,14 +83,6 @@ class JstHistoryTests(unittest.TestCase):
         )
         np.testing.assert_array_equal(equity, history.equity[expected])
         np.testing.assert_array_equal(bonds, history.fixed_income[expected])
-
-        bills_and_bonds = synthetic_bills_and_bonds_history()
-        equity, bonds, bills = sample_return_paths(
-            bills_and_bonds, 6, 4, mode="historical-iid", block_years=8, seed=seed
-        )
-        np.testing.assert_array_equal(equity, bills_and_bonds.equity[expected])
-        np.testing.assert_array_equal(bonds, bills_and_bonds.fixed_income[expected])
-        np.testing.assert_array_equal(bills, bills_and_bonds.bills[expected])
 
     def test_historical_block_is_stationary_preserves_pairs_and_wrap(self):
         history = synthetic_history()
@@ -191,7 +155,6 @@ class GlidePathMarketTests(unittest.TestCase):
             interval=5,
             gamma=6.0,
             beta=0.97,
-            bequest_years=10.0,
             max_leverage=1.5,
             borrow_cost=1.5,
             current_savings=500_000.0,
@@ -201,7 +164,6 @@ class GlidePathMarketTests(unittest.TestCase):
             start_age=40,
             return_mode="historical-block",
             block_years=8,
-            historical_fixed_income="bills+bonds",
             n_paths=30_000,
         )
 
@@ -240,14 +202,10 @@ class GlidePathMarketTests(unittest.TestCase):
                 "1.5",
                 "--paths",
                 "30000",
-                "--bequest-years",
-                "10",
                 "--borrow-cost",
                 "1.5",
                 "--block-years",
                 "8",
-                "--historical-fixed-income",
-                "bills+bonds",
             ],
         )
 
@@ -287,8 +245,8 @@ class GlidePathMarketTests(unittest.TestCase):
             with patch(
                 "analysis.shared.jst_history.load_world_returns", return_value=history
             ) as loader:
-                loaded = namespace["_load_world_history"]("bonds")
-            loader.assert_called_once_with(fixed_income="bonds")
+                loaded = namespace["_load_world_history"]()
+            loader.assert_called_once_with()
             self.assertIs(loaded, history)
 
             market = namespace["_HistoricalMarket"](
@@ -334,52 +292,6 @@ class GlidePathMarketTests(unittest.TestCase):
             ],
         )
 
-    def test_historical_bills_and_bonds_are_separate_candidate_assets(self):
-        history = synthetic_bills_and_bonds_history()
-        market = _HistoricalMarket(
-            history, mode="historical-iid", block_years=8, borrow_real=0.02
-        )
-        sample = (
-            np.array([[0.10, -0.20]]),
-            np.array([[0.04, 0.06]]),
-            np.array([[0.01, 0.02]]),
-        )
-        allocations = np.array([[0.5, 0.3, 0.2], [1.5, 0.0, 0.0]])
-        actual = market.annual_returns(allocations, sample, 0)
-        expected = np.array([[0.064, -0.078], [0.14, -0.31]])
-        np.testing.assert_allclose(actual, expected)
-
-        candidates = market.candidate_allocations(
-            np.array([0.0, 0.5, 1.0, 1.5]), grid_step=0.5
-        )
-        self.assertTrue(any(np.array_equal(c, [0.5, 0.5, 0.0]) for c in candidates))
-        self.assertTrue(any(np.array_equal(c, [0.5, 0.0, 0.5]) for c in candidates))
-        self.assertTrue(any(np.array_equal(c, [1.5, 0.0, 0.0]) for c in candidates))
-        unleveraged = candidates[candidates[:, 0] <= 1.0]
-        np.testing.assert_allclose(unleveraged.sum(axis=1), 1.0)
-
-    def test_historical_optimizer_can_recommend_bills(self):
-        history = ReturnHistory(
-            years=np.arange(2000, 2020),
-            equity=np.full(20, -0.10),
-            fixed_income=np.full(20, -0.05),
-            bills=np.full(20, 0.03),
-            label="synthetic bills winner",
-            country_count=1,
-            fixed_income_asset="bills+bonds",
-        )
-        with patch(
-            "analysis.glide_path.recommender._load_world_history", return_value=history
-        ):
-            result = self._recommend(
-                return_mode="historical-block",
-                historical_fixed_income="bills+bonds",
-                block_years=3,
-            )
-
-        self.assertEqual(result["flat_bill_pct"], 100.0)
-        self.assertTrue(all(entry["bill_pct"] == 100.0 for entry in result["schedule"]))
-
     def test_market_validation_and_metadata(self):
         history = synthetic_history()
         with self.assertRaisesRegex(ValueError, "return_mode"):
@@ -394,52 +306,130 @@ class GlidePathMarketTests(unittest.TestCase):
         self.assertEqual(market.metadata["history_start_year"], 2000)
         self.assertEqual(market.metadata["history_end_year"], 2004)
         self.assertEqual(market.metadata["history_observations"], 5)
-        self.assertEqual(market.metadata["historical_fixed_income"], "bonds")
         self.assertEqual(market.metadata["block_method"], "stationary-circular")
         self.assertEqual(market.metadata["block_years"], 3)
 
-        with self.assertRaisesRegex(ValueError, "historical_fixed_income"):
-            _build_market(
-                "historical-iid",
-                PWL_CURVE,
-                2.1,
-                True,
-                2.0,
-                3,
-                historical_fixed_income="cash",
+    def test_forward_block_rescales_marginals_and_samples_as_block(self):
+        history = synthetic_history()
+        market = _build_market("forward-block", PWL_CURVE, 2.1, True, 2.0, 5, history)
+        # Reports forward-block but samples with stationary-circular blocks.
+        self.assertEqual(market.mode, "historical-block")
+        self.assertEqual(market.metadata["return_mode"], "forward-block")
+        self.assertEqual(market.metadata["block_method"], "stationary-circular")
+        self.assertEqual(market.metadata["block_years"], 5)
+        # Marginals are rescaled to exactly the iid-mc curve anchors.
+        eq_mean, eq_vol, bond_mean, bond_vol = _forward_anchors(PWL_CURVE, 2.1, True)
+        self.assertAlmostEqual(market.history.equity.mean(), eq_mean)
+        self.assertAlmostEqual(market.history.equity.std(), eq_vol)
+        self.assertAlmostEqual(market.history.fixed_income.mean(), bond_mean)
+        self.assertAlmostEqual(market.history.fixed_income.std(), bond_vol)
+
+    def test_pooled_dataset_routes_to_pooled_loader(self):
+        history = synthetic_history()
+        with patch(
+            "analysis.shared.jst_history.load_pooled_country_returns",
+            return_value=history,
+        ) as loader:
+            market = _build_market(
+                "historical-block", PWL_CURVE, 2.1, True, 2.0, 5,
+                dataset="pooled",
+                exclude_countries=["Germany"],
+                exclude_years=[(1914, 1923)],
             )
-        with self.assertRaisesRegex(ValueError, "only to historical modes"):
+        loader.assert_called_once_with(
+            exclude_countries=["Germany"],
+            exclude_years=[(1914, 1923)],
+        )
+        self.assertEqual(market.metadata["dataset"], "pooled")
+
+    def test_iid_rejects_exclusions(self):
+        with self.assertRaisesRegex(ValueError, "dataset/exclusions apply only"):
+            _build_market("iid-mc", PWL_CURVE, 2.1, True, 2.0, 5,
+                          exclude_countries=["Germany"])
+
+    def test_world_dataset_rejects_exclusions(self):
+        with self.assertRaisesRegex(ValueError, "exclusions require dataset='pooled'"):
             _build_market(
-                "iid-mc",
-                PWL_CURVE,
-                2.1,
-                True,
-                2.0,
-                3,
-                historical_fixed_income="bills+bonds",
-            )
-        with self.assertRaisesRegex(ValueError, "does not match"):
-            _build_market(
-                "historical-iid",
-                PWL_CURVE,
-                2.1,
-                True,
-                2.0,
-                3,
-                history,
-                historical_fixed_income="bills+bonds",
+                "historical-block", PWL_CURVE, 2.1, True, 2.0, 5,
+                dataset="world", exclude_countries=["Germany"],
             )
 
-    def test_default_and_explicit_iid_are_identical(self):
-        implicit = self._recommend()
-        explicit = self._recommend(return_mode="iid-mc")
-        self.assertEqual(implicit, explicit)
+    def test_ask_choice_accepts_letter_name_and_default(self):
+        from analysis.glide_path.recommender import _ask_choice
+
+        choices = ["iid-mc", "historical-iid", "historical-block"]
+        with patch("builtins.input", return_value="c"):
+            self.assertEqual(_ask_choice("Mode", "iid-mc", choices), "historical-block")
+        with patch("builtins.input", return_value=""):
+            self.assertEqual(_ask_choice("Mode", "iid-mc", choices), "iid-mc")
+        with patch("builtins.input", return_value="historical-iid"):
+            self.assertEqual(_ask_choice("Mode", "iid-mc", choices), "historical-iid")
+        # An invalid token re-prompts, then a valid letter resolves.
+        with patch("builtins.input", side_effect=["z", "b"]):
+            self.assertEqual(_ask_choice("Mode", "iid-mc", choices), "historical-iid")
+
+    def test_reproduction_command_emits_dataset_only_when_not_pooled(self):
+        base = dict(
+            accum_years=0, retire_years=30, flexibility=0.0, guaranteed_income=20_000.0,
+            interval=5, gamma=4.0, beta=0.985, max_leverage=1.0, borrow_cost=2.0,
+            current_savings=1_000_000.0, annual_contribution=0.0, target_income=60_000.0,
+            withdrawal_rate=0.04, start_age=None, return_mode="forward-block",
+            block_years=10, n_paths=5_000,
+        )
+        # pooled is the new default — should be omitted from the command
+        self.assertNotIn("--dataset", shlex.split(format_reproduction_command(dataset="pooled", **base)))
+        # world is non-default — should be emitted
+        world = shlex.split(format_reproduction_command(dataset="world", **base))
+        self.assertEqual(world[world.index("--dataset") + 1], "world")
+
+    def test_reproduction_command_forward_block_emits_block_years(self):
+        command = format_reproduction_command(
+            accum_years=0, retire_years=30, flexibility=0.0, guaranteed_income=20_000.0,
+            interval=5, gamma=4.0, beta=0.985, max_leverage=1.0,
+            borrow_cost=2.0, current_savings=1_000_000.0, annual_contribution=0.0,
+            target_income=60_000.0, withdrawal_rate=0.04, start_age=None,
+            return_mode="forward-block", block_years=7,
+            n_paths=5_000,
+        )
+        tokens = shlex.split(command)
+        self.assertIn("forward-block", tokens)
+        self.assertEqual(tokens[tokens.index("--block-years") + 1], "7")
+
+    def test_cli_rejects_exclusions_with_world_dataset(self):
+        stderr = io.StringIO()
+        with redirect_stderr(stderr), self.assertRaises(SystemExit):
+            cli_main(["--mode", "historical-block", "--dataset", "world",
+                      "--exclude-countries", "Germany"])
+        self.assertIn("require --dataset pooled", stderr.getvalue())
+
+    def test_cli_forwards_dataset_and_exclusions(self):
+        with patch(
+            "analysis.glide_path.cli.recommend_glide_path", return_value={}
+        ) as recommend, patch("analysis.glide_path.cli.print_rec"):
+            cli_main([
+                "--mode", "forward-block", "--dataset", "pooled",
+                "--exclude-countries", "Germany", "Japan",
+                "--exclude-years", "1923", "1914-1923",
+            ])
+        kwargs = recommend.call_args.kwargs
+        self.assertEqual(kwargs["dataset"], "pooled")
+        self.assertEqual(kwargs["exclude_countries"], ["Germany", "Japan"])
+        self.assertEqual(kwargs["exclude_years"], [1923, (1914, 1923)])
+
+    def test_default_mode_is_forward_block_pooled(self):
+        # Default recommend_glide_path call should use forward-block + pooled.
+        with patch(
+            "analysis.glide_path.recommender._load_history",
+            return_value=synthetic_history(),
+        ):
+            result = self._recommend()
+        self.assertEqual(result["params"]["return_mode"], "forward-block")
 
     def test_all_modes_are_deterministic_end_to_end(self):
         history = synthetic_history()
         for mode in ("iid-mc", "historical-iid", "historical-block"):
             with self.subTest(mode=mode), patch(
-                "analysis.glide_path.recommender._load_world_history", return_value=history
+                "analysis.glide_path.recommender._load_history", return_value=history
             ):
                 first = self._recommend(return_mode=mode, block_years=2)
                 second = self._recommend(return_mode=mode, block_years=2)
@@ -448,38 +438,16 @@ class GlidePathMarketTests(unittest.TestCase):
             if mode != "iid-mc":
                 self.assertEqual(first["params"]["history_source"], "synthetic world")
 
+    def test_parse_year_windows_handles_scalars_and_ranges(self):
+        self.assertEqual(
+            parse_year_windows(["1923", "1914-1923"]), [1923, (1914, 1923)]
+        )
+
     def test_cli_rejects_custom_curve_for_historical_mode(self):
         stderr = io.StringIO()
         with redirect_stderr(stderr), self.assertRaises(SystemExit):
             cli_main(["--mode", "historical-iid", "--curve", "curve.csv"])
         self.assertIn("--curve is only supported", stderr.getvalue())
-
-    def test_cli_rejects_historical_fixed_income_for_iid(self):
-        stderr = io.StringIO()
-        with redirect_stderr(stderr), self.assertRaises(SystemExit):
-            cli_main(["--historical-fixed-income", "bills+bonds"])
-        self.assertIn("applies only to historical modes", stderr.getvalue())
-
-    def test_historical_bonds_and_bills_selects_mixed_history(self):
-        mixed_history = synthetic_bills_and_bonds_history()
-        with patch(
-            "analysis.glide_path.recommender._load_world_history", return_value=mixed_history
-        ) as loader:
-            result = self._recommend(
-                return_mode="historical-iid", historical_fixed_income="bills+bonds"
-            )
-        loader.assert_called_once_with("bills+bonds")
-        self.assertEqual(result["params"]["historical_fixed_income"], "bills+bonds")
-        for entry in result["schedule"]:
-            self.assertAlmostEqual(
-                entry["equity_pct"] + entry["bond_pct"] + entry["bill_pct"], 100.0
-            )
-        self.assertAlmostEqual(
-            result["flat_equity_pct"]
-            + result["flat_bond_pct"]
-            + result["flat_bill_pct"],
-            100.0,
-        )
 
     @staticmethod
     def _recommend(**overrides):
