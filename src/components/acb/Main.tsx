@@ -156,12 +156,14 @@ const Main = () => {
               <Title order={2} fz="lg">
                 Margin Interest Paid
               </Title>
+              <Text c="dimmed" size="sm">
+                Potentially deductible against taxable income (line 22100)
+              </Text>
               <Table striped withTableBorder>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>Tax Year</Table.Th>
                     <Table.Th ta="right">Interest Paid</Table.Th>
-                    <Table.Th>Note</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -170,10 +172,6 @@ const Main = () => {
                       <Table.Td>{year}</Table.Td>
                       <Table.Td ta="right">
                         {interestFormatter.format(marginInterest[year])}
-                      </Table.Td>
-                      <Table.Td>
-                        Potentially deductible against investment income (line
-                        22100)
                       </Table.Td>
                     </Table.Tr>
                   ))}

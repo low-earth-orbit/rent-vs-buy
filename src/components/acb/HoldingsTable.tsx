@@ -25,7 +25,7 @@ type HoldingsTableProps = {
   onOpeningLotChange: (symbol: string, value: number) => void;
 };
 
-const acbFormatter = new Intl.NumberFormat("en-CA", {
+const currencyFormatter = new Intl.NumberFormat("en-CA", {
   style: "currency",
   currency: "CAD",
   minimumFractionDigits: 2,
@@ -89,10 +89,12 @@ const HoldingsTable = ({
                     —
                   </Text>
                 ) : (
-                  acbFormatter.format(adjusted.acbPerShare)
+                  currencyFormatter.format(adjusted.acbPerShare)
                 )}
               </Table.Td>
-              <Table.Td ta="right">{formatCAD(adjusted.costBasis)}</Table.Td>
+              <Table.Td ta="right">
+                {currencyFormatter.format(adjusted.costBasis)}
+              </Table.Td>
               {anyTransferred && (
                 <Table.Td>
                   {hasTransfers ? (
