@@ -16,6 +16,7 @@ import FileUpload, { type UploadedFileSummary } from "./FileUpload";
 import HoldingsTable, { type OpeningLots } from "./HoldingsTable";
 import SummaryBar from "./SummaryBar";
 import T3Modal from "./T3Modal";
+import { formatCADDecimal } from "@/utils/format";
 import {
   applyAdjustments,
   computeHoldings,
@@ -31,13 +32,6 @@ import {
   type T3Entry,
   type T3Slips,
 } from "@/utils/acb/parser";
-
-const interestFormatter = new Intl.NumberFormat("en-CA", {
-  style: "currency",
-  currency: "CAD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 
 /** True when the transaction belongs to a registered account (TFSA/RRSP/FHSA). */
 function isRegisteredTransaction(tx: AcbTransaction): boolean {
@@ -190,10 +184,16 @@ const Main = () => {
     const excludedLabels = fileRegisteredAccounts
       .map(accountLabel)
       .filter((label) => label !== "Unknown account");
+    const excludedTxCount = fileRegisteredAccounts.reduce(
+      (sum, group) => sum + group.transactions.length,
+      0,
+    );
     return {
       name: file.name,
       detail: fileDetail(file),
       excludedAccounts: excludedLabels.length > 0 ? excludedLabels : undefined,
+      excludedTransactionCount:
+        excludedTxCount > 0 ? excludedTxCount : undefined,
     };
   });
   const previewFile =
@@ -265,8 +265,8 @@ const Main = () => {
           <SummaryBar
             totalCostBasis={totalCostBasis}
             holdingsCount={visibleHoldings.length}
-            transactionCount={transactions.length}
-            dateRange={dateRangeOf(transactions)}
+            transactionCount={nonRegisteredTransactions.length}
+            dateRange={dateRangeOf(nonRegisteredTransactions)}
           />
         )}
         {hasFiles && (
@@ -333,7 +333,7 @@ const Main = () => {
                             <Table.Tr key={year}>
                               <Table.Td>{year}</Table.Td>
                               <Table.Td ta="right">
-                                {interestFormatter.format(marginInterest[year])}
+                                {formatCADDecimal(marginInterest[year])}
                               </Table.Td>
                             </Table.Tr>
                           ))}
@@ -354,13 +354,7 @@ const Main = () => {
                     this view to reconcile against account statements.
                   </Text>
                 </Alert>
-                <AccountView
-                  groups={accountGroups}
-                  t3Slips={t3Slips}
-                  onEditT3={handleEditT3}
-                  openingLots={openingLots}
-                  onOpeningLotChange={handleOpeningLotChange}
-                />
+                <AccountView groups={accountGroups} />
               </Stack>
             </Tabs.Panel>
           </Tabs>

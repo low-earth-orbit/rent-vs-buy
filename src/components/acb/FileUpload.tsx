@@ -15,6 +15,8 @@ export type UploadedFileSummary = {
   detail: string;
   /** Registered accounts excluded from ACB pooling, if any. */
   excludedAccounts?: string[];
+  /** Number of transactions excluded due to registered accounts. */
+  excludedTransactionCount?: number;
 };
 
 type FileUploadProps = {
@@ -63,6 +65,9 @@ const FileUpload = ({
               {file.excludedAccounts && file.excludedAccounts.length > 0 && (
                 <Badge color="gray" variant="light" size="sm">
                   Excluded: {file.excludedAccounts.join(" · ")}
+                  {file.excludedTransactionCount && file.excludedTransactionCount > 0
+                    ? ` (${file.excludedTransactionCount} tx)`
+                    : ""}
                 </Badge>
               )}
               <Button

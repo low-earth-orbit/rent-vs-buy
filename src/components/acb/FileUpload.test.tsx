@@ -81,12 +81,13 @@ describe("FileUpload", () => {
     expect(onPreview).toHaveBeenCalledWith(1);
   });
 
-  it("shows excluded accounts badge when present", () => {
+  it("shows excluded accounts badge with transaction count", () => {
     const filesWithExcluded = [
       {
         name: "mixed.csv",
         detail: "5 transactions",
         excludedAccounts: ["TFSA · test", "RRSP · registered"],
+        excludedTransactionCount: 2,
       },
     ];
     renderWithMantine(
@@ -99,7 +100,7 @@ describe("FileUpload", () => {
     );
 
     expect(
-      screen.getByText("Excluded: TFSA · test · RRSP · registered"),
+      screen.getByText("Excluded: TFSA · test · RRSP · registered (2 tx)"),
     ).toBeInTheDocument();
   });
 });
