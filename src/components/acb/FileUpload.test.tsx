@@ -80,4 +80,26 @@ describe("FileUpload", () => {
     await user.click(screen.getAllByRole("button", { name: "Preview" })[1]);
     expect(onPreview).toHaveBeenCalledWith(1);
   });
+
+  it("shows excluded accounts badge when present", () => {
+    const filesWithExcluded = [
+      {
+        name: "mixed.csv",
+        detail: "5 transactions",
+        excludedAccounts: ["TFSA · test", "RRSP · registered"],
+      },
+    ];
+    renderWithMantine(
+      <FileUpload
+        files={filesWithExcluded}
+        onFilesAdded={noop}
+        onRemoveFile={noop}
+        onPreview={noop}
+      />,
+    );
+
+    expect(
+      screen.getByText("Excluded: TFSA · test · RRSP · registered"),
+    ).toBeInTheDocument();
+  });
 });

@@ -6,8 +6,6 @@ type SummaryBarProps = {
   totalCostBasis: number;
   /** Count of non-registered holdings with shares remaining. */
   holdingsCount: number;
-  nonRegisteredAccounts: number;
-  registeredAccounts: number;
   transactionCount: number;
   /** Earliest and latest transaction dates; null when no rows carry a date. */
   dateRange: { min: string; max: string } | null;
@@ -31,19 +29,13 @@ const Stat = ({ label, value }: StatProps) => (
 const SummaryBar = ({
   totalCostBasis,
   holdingsCount,
-  nonRegisteredAccounts,
-  registeredAccounts,
   transactionCount,
   dateRange,
 }: SummaryBarProps) => (
   <Paper withBorder p="md" radius="md">
-    <SimpleGrid cols={{ base: 2, sm: 5 }} spacing="md">
+    <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
       <Stat label="Total cost basis" value={formatCAD(totalCostBasis)} />
       <Stat label="Holdings" value={String(holdingsCount)} />
-      <Stat
-        label="Accounts"
-        value={`${nonRegisteredAccounts} non-registered · ${registeredAccounts} registered`}
-      />
       <Stat label="Transactions" value={String(transactionCount)} />
       <Stat
         label="Coverage"

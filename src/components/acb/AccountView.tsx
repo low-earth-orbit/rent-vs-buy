@@ -1,4 +1,4 @@
-import { Alert, Paper, Stack, Table, Title } from "@mantine/core";
+import { Paper, Stack, Table, Title } from "@mantine/core";
 import HoldingsTable, { type OpeningLots } from "./HoldingsTable";
 import {
   computeHoldings,
@@ -34,19 +34,7 @@ const AccountSection = ({
     "Unknown account";
 
   if (group.isRegistered) {
-    return (
-      <Paper withBorder p="md" radius="md">
-        <Stack gap="sm">
-          <Title order={3} fz="lg">
-            {header}
-          </Title>
-          <Alert color="blue" title="Registered account">
-            ACB does not apply to registered accounts (TFSA / RRSP / FHSA) — no
-            holdings shown.
-          </Alert>
-        </Stack>
-      </Paper>
-    );
+    return null;
   }
 
   const holdings = computeHoldings(group.transactions);
@@ -108,10 +96,10 @@ type AccountViewProps = {
 };
 
 /**
- * By-account breakdown: one section per (accountId, accountType) group.
- * Registered accounts (TFSA / RRSP / FHSA) show a notice instead of holdings;
- * non-registered accounts get their own holdings table with expandable
- * year-by-year ACB rows and (for margin accounts) a margin interest summary.
+ * By-account breakdown: one section per non-registered (accountId, accountType) group.
+ * Registered accounts (TFSA / RRSP / FHSA) are filtered out and not shown.
+ * Each account gets its own holdings table with expandable year-by-year ACB rows
+ * and (for margin accounts) a margin interest summary.
  * T3 slips and opening lots apply globally by symbol.
  */
 const AccountView = ({

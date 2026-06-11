@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Badge,
   Button,
   CloseButton,
   FileInput,
@@ -12,6 +13,8 @@ export type UploadedFileSummary = {
   name: string;
   /** Short description of the file's contents, e.g. transaction count and date range. */
   detail: string;
+  /** Registered accounts excluded from ACB pooling, if any. */
+  excludedAccounts?: string[];
 };
 
 type FileUploadProps = {
@@ -57,6 +60,11 @@ const FileUpload = ({
               <Text size="xs" c="dimmed">
                 {file.detail}
               </Text>
+              {file.excludedAccounts && file.excludedAccounts.length > 0 && (
+                <Badge color="gray" variant="light" size="sm">
+                  Excluded: {file.excludedAccounts.join(" · ")}
+                </Badge>
+              )}
               <Button
                 variant="subtle"
                 size="xs"

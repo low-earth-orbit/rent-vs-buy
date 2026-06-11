@@ -173,9 +173,6 @@ const Main = () => {
     .map(Number)
     .sort((a, b) => a - b);
   const accountGroups = groupByAccount(transactions);
-  const excludedRegisteredAccounts = accountGroups.filter(
-    (g) => g.isRegistered,
-  );
   const totalCostBasis = visibleHoldings.reduce(
     (sum, holding) =>
       sum +
@@ -186,10 +183,19 @@ const Main = () => {
       ).costBasis,
     0,
   );
-  const fileSummaries: UploadedFileSummary[] = loadedFiles.map((file) => ({
-    name: file.name,
-    detail: fileDetail(file),
-  }));
+  const fileSummaries: UploadedFileSummary[] = loadedFiles.map((file) => {
+    const fileRegisteredAccounts = groupByAccount(file.transactions).filter(
+      (g) => g.isRegistered,
+    );
+    const excludedLabels = fileRegisteredAccounts
+      .map(accountLabel)
+      .filter((label) => label !== "Unknown account");
+    return {
+      name: file.name,
+      detail: fileDetail(file),
+      excludedAccounts: excludedLabels.length > 0 ? excludedLabels : undefined,
+    };
+  });
   const previewFile =
     previewFileIndex !== null ? (loadedFiles[previewFileIndex] ?? null) : null;
   const modalEntries =
@@ -259,10 +265,6 @@ const Main = () => {
           <SummaryBar
             totalCostBasis={totalCostBasis}
             holdingsCount={visibleHoldings.length}
-            nonRegisteredAccounts={
-              accountGroups.length - excludedRegisteredAccounts.length
-            }
-            registeredAccounts={excludedRegisteredAccounts.length}
             transactionCount={transactions.length}
             dateRange={dateRangeOf(transactions)}
           />
@@ -275,16 +277,6 @@ const Main = () => {
             </Tabs.List>
             <Tabs.Panel value="holdings" pt="lg">
               <Stack gap="lg">
-                {excludedRegisteredAccounts.length > 0 && (
-                  <Alert color="blue" title="Registered accounts excluded">
-                    <Text size="sm">
-                      ACB doesn&apos;t apply to registered accounts (TFSA / RRSP
-                      / FHSA). Excluded:{" "}
-                      {excludedRegisteredAccounts.map(accountLabel).join(", ")}.
-                      See the By account tab.
-                    </Text>
-                  </Alert>
-                )}
                 <Paper withBorder p="md" radius="md">
                   <Stack gap="sm">
                     <Title order={2} fz="lg">
