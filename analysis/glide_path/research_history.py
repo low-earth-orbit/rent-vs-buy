@@ -10,6 +10,8 @@ curve are printed alongside as comparators so you can judge for yourself how pea
 Sections (choose with --sections; default all):
   matrix  : the factorial — iid-mc / historical-iid / historical-block / forward-block, world & pooled
   blocks  : block-length sweep (sequencing strength) on the pooled dataset
+  channels: which ingredient flips the answer — corr, marginal shapes, equity-only or
+            bond-only sequencing, vs the full joint sequence structure
   gamma   : risk-aversion sweep across the key modes
   curves  : CE vs constant equity weight (how peaked is "100% equity"?)
   vr      : variance-ratio diagnostic (mean reversion) for world vs pooled
@@ -115,11 +117,88 @@ def run_block_sweep(args):
     print("=" * 100)
     for mode in ("historical-block", "forward-block"):
         print(f"\n  -- {mode} (pooled) --")
-        for block_years in (1, 3, 5, 10, 20):
+        for block_years in (1, 3, 5, 10, 20, 40):
             rec = recommend_glide_path(
                 **base_kwargs(args, return_mode=mode, dataset="pooled", block_years=block_years)
             )
             print(summary_row(f"block={block_years:>2}y", rec))
+
+
+def run_channels(args):
+    """Factorial ladder isolating which ingredient of forward-block flips the optimum.
+
+    a) iid-mc                : normal draws, curve-interpolated intermediate vols (baseline)
+    b) synth-iid (hist corr) : iid bivariate NORMAL at the forward anchors with the historical
+                               stock/bond correlation — the correlation channel alone
+    c) rescaled-hist iid     : forward-rescaled real history sampled iid — correlation +
+                               non-normal marginal shapes, still no sequencing
+    d) equity-block/bond-iid : block-sample equity only, iid-shuffle bonds — equity sequencing
+                               (decade reversion AND short-run momentum) without bond persistence
+    e) equity-iid/bond-block : the reverse — bond persistence without equity sequencing
+    f) forward-block         : the full joint sequence structure (the product default)
+
+    The one-asset cells (d, e) necessarily drop the cross-correlation; cell b shows that
+    channel is immaterial on its own.
+    """
+    from unittest.mock import patch
+
+    from analysis.glide_path import recommender as R
+    from analysis.shared import jst_history as J
+
+    eq_m, eq_v, bd_m, bd_v = R._forward_anchors(R.PWL_CURVE, 2.1, True)
+    raw = J.load_pooled_country_returns()
+    corr = float(np.corrcoef(raw.equity, raw.fixed_income)[0, 1])
+    rescaled = J.rescale_to_targets(
+        raw, equity_mean=eq_m, equity_vol=eq_v,
+        fixed_income_mean=bd_m, fixed_income_vol=bd_v,
+        label_suffix="forward-CMA rescaled",
+    )
+
+    rng = np.random.default_rng(7)
+    n_obs = 50_000
+    z = rng.standard_normal((n_obs, 2))
+    z[:, 1] = corr * z[:, 0] + np.sqrt(1.0 - corr**2) * z[:, 1]
+    synth = J.ReturnHistory(
+        years=np.arange(n_obs), equity=eq_m + eq_v * z[:, 0],
+        fixed_income=bd_m + bd_v * z[:, 1],
+        label=f"synthetic normal (corr {corr:.2f})", country_count=0,
+    )
+
+    def split_sampler(block_asset):
+        """Block-sample one asset's rows, iid-shuffle the other's."""
+        def sample(history, n_years, n_paths, *, mode, block_years, seed):
+            blk = J.sample_indices(history.observations, n_years, n_paths,
+                                   mode="historical-block", block_years=block_years,
+                                   seed=seed, segment_ids=history.segment_ids)
+            iid = J.sample_indices(history.observations, n_years, n_paths,
+                                   mode="historical-iid", block_years=block_years,
+                                   seed=seed + 1)
+            if block_asset == "equity":
+                return history.equity[blk], history.fixed_income[iid]
+            return history.equity[iid], history.fixed_income[blk]
+        return sample
+
+    print("\n" + "=" * 100)
+    print(f"CHANNEL FACTORIAL  (what flips the optimum to flat ~100%? hist stock/bond corr = {corr:.3f})")
+    print("  Reads: corr (b) and marginal shapes (c) barely move the iid answer; one-asset sequencing")
+    print("  (d, e) does not flip it either — only the full joint sequence structure (f) does.")
+    print("=" * 100)
+
+    print(summary_row("a) iid-mc",
+                      recommend_glide_path(**base_kwargs(args, return_mode="iid-mc"))))
+    with patch.object(R, "_load_history", return_value=synth):
+        print(summary_row("b) synth-iid (hist corr)",
+                          recommend_glide_path(**base_kwargs(args, return_mode="historical-iid"))))
+    with patch.object(R, "_load_history", return_value=rescaled):
+        print(summary_row("c) rescaled-hist iid",
+                          recommend_glide_path(**base_kwargs(args, return_mode="historical-iid"))))
+    fwd = base_kwargs(args, return_mode="forward-block", dataset="pooled",
+                      block_years=args.block_years)
+    with patch.object(J, "sample_return_paths", split_sampler("equity")):
+        print(summary_row("d) equity-block/bond-iid", recommend_glide_path(**fwd)))
+    with patch.object(J, "sample_return_paths", split_sampler("fixed_income")):
+        print(summary_row("e) equity-iid/bond-block", recommend_glide_path(**fwd)))
+    print(summary_row("f) forward-block (joint)", recommend_glide_path(**fwd)))
 
 
 def run_gamma_sweep(args):
@@ -203,6 +282,7 @@ def run_variance_ratios(args):
 SECTIONS = {
     "matrix": run_matrix,
     "blocks": run_block_sweep,
+    "channels": run_channels,
     "gamma": run_gamma_sweep,
     "curves": run_flat_curves,
     "vr": run_variance_ratios,

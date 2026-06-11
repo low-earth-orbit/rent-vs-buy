@@ -83,10 +83,12 @@ already-diversified world series, not of the (stock/bond) candidate set.
 
 0. **The return model decides whether there's a tent at all.** Under **iid** (no recovery), constant-$
    spending wants a **derisking bond tent** and an interior **60–80%** level. Under the **default
-   forward-block pooled** engine — which restores JST's empirical equity mean reversion — the tent
+   forward-block pooled** engine — which restores JST's empirical sequence structure (equity
+   decade-scale reversion **jointly with** bond persistence; see §2f's channel factorial) — the tent
    **largely disappears**: the optimum is **flat ~100% equity**, best-flat is 100% in every cell, and the
    glide shape is worth **≈ $0** (§2f). The iid tent is a sequence-risk artifact of _assuming no
-   recovery_; the recovery is real in history, and it reproduces **ACO's flat-100%** on our own CMAs.
+   recovery_; the joint recovery-and-bond-risk structure is real in history, and it reproduces
+   **ACO's flat-100%** on our own CMAs.
 
 1. **The spending rule decides the shape (within either model).**
    - **Constant real-dollar withdrawal** → _under iid_ the optimum **derisks into retirement** (a **bond tent**) then drifts up; _under the default forward-block_ this collapses to a shallow dip near 100%.
@@ -431,9 +433,39 @@ optimized glide vs the best single constant weight:
 | flexible   | 30y          | $70,747 | $70,747 (100%)  | $0                     |
 
 Differences of this size (±tens of $/yr on a ~$50k CE) are within Monte Carlo sampling error —
-read them as "≈ $0", not as the flat weight genuinely beating the glide. (These figures predate
-the move of the flat-comparator argmax onto its own selection draw; that change removes a small
-selection advantage the flat weight previously enjoyed on the scoring draw.)
+read them as "≈ $0", not as the flat weight genuinely beating the glide. (Both tables re-verified
+to the dollar under the current engine — including the flat-comparator selection draw and the
+income-shortfall depletion definition.)
+
+**Robustness: block length.** The flip does not hinge on the L = 10 default. Re-running the
+constant-$ 30y+30y lifecycle (5y steps) across average block lengths:
+
+| Avg block | best flat | acc. avg | tent |
+| --------- | --------- | -------- | ---- |
+| 1y        | **65%**   | 72       | 55   |
+| 5y        | 100%      | 93       | 80   |
+| 10y       | 100%      | 99       | 85   |
+| 20y       | 100%      | 99       | 85   |
+| 40y       | 100%      | 97       | 75   |
+
+Best-flat is 100% for every L ≥ 5; only L = 1 — which destroys sequencing and reduces to an
+iid resample of history — reverts to the interior-weight tent. The transition sits between 1y
+and 5y blocks.
+
+**Robustness: which channel flips it.** A factorial ladder on the same scenario isolates what
+forward-block adds over iid (each cell = best flat weight): iid normal draws **60%**; adding the
+historical stock/bond correlation (+0.29) to iid normals **55%**; the rescaled history's
+non-normal marginal shapes sampled iid **70%**; block-sampling **equity only** (bonds shuffled)
+**50%**; block-sampling **bonds only** (equity shuffled) **65%**; the full joint sequence
+structure (the default engine) **100%**. No single channel — correlation, fat tails, equity
+mean reversion alone, or bond persistence alone — produces the flat-100% answer; it emerges
+only from the **joint** sequence structure, where bond persistence (VR(10y)≈1.7) makes long
+bond holdings risky at the same time as equity's decade-scale reversion (VR(10y)≈0.91) makes
+high equity recoverable. (Equity blocks alone actually _deepen_ the tent: history's short-run
+momentum, VR(2y)≈1.1, raises near-horizon equity risk while iid-shuffled bonds stay safe.
+The one-asset cells necessarily drop the cross-correlation, which the corr-only cell shows is
+immaterial.) Reproduce both:
+`python3 -m analysis.glide_path.research_history --sections blocks channels --accum 30 --retire 30 --savings 200000 --contrib 20000 --interval 5 --paths 8000`.
 
 **What changed from iid:**
 
@@ -485,14 +517,15 @@ per-age optima — it is the assumptions:
 **§2f resolves this empirically, not just in theory.** Restoring the historical sequencing —
 without touching the bequest motive or the premium — is exactly what the default **forward-block
 pooled** engine does, and it moves our constant-$ accumulation path from iid's _falling-to-68_ back to
-**flat ~100%**, matching ACO. So of the two assumptions above, **(2) the missing recovery is the
-operative one**: the iid tent is mostly a no-recovery artifact, and the model's _default_ already
+**flat ~100%**, matching ACO. So of the two assumptions above, **(2) the missing sequencing is the
+operative one**: the iid tent is mostly a no-sequencing artifact, and the model's _default_ already
 behaves like ACO. The bequest channel (1) remains a secondary lever — adding a terminal-wealth motive
-would push even the iid path up. Two qualifiers: the "sequencing" the bootstrap restores bundles
-**equity mean reversion together with bond persistence and the historical real stock/bond
-correlation** — the bond side makes bonds a worse diversifier than the forward curve implies and
-pushes toward equity through its own channel, which we have not separated from the recovery channel
-(see §4). And because JST and ACO's panel draw on largely the **same developed-market historical
+would push even the iid path up. Two qualifiers: the channel factorial (§2f) shows the flip is a
+**joint** property of the historical process — bond persistence degrading long bond holdings at the
+same time as equity's decade-scale reversion de-risks high equity; neither alone, nor the stock/bond
+correlation, nor the fat-tailed marginal shapes, reproduces it. "The missing recovery" is therefore
+shorthand for that joint structure, not a single equity-side mechanism.
+And because JST and ACO's panel draw on largely the **same developed-market historical
 episodes**, reproducing ACO's flat-100% here is _consistency_, not independent confirmation. The
 honest, default-model conclusion for constant-$ is therefore
 **flat ~100% with a shallow dip near retirement** (§2f), with the residual cost borne as depletion
@@ -515,19 +548,20 @@ first two — they are listed here to bound the iid baseline, not the product.
   reversion from JST history (~VR(10y)≈0.91) and bond persistence (VR>1) in the bootstrap sequences —
   up to roughly the 10-year average block length, attenuated beyond it; neither the
   CAPE-_timing_ signal nor a tradable valuation rule is modeled in either engine.
-- **The mean-reversion signal is statistically weak — and the headline flip rests on it.**
-  VR(10y)≈0.91 is mild, estimated from overlapping windows on cross-country-correlated series with
-  ~150 calendar years of effective data, and we report no confidence interval; it is likely not
-  distinguishable from VR=1 at conventional levels. We also have not run a **block-length
-  sensitivity** (does the §2f flip survive `--block-years` 5 or strengthen at 20–40?). Until both
-  exist, read §2f as the realistic-sequencing bracket of an iid↔historical pair, not as a settled
-  point estimate.
-- **The bond channel is not separated from the recovery channel.** forward-block matches only the
-  `w=0`/`w=1` anchors; intermediate-weight risk comes from the _historical_ real stock/bond
-  correlation (positive — a common inflation factor) and bond-return persistence (VR>1). Both make
-  bonds a worse diversifier than the forward curve assumes and push the optimum toward equity
-  independently of equity mean reversion. The missing factorial cell — iid bivariate normal draws
-  with the historical correlation but no sequencing — would isolate it.
+- **The mean-reversion signal is statistically weak.** VR(10y)≈0.91 is mild, estimated from
+  overlapping windows on cross-country-correlated series with ~150 calendar years of effective
+  data, and we report no confidence interval; it is likely not distinguishable from VR=1 at
+  conventional levels. The **block-length sensitivity** in §2f partly compensates: the flip is a
+  step function of "any sequencing vs none" (flat-100% for every average block length ≥ 5y;
+  interior tent only at 1y), not a knife-edge in the VR point estimate. Read §2f as the
+  realistic-sequencing bracket of an iid↔historical pair, not as a settled point estimate.
+- **The flip is a joint-sequencing effect, not a single clean mechanism.** The channel factorial
+  (§2f) shows neither the historical stock/bond correlation, nor the non-normal marginal shapes,
+  nor equity sequencing alone, nor bond persistence alone reproduces flat-100% — equity-only
+  sequencing even _deepens_ the tent via short-run momentum (VR(2y)≈1.1). The result needs bond
+  persistence (VR(10y)≈1.7) degrading bonds at the same time as equity's decade-scale reversion
+  de-risks high equity. That is an empirical property of the joint historical process — coherent,
+  but with no single-parameter knob to stress-test it against.
 - **Survivorship and selection.** JST covers 16 developed markets with long, usable series — markets
   that survived. The recoveries that drive the §2f result are partly a property of that surviving
   sample (the standard critique of ACO applies equally here); investors in markets that closed or
