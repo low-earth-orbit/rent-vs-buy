@@ -48,7 +48,7 @@ function emptyAdjustments(
     t3Slips: {},
     onEditT3: noop,
     openingLots: {},
-    onOpeningLotChange: noop,
+    onEditTransfers: noop,
     ...overrides,
   };
 }
@@ -159,15 +159,15 @@ describe("HoldingsTable", () => {
     expect(onEditT3).toHaveBeenCalledWith("VEQT");
   });
 
-  it("hides the opening lot column when no holding has transferred shares", () => {
+  it("hides the transfer lots column when no holding has transferred shares", () => {
     renderWithMantine(
       <HoldingsTable holdings={HOLDINGS} adjustments={emptyAdjustments()} />,
     );
 
-    expect(screen.queryByText("Opening lot ACB")).not.toBeInTheDocument();
+    expect(screen.queryByText("Transfer lots")).not.toBeInTheDocument();
   });
 
-  it("flags holdings with transferred shares and shows the opening lot input", () => {
+  it("flags holdings with transferred shares and shows the Edit transfers button", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS_WITH_TRANSFER}
@@ -175,20 +175,20 @@ describe("HoldingsTable", () => {
       />,
     );
 
-    expect(screen.getByText("Opening lot ACB")).toBeInTheDocument();
+    expect(screen.getByText("Transfer lots")).toBeInTheDocument();
     const xeqtRow = screen.getByText("XEQT").closest("tr")!;
     expect(within(xeqtRow).getByText("5 transferred")).toBeInTheDocument();
     expect(
-      within(xeqtRow).getByLabelText("Opening lot ACB for XEQT"),
+      within(xeqtRow).getByRole("button", { name: "Edit transfers" }),
     ).toBeInTheDocument();
-    // VEQT has no transfers: no badge, no input in its opening lot cell.
+    // VEQT has no transfers: dash in its transfer lots cell, no button.
     const veqtRow = screen.getByText("VEQT").closest("tr")!;
     expect(
-      within(veqtRow).queryByLabelText("Opening lot ACB for VEQT"),
+      within(veqtRow).queryByRole("button", { name: "Edit transfers" }),
     ).not.toBeInTheDocument();
   });
 
-  it("adds the opening lot to the cost basis pool before the T3 net", () => {
+  it("adds the opening lot total to the cost basis pool before the T3 net", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS_WITH_TRANSFER}
@@ -203,21 +203,25 @@ describe("HoldingsTable", () => {
     const xeqtRow = screen.getByText("XEQT").closest("tr")!;
     expect(within(xeqtRow).getByText("$450.00")).toBeInTheDocument();
     expect(within(xeqtRow).getByText("$30.00")).toBeInTheDocument();
+    // The opening-lot total shows as a badge next to the button.
+    expect(within(xeqtRow).getByText("+$200.00")).toBeInTheDocument();
   });
 
-  it("calls onOpeningLotChange with the symbol when an opening lot is entered", async () => {
+  it("calls onEditTransfers with the symbol when Edit transfers is clicked", async () => {
     const user = userEvent.setup();
-    const onOpeningLotChange = vi.fn();
+    const onEditTransfers = vi.fn();
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS_WITH_TRANSFER}
-        adjustments={emptyAdjustments({ onOpeningLotChange })}
+        adjustments={emptyAdjustments({ onEditTransfers })}
       />,
     );
 
-    const input = screen.getByLabelText("Opening lot ACB for XEQT");
-    await user.type(input, "75");
-    expect(onOpeningLotChange).toHaveBeenLastCalledWith("XEQT", 75);
+    const xeqtRow = screen.getByText("XEQT").closest("tr")!;
+    await user.click(
+      within(xeqtRow).getByRole("button", { name: "Edit transfers" }),
+    );
+    expect(onEditTransfers).toHaveBeenCalledWith("XEQT");
   });
 
   it("shows raw book cost with no edit controls when adjustments are omitted", () => {
@@ -229,7 +233,7 @@ describe("HoldingsTable", () => {
     expect(
       screen.queryByRole("button", { name: "Edit T3" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText("Opening lot ACB")).not.toBeInTheDocument();
+    expect(screen.queryByText("Transfer lots")).not.toBeInTheDocument();
     // Unadjusted figures straight from the holding.
     const veqtRow = screen.getByText("VEQT").closest("tr")!;
     expect(within(veqtRow).getByText("$400.00")).toBeInTheDocument();

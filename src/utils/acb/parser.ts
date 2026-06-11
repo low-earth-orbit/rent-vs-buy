@@ -54,6 +54,41 @@ export type T3Entry = {
 /** T3 entries keyed by symbol. */
 export type T3Slips = Record<string, T3Entry[]>;
 
+/** One transferred-in lot: its date and share count, from a `transfer` row. */
+export type TransferLot = {
+  /** ISO date string from the transfer row; "" when the column is absent. */
+  date: string;
+  /** Shares transferred in by this lot. */
+  quantity: number;
+};
+
+/**
+ * The transfer lots for one symbol, in chronological (CSV) order. Each lot is a
+ * single `transfer` row the user must supply an opening ACB for. The user can't
+ * aggregate multiple transfers themselves, so the UI shows one row per lot.
+ */
+export function transferLotsForSymbol(
+  transactions: AcbTransaction[],
+  symbol: string,
+): TransferLot[] {
+  return transactions
+    .filter((tx) => tx.symbol === symbol && tx.type === "transfer")
+    .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""))
+    .map((tx) => ({ date: tx.date ?? "", quantity: tx.quantity }));
+}
+
+/**
+ * Per-lot opening ACB for each symbol's transferred-in shares, indexed in the
+ * same order as `transferLotsForSymbol`. Entries default to 0 when the user
+ * hasn't supplied an ACB for that lot yet.
+ */
+export type OpeningLotEntries = Record<string, number[]>;
+
+/** Total opening-lot ACB across a symbol's transfer lots. */
+export function sumOpeningLot(acbs: number[] | undefined): number {
+  return (acbs ?? []).reduce((sum, acb) => sum + (acb || 0), 0);
+}
+
 /** Net ACB adjustment across all years: sum(box21) − sum(box42). */
 export function t3NetAdjustment(entries: T3Entry[]): number {
   return entries.reduce((sum, entry) => sum + entry.box21 - entry.box42, 0);

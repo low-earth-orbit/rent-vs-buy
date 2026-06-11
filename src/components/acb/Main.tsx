@@ -13,9 +13,10 @@ import {
 import AccountView from "./AccountView";
 import FilePreviewModal from "./FilePreviewModal";
 import FileUpload, { type UploadedFileSummary } from "./FileUpload";
-import HoldingsTable, { type OpeningLots } from "./HoldingsTable";
+import HoldingsTable from "./HoldingsTable";
 import SummaryBar from "./SummaryBar";
 import T3Modal from "./T3Modal";
+import TransferModal from "./TransferModal";
 import { formatCADDecimal } from "@/utils/format";
 import {
   applyAdjustments,
@@ -25,9 +26,12 @@ import {
   groupByAccount,
   hasMixedCurrencies,
   parseFiles,
+  sumOpeningLot,
   t3NetAdjustment,
+  transferLotsForSymbol,
   type AcbTransaction,
   type AccountGroup,
+  type OpeningLotEntries,
   type ParsedFile,
   type T3Entry,
   type T3Slips,
@@ -74,7 +78,12 @@ const Main = () => {
   const [parseErrors, setParseErrors] = useState<string[]>([]);
   const [t3Slips, setT3Slips] = useState<T3Slips>({});
   const [t3ModalSymbol, setT3ModalSymbol] = useState<string | null>(null);
-  const [openingLots, setOpeningLots] = useState<OpeningLots>({});
+  const [openingLotEntries, setOpeningLotEntries] = useState<OpeningLotEntries>(
+    {},
+  );
+  const [transferModalSymbol, setTransferModalSymbol] = useState<string | null>(
+    null,
+  );
   const [previewFileIndex, setPreviewFileIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<string | null>("holdings");
 
@@ -140,8 +149,14 @@ const Main = () => {
     setT3Slips((prev) => ({ ...prev, [symbol]: entries }));
   }
 
-  function handleOpeningLotChange(symbol: string, value: number) {
-    setOpeningLots((prev) => ({ ...prev, [symbol]: value }));
+  function handleEditTransfers(symbol: string) {
+    setTransferModalSymbol(symbol);
+  }
+
+  function handleOpeningLotEntriesChange(acbs: number[]) {
+    if (transferModalSymbol === null) return;
+    const symbol = transferModalSymbol;
+    setOpeningLotEntries((prev) => ({ ...prev, [symbol]: acbs }));
   }
 
   const hasFiles = loadedFiles.length > 0;
@@ -167,12 +182,18 @@ const Main = () => {
     .map(Number)
     .sort((a, b) => a - b);
   const accountGroups = groupByAccount(transactions);
+  // Total opening-lot ACB per symbol, summed across its transfer lots — the
+  // single number `applyAdjustments` and HoldingsTable consume.
+  const openingLotTotals: Record<string, number> = {};
+  for (const symbol of Object.keys(openingLotEntries)) {
+    openingLotTotals[symbol] = sumOpeningLot(openingLotEntries[symbol]);
+  }
   const totalCostBasis = visibleHoldings.reduce(
     (sum, holding) =>
       sum +
       applyAdjustments(
         holding,
-        openingLots[holding.symbol] ?? 0,
+        openingLotTotals[holding.symbol] ?? 0,
         t3NetAdjustment(t3Slips[holding.symbol] ?? []),
       ).costBasis,
     0,
@@ -200,6 +221,14 @@ const Main = () => {
     previewFileIndex !== null ? (loadedFiles[previewFileIndex] ?? null) : null;
   const modalEntries =
     t3ModalSymbol !== null ? (t3Slips[t3ModalSymbol] ?? []) : [];
+  const transferLots =
+    transferModalSymbol !== null
+      ? transferLotsForSymbol(nonRegisteredTransactions, transferModalSymbol)
+      : [];
+  const transferAcbs =
+    transferModalSymbol !== null
+      ? (openingLotEntries[transferModalSymbol] ?? [])
+      : [];
 
   // Shared between the gated Tabs layout and the no-tabs layout below.
   const holdingsPanel = (
@@ -217,8 +246,9 @@ const Main = () => {
             <strong>Edit T3</strong> to enter capital gains distributions (box
             21, adds to ACB) and return of capital (box 42, reduces ACB) from
             your T3 slips, per tax year. For holdings with transferred-in
-            shares, enter the <strong>opening lot ACB</strong> (total cost basis
-            of the transferred shares) so the ACB is complete.
+            shares, click <strong>Edit transfers</strong> to enter the opening
+            lot ACB (total cost basis) for each transferred lot, so the ACB is
+            complete.
           </Text>
           {visibleHoldings.length > 0 ? (
             <HoldingsTable
@@ -227,8 +257,8 @@ const Main = () => {
               adjustments={{
                 t3Slips,
                 onEditT3: handleEditT3,
-                openingLots,
-                onOpeningLotChange: handleOpeningLotChange,
+                openingLots: openingLotTotals,
+                onEditTransfers: handleEditTransfers,
               }}
             />
           ) : (
@@ -376,6 +406,13 @@ const Main = () => {
           entries={modalEntries}
           onChange={handleT3EntriesChange}
           onClose={() => setT3ModalSymbol(null)}
+        />
+        <TransferModal
+          symbol={transferModalSymbol}
+          lots={transferLots}
+          acbs={transferAcbs}
+          onChange={handleOpeningLotEntriesChange}
+          onClose={() => setTransferModalSymbol(null)}
         />
       </Stack>
     </Container>

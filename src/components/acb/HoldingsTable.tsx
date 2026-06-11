@@ -4,7 +4,6 @@ import {
   Badge,
   Button,
   Group,
-  NumberInput,
   Table,
   Text,
   Tooltip,
@@ -21,14 +20,13 @@ import {
 } from "@/utils/acb/parser";
 import { formatCADDecimal } from "@/utils/format";
 
-export type OpeningLots = Record<string, number>;
-
 /** T3 and opening-lot adjustments plus their edit handlers. */
 export type AcbAdjustments = {
   t3Slips: T3Slips;
   onEditT3: (symbol: string) => void;
-  openingLots: OpeningLots;
-  onOpeningLotChange: (symbol: string, value: number) => void;
+  /** Total opening-lot ACB per symbol, summed across its transfer lots. */
+  openingLots: Record<string, number>;
+  onEditTransfers: (symbol: string) => void;
 };
 
 type HoldingsTableProps = {
@@ -89,9 +87,7 @@ const HoldingsTable = ({
           <Table.Th ta="right">Shares</Table.Th>
           <Table.Th ta="right">ACB/share</Table.Th>
           <Table.Th ta="right">Total cost basis</Table.Th>
-          {adjustments && anyTransferred && (
-            <Table.Th>Opening lot ACB</Table.Th>
-          )}
+          {adjustments && anyTransferred && <Table.Th>Transfer lots</Table.Th>}
           {adjustments && <Table.Th>T3 slips</Table.Th>}
         </Table.Tr>
       </Table.Thead>
@@ -161,22 +157,22 @@ const HoldingsTable = ({
                 {adjustments && anyTransferred && (
                   <Table.Td>
                     {hasTransfers ? (
-                      <NumberInput
-                        aria-label={`Opening lot ACB for ${holding.symbol}`}
-                        value={openingLot === 0 ? "" : openingLot}
-                        onChange={(value) =>
-                          adjustments.onOpeningLotChange(
-                            holding.symbol,
-                            +value || 0,
-                          )
-                        }
-                        prefix="$"
-                        min={0}
-                        step={10}
-                        size="xs"
-                        w={130}
-                        placeholder="$0"
-                      />
+                      <Group gap="xs" wrap="nowrap">
+                        <Button
+                          variant="subtle"
+                          size="xs"
+                          onClick={() =>
+                            adjustments.onEditTransfers(holding.symbol)
+                          }
+                        >
+                          Edit transfers
+                        </Button>
+                        {openingLot > 0 && (
+                          <Badge size="sm" variant="light" color="teal">
+                            {`+${formatCADDecimal(openingLot)}`}
+                          </Badge>
+                        )}
+                      </Group>
                     ) : (
                       <Text component="span" c="dimmed">
                         —

@@ -10,7 +10,9 @@ import {
   hasMixedCurrencies,
   parseFiles,
   parseWealthsimpleCsv,
+  sumOpeningLot,
   t3NetAdjustment,
+  transferLotsForSymbol,
   type AcbTransaction,
 } from "./parser";
 
@@ -1030,5 +1032,51 @@ describe("parseFiles", () => {
       shares: 15,
       costBasis: 650,
     });
+  });
+});
+
+describe("transferLotsForSymbol", () => {
+  const tx = (
+    symbol: string,
+    quantity: number,
+    type: AcbTransaction["type"],
+    date?: string,
+  ): AcbTransaction => ({ symbol, quantity, price: 0, type, date });
+
+  it("returns one lot per transfer row for the symbol, in date order", () => {
+    const lots = transferLotsForSymbol(
+      [
+        tx("XEQT", 50, "transfer", "2024-03-02"),
+        tx("XEQT", 100, "transfer", "2023-01-15"),
+        tx("XEQT", 10, "buy", "2023-06-01"),
+        tx("VEQT", 5, "transfer", "2023-02-01"),
+      ],
+      "XEQT",
+    );
+    expect(lots).toEqual([
+      { date: "2023-01-15", quantity: 100 },
+      { date: "2024-03-02", quantity: 50 },
+    ]);
+  });
+
+  it("returns an empty list when the symbol has no transfers", () => {
+    expect(transferLotsForSymbol([tx("XEQT", 10, "buy")], "XEQT")).toEqual([]);
+  });
+
+  it("uses an empty date string for transfers with no date", () => {
+    expect(transferLotsForSymbol([tx("XEQT", 7, "transfer")], "XEQT")).toEqual([
+      { date: "", quantity: 7 },
+    ]);
+  });
+});
+
+describe("sumOpeningLot", () => {
+  it("sums per-lot ACBs", () => {
+    expect(sumOpeningLot([9000, 3500])).toBe(12500);
+  });
+
+  it("treats undefined and sparse entries as zero", () => {
+    expect(sumOpeningLot(undefined)).toBe(0);
+    expect(sumOpeningLot([1000, 0, 500])).toBe(1500);
   });
 });
