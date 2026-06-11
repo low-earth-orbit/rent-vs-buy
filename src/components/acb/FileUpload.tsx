@@ -65,7 +65,8 @@ const FileUpload = ({
               {file.excludedAccounts && file.excludedAccounts.length > 0 && (
                 <Badge color="gray" variant="light" size="sm">
                   Excluded: {file.excludedAccounts.join(" · ")}
-                  {file.excludedTransactionCount && file.excludedTransactionCount > 0
+                  {file.excludedTransactionCount &&
+                  file.excludedTransactionCount > 0
                     ? ` (${file.excludedTransactionCount} tx)`
                     : ""}
                 </Badge>

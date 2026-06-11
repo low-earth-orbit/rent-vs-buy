@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine, screen, within } from "@/test-utils";
-import HoldingsTable from "./HoldingsTable";
+import HoldingsTable, { type AcbAdjustments } from "./HoldingsTable";
 import type { AcbTransaction, Holding } from "@/utils/acb/parser";
 
 const HOLDINGS: Holding[] = [
@@ -40,16 +40,23 @@ const HOLDINGS_WITH_TRANSFER: Holding[] = [
 
 const noop = () => {};
 
+/** Adjustments prop with no T3 entries or opening lots. */
+function emptyAdjustments(
+  overrides: Partial<AcbAdjustments> = {},
+): AcbAdjustments {
+  return {
+    t3Slips: {},
+    onEditT3: noop,
+    openingLots: {},
+    onOpeningLotChange: noop,
+    ...overrides,
+  };
+}
+
 describe("HoldingsTable", () => {
   it("renders one row per holding with shares, ACB, and cost basis", () => {
     renderWithMantine(
-      <HoldingsTable
-        holdings={HOLDINGS}
-        t3Slips={{}}
-        onEditT3={noop}
-        openingLots={{}}
-        onOpeningLotChange={noop}
-      />,
+      <HoldingsTable holdings={HOLDINGS} adjustments={emptyAdjustments()} />,
     );
 
     const veqtRow = screen.getByText("VEQT").closest("tr")!;
@@ -60,13 +67,7 @@ describe("HoldingsTable", () => {
 
   it("hides ghost rows: holdings with zero shares are not rendered", () => {
     renderWithMantine(
-      <HoldingsTable
-        holdings={HOLDINGS}
-        t3Slips={{}}
-        onEditT3={noop}
-        openingLots={{}}
-        onOpeningLotChange={noop}
-      />,
+      <HoldingsTable holdings={HOLDINGS} adjustments={emptyAdjustments()} />,
     );
 
     // XEQT was fully sold (0 shares): no row for it.
@@ -78,10 +79,9 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS}
-        t3Slips={{ VEQT: [{ year: 2024, box21: 0, box42: 100 }] }}
-        onEditT3={noop}
-        openingLots={{}}
-        onOpeningLotChange={noop}
+        adjustments={emptyAdjustments({
+          t3Slips: { VEQT: [{ year: 2024, box21: 0, box42: 100 }] },
+        })}
       />,
     );
 
@@ -95,15 +95,14 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS}
-        t3Slips={{
-          VEQT: [
-            { year: 2023, box21: 150, box42: 0 },
-            { year: 2024, box21: 0, box42: 50 },
-          ],
-        }}
-        onEditT3={noop}
-        openingLots={{}}
-        onOpeningLotChange={noop}
+        adjustments={emptyAdjustments({
+          t3Slips: {
+            VEQT: [
+              { year: 2023, box21: 150, box42: 0 },
+              { year: 2024, box21: 0, box42: 50 },
+            ],
+          },
+        })}
       />,
     );
 
@@ -117,30 +116,28 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS_WITH_TRANSFER}
-        t3Slips={{
-          VEQT: [{ year: 2024, box21: 0, box42: 50 }],
-          XEQT: [{ year: 2024, box21: 120, box42: 0 }],
-        }}
-        onEditT3={noop}
-        openingLots={{}}
-        onOpeningLotChange={noop}
+        adjustments={emptyAdjustments({
+          t3Slips: {
+            VEQT: [{ year: 2024, box21: 0, box42: 50 }],
+            XEQT: [{ year: 2024, box21: 120, box42: 0 }],
+          },
+        })}
       />,
     );
 
     const veqtRow = screen.getByText("VEQT").closest("tr")!;
-    expect(within(veqtRow).getByText("−$50")).toBeInTheDocument();
+    expect(within(veqtRow).getByText("−$50.00")).toBeInTheDocument();
     const xeqtRow = screen.getByText("XEQT").closest("tr")!;
-    expect(within(xeqtRow).getByText("+$120")).toBeInTheDocument();
+    expect(within(xeqtRow).getByText("+$120.00")).toBeInTheDocument();
   });
 
   it("shows no badge when there are no T3 entries or the net is zero", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS}
-        t3Slips={{ VEQT: [{ year: 2024, box21: 25, box42: 25 }] }}
-        onEditT3={noop}
-        openingLots={{}}
-        onOpeningLotChange={noop}
+        adjustments={emptyAdjustments({
+          t3Slips: { VEQT: [{ year: 2024, box21: 25, box42: 25 }] },
+        })}
       />,
     );
 
@@ -153,10 +150,7 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS}
-        t3Slips={{}}
-        onEditT3={onEditT3}
-        openingLots={{}}
-        onOpeningLotChange={noop}
+        adjustments={emptyAdjustments({ onEditT3 })}
       />,
     );
 
@@ -167,13 +161,7 @@ describe("HoldingsTable", () => {
 
   it("hides the opening lot column when no holding has transferred shares", () => {
     renderWithMantine(
-      <HoldingsTable
-        holdings={HOLDINGS}
-        t3Slips={{}}
-        onEditT3={noop}
-        openingLots={{}}
-        onOpeningLotChange={noop}
-      />,
+      <HoldingsTable holdings={HOLDINGS} adjustments={emptyAdjustments()} />,
     );
 
     expect(screen.queryByText("Opening lot ACB ($)")).not.toBeInTheDocument();
@@ -183,10 +171,7 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS_WITH_TRANSFER}
-        t3Slips={{}}
-        onEditT3={noop}
-        openingLots={{}}
-        onOpeningLotChange={noop}
+        adjustments={emptyAdjustments()}
       />,
     );
 
@@ -207,10 +192,10 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS_WITH_TRANSFER}
-        t3Slips={{ XEQT: [{ year: 2024, box21: 0, box42: 50 }] }}
-        onEditT3={noop}
-        openingLots={{ XEQT: 200 }}
-        onOpeningLotChange={noop}
+        adjustments={emptyAdjustments({
+          t3Slips: { XEQT: [{ year: 2024, box21: 0, box42: 50 }] },
+          openingLots: { XEQT: 200 },
+        })}
       />,
     );
 
@@ -226,10 +211,7 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS_WITH_TRANSFER}
-        t3Slips={{}}
-        onEditT3={noop}
-        openingLots={{}}
-        onOpeningLotChange={onOpeningLotChange}
+        adjustments={emptyAdjustments({ onOpeningLotChange })}
       />,
     );
 
@@ -238,15 +220,25 @@ describe("HoldingsTable", () => {
     expect(onOpeningLotChange).toHaveBeenLastCalledWith("XEQT", 75);
   });
 
+  it("shows raw book cost with no edit controls when adjustments are omitted", () => {
+    renderWithMantine(<HoldingsTable holdings={HOLDINGS_WITH_TRANSFER} />);
+
+    // Raw mode: no T3 column, no Edit T3 buttons, no opening lot column even
+    // with transferred shares present.
+    expect(screen.queryByText("T3 slips")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit T3" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Opening lot ACB ($)")).not.toBeInTheDocument();
+    // Unadjusted figures straight from the holding.
+    const veqtRow = screen.getByText("VEQT").closest("tr")!;
+    expect(within(veqtRow).getByText("$400.00")).toBeInTheDocument();
+    expect(within(veqtRow).getByText("$40.00")).toBeInTheDocument();
+  });
+
   it("shows no row-expansion toggles when transactions are not provided", () => {
     renderWithMantine(
-      <HoldingsTable
-        holdings={HOLDINGS}
-        t3Slips={{}}
-        onEditT3={noop}
-        openingLots={{}}
-        onOpeningLotChange={noop}
-      />,
+      <HoldingsTable holdings={HOLDINGS} adjustments={emptyAdjustments()} />,
     );
 
     expect(
@@ -268,10 +260,7 @@ describe("HoldingsTable", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS}
-        t3Slips={{}}
-        onEditT3={noop}
-        openingLots={{}}
-        onOpeningLotChange={noop}
+        adjustments={emptyAdjustments()}
         transactions={transactions}
       />,
     );

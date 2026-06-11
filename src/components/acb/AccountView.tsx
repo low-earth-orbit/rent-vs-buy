@@ -1,42 +1,24 @@
 import { Paper, Stack, Table, Title } from "@mantine/core";
-import HoldingsTable, { type OpeningLots } from "./HoldingsTable";
+import HoldingsTable from "./HoldingsTable";
+import { formatCADDecimal } from "@/utils/format";
 import {
   computeHoldings,
   computeMarginInterest,
   type AccountGroup,
-  type T3Slips,
 } from "@/utils/acb/parser";
-
-const interestFormatter = new Intl.NumberFormat("en-CA", {
-  style: "currency",
-  currency: "CAD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 
 type AccountSectionProps = {
   group: AccountGroup;
-  t3Slips: T3Slips;
-  onEditT3: (symbol: string) => void;
-  openingLots: OpeningLots;
-  onOpeningLotChange: (symbol: string, value: number) => void;
 };
 
-const AccountSection = ({
-  group,
-  t3Slips,
-  onEditT3,
-  openingLots,
-  onOpeningLotChange,
-}: AccountSectionProps) => {
-  const header =
-    [group.accountType, group.accountId].filter(Boolean).join(" · ") ||
-    "Unknown account";
-
+const AccountSection = ({ group }: AccountSectionProps) => {
   if (group.isRegistered) {
     return null;
   }
 
+  const header =
+    [group.accountType, group.accountId].filter(Boolean).join(" · ") ||
+    "Unknown account";
   const holdings = computeHoldings(group.transactions);
   const marginInterest = computeMarginInterest(group.transactions);
   const marginYears = Object.keys(marginInterest)
@@ -49,14 +31,7 @@ const AccountSection = ({
         <Title order={3} fz="lg">
           {header}
         </Title>
-        <HoldingsTable
-          holdings={holdings}
-          t3Slips={t3Slips}
-          onEditT3={onEditT3}
-          openingLots={openingLots}
-          onOpeningLotChange={onOpeningLotChange}
-          transactions={group.transactions}
-        />
+        <HoldingsTable holdings={holdings} transactions={group.transactions} />
         {marginYears.length > 0 && (
           <Stack gap="xs">
             <Title order={4} fz="md">
@@ -74,7 +49,7 @@ const AccountSection = ({
                   <Table.Tr key={year}>
                     <Table.Td>{year}</Table.Td>
                     <Table.Td ta="right">
-                      {interestFormatter.format(marginInterest[year])}
+                      {formatCADDecimal(marginInterest[year])}
                     </Table.Td>
                   </Table.Tr>
                 ))}
@@ -89,35 +64,22 @@ const AccountSection = ({
 
 type AccountViewProps = {
   groups: AccountGroup[];
-  t3Slips: T3Slips;
-  onEditT3: (symbol: string) => void;
-  openingLots: OpeningLots;
-  onOpeningLotChange: (symbol: string, value: number) => void;
 };
 
 /**
- * By-account breakdown: one section per non-registered (accountId, accountType) group.
- * Registered accounts (TFSA / RRSP / FHSA) are filtered out and not shown.
- * Each account gets its own holdings table with expandable year-by-year ACB rows
- * and (for margin accounts) a margin interest summary.
- * T3 slips and opening lots apply globally by symbol.
+ * By-account breakdown: one section per non-registered (accountId, accountType)
+ * group. Registered accounts (TFSA / RRSP / FHSA) are filtered out and not
+ * shown. Book costs are raw transaction-derived figures with NO T3 or
+ * opening-lot adjustments — per-symbol adjustments can't be allocated to a
+ * single account, and the unadjusted number is what broker statements show,
+ * which is the point of this reconciliation view.
  */
-const AccountView = ({
-  groups,
-  t3Slips,
-  onEditT3,
-  openingLots,
-  onOpeningLotChange,
-}: AccountViewProps) => (
+const AccountView = ({ groups }: AccountViewProps) => (
   <Stack gap="lg">
     {groups.map((group) => (
       <AccountSection
         key={`${group.accountId}|${group.accountType}`}
         group={group}
-        t3Slips={t3Slips}
-        onEditT3={onEditT3}
-        openingLots={openingLots}
-        onOpeningLotChange={onOpeningLotChange}
       />
     ))}
   </Stack>

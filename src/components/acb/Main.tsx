@@ -61,7 +61,7 @@ function dateRangeOf(
   return min === "" ? null : { min, max };
 }
 
-/** "N transactions · 2023-01-03 → 2024-12-30" summary line for one file. */
+/** "142 transactions · 2023-01-03 → 2024-12-30" summary line for one file. */
 function fileDetail(file: ParsedFile): string {
   const count = file.transactions.length;
   const countLabel = `${count} transaction${count === 1 ? "" : "s"}`;
@@ -201,6 +201,76 @@ const Main = () => {
   const modalEntries =
     t3ModalSymbol !== null ? (t3Slips[t3ModalSymbol] ?? []) : [];
 
+  // Shared between the gated Tabs layout and the no-tabs layout below.
+  const holdingsPanel = (
+    <Stack gap="lg">
+      <Paper withBorder p="md" radius="md">
+        <Stack gap="sm">
+          <Title order={2} fz="lg">
+            Holdings
+          </Title>
+          <Text c="dimmed" size="sm">
+            Pooled across all non-registered accounts (CRA rule). ACB per share
+            = total cost basis ÷ shares held. Sells reduce both shares and the
+            cost basis pool pro-rata, so ACB/share stays constant after a sale.
+            Expand a row for its year-by-year ACB history. Click{" "}
+            <strong>Edit T3</strong> to enter capital gains distributions (box
+            21, adds to ACB) and return of capital (box 42, reduces ACB) from
+            your T3 slips, per tax year. For holdings with transferred-in
+            shares, enter the <strong>opening lot ACB</strong> (total cost basis
+            of the transferred shares) so the ACB is complete.
+          </Text>
+          {visibleHoldings.length > 0 ? (
+            <HoldingsTable
+              holdings={holdings}
+              transactions={nonRegisteredTransactions}
+              adjustments={{
+                t3Slips,
+                onEditT3: handleEditT3,
+                openingLots,
+                onOpeningLotChange: handleOpeningLotChange,
+              }}
+            />
+          ) : (
+            <Text c="dimmed" size="sm">
+              No non-registered holdings found.
+            </Text>
+          )}
+        </Stack>
+      </Paper>
+      {marginYears.length > 0 && (
+        <Paper withBorder p="md" radius="md">
+          <Stack gap="sm">
+            <Title order={2} fz="lg">
+              Margin Interest Paid
+            </Title>
+            <Text c="dimmed" size="sm">
+              Potentially deductible against taxable income (line 22100)
+            </Text>
+            <Table striped withTableBorder>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Tax Year</Table.Th>
+                  <Table.Th ta="right">Interest Paid</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {marginYears.map((year) => (
+                  <Table.Tr key={year}>
+                    <Table.Td>{year}</Table.Td>
+                    <Table.Td ta="right">
+                      {formatCADDecimal(marginInterest[year])}
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Stack>
+        </Paper>
+      )}
+    </Stack>
+  );
+
   return (
     <Container size="xl" py="md">
       <Stack gap="lg">
@@ -276,82 +346,17 @@ const Main = () => {
               <Tabs.Tab value="byAccount">By account</Tabs.Tab>
             </Tabs.List>
             <Tabs.Panel value="holdings" pt="lg">
-              <Stack gap="lg">
-                <Paper withBorder p="md" radius="md">
-                  <Stack gap="sm">
-                    <Title order={2} fz="lg">
-                      Holdings
-                    </Title>
-                    <Text c="dimmed" size="sm">
-                      Pooled across all non-registered accounts (CRA rule). ACB
-                      per share = total cost basis ÷ shares held. Sells reduce
-                      both shares and the cost basis pool pro-rata, so ACB/share
-                      stays constant after a sale. Expand a row for its
-                      year-by-year ACB history. Click <strong>Edit T3</strong>{" "}
-                      to enter capital gains distributions (box 21, adds to ACB)
-                      and return of capital (box 42, reduces ACB) from your T3
-                      slips, per tax year. For holdings with transferred-in
-                      shares, enter the <strong>opening lot ACB</strong> (total
-                      cost basis of the transferred shares) so the ACB is
-                      complete.
-                    </Text>
-                    {visibleHoldings.length > 0 ? (
-                      <HoldingsTable
-                        holdings={holdings}
-                        t3Slips={t3Slips}
-                        onEditT3={handleEditT3}
-                        openingLots={openingLots}
-                        onOpeningLotChange={handleOpeningLotChange}
-                        transactions={nonRegisteredTransactions}
-                      />
-                    ) : (
-                      <Text c="dimmed" size="sm">
-                        No non-registered holdings found.
-                      </Text>
-                    )}
-                  </Stack>
-                </Paper>
-                {marginYears.length > 0 && (
-                  <Paper withBorder p="md" radius="md">
-                    <Stack gap="sm">
-                      <Title order={2} fz="lg">
-                        Margin Interest Paid
-                      </Title>
-                      <Text c="dimmed" size="sm">
-                        Potentially deductible against taxable income (line
-                        22100)
-                      </Text>
-                      <Table striped withTableBorder>
-                        <Table.Thead>
-                          <Table.Tr>
-                            <Table.Th>Tax Year</Table.Th>
-                            <Table.Th ta="right">Interest Paid</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          {marginYears.map((year) => (
-                            <Table.Tr key={year}>
-                              <Table.Td>{year}</Table.Td>
-                              <Table.Td ta="right">
-                                {formatCADDecimal(marginInterest[year])}
-                              </Table.Td>
-                            </Table.Tr>
-                          ))}
-                        </Table.Tbody>
-                      </Table>
-                    </Stack>
-                  </Paper>
-                )}
-              </Stack>
+              {holdingsPanel}
             </Tabs.Panel>
             <Tabs.Panel value="byAccount" pt="lg">
               <Stack gap="lg">
                 <Alert color="yellow" title="For reconciliation only">
                   <Text size="sm">
-                    The CRA requires ACB to be pooled across all of your
-                    non-registered accounts when the same security is held in
-                    more than one. Use the Holdings tab for tax figures; use
-                    this view to reconcile against account statements.
+                    Book costs below are per account and unadjusted — no T3 or
+                    opening-lot adjustments — matching what your account
+                    statements show. The CRA requires ACB pooled across all
+                    non-registered accounts; use the Holdings tab for tax
+                    figures.
                   </Text>
                 </Alert>
                 <AccountView groups={accountGroups} />

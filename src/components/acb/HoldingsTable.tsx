@@ -23,17 +23,29 @@ import { formatCADDecimal } from "@/utils/format";
 
 export type OpeningLots = Record<string, number>;
 
-type HoldingsTableProps = {
-  holdings: Holding[];
+/** T3 and opening-lot adjustments plus their edit handlers. */
+export type AcbAdjustments = {
   t3Slips: T3Slips;
   onEditT3: (symbol: string) => void;
   openingLots: OpeningLots;
   onOpeningLotChange: (symbol: string, value: number) => void;
+};
+
+type HoldingsTableProps = {
+  holdings: Holding[];
   /**
    * Transactions backing these holdings. When provided, each row gets a
    * chevron that expands an inline year-by-year ACB breakdown.
    */
   transactions?: AcbTransaction[];
+  /**
+   * When provided, cost basis figures include T3 and opening-lot adjustments
+   * and the table shows their edit controls. Omit for raw transaction-derived
+   * book cost (the By account reconciliation view) — per-symbol adjustments
+   * can't be allocated to a single account, so applying them per account
+   * would double-count.
+   */
+  adjustments?: AcbAdjustments;
 };
 
 const sharesFormatter = new Intl.NumberFormat("en-CA", {
@@ -42,11 +54,8 @@ const sharesFormatter = new Intl.NumberFormat("en-CA", {
 
 const HoldingsTable = ({
   holdings,
-  t3Slips,
-  onEditT3,
-  openingLots,
-  onOpeningLotChange,
   transactions,
+  adjustments,
 }: HoldingsTableProps) => {
   const [expandedSymbols, setExpandedSymbols] = useState<Set<string>>(
     new Set(),
@@ -56,7 +65,8 @@ const HoldingsTable = ({
   const visibleHoldings = holdings.filter((h) => h.shares > 0);
   const anyTransferred = visibleHoldings.some((h) => h.transferredShares > 0);
   const expandable = transactions !== undefined;
-  const columnCount = 5 + (anyTransferred ? 1 : 0) + (expandable ? 1 : 0);
+  const columnCount =
+    4 + (expandable ? 1 : 0) + (adjustments ? 1 + (anyTransferred ? 1 : 0) : 0);
 
   function toggleExpanded(symbol: string) {
     setExpandedSymbols((prev) => {
@@ -79,15 +89,23 @@ const HoldingsTable = ({
           <Table.Th ta="right">Shares</Table.Th>
           <Table.Th ta="right">ACB/share</Table.Th>
           <Table.Th ta="right">Total cost basis</Table.Th>
-          {anyTransferred && <Table.Th>Opening lot ACB ($)</Table.Th>}
-          <Table.Th>T3 slips</Table.Th>
+          {adjustments && anyTransferred && (
+            <Table.Th>Opening lot ACB ($)</Table.Th>
+          )}
+          {adjustments && <Table.Th>T3 slips</Table.Th>}
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
         {visibleHoldings.map((holding) => {
-          const t3Net = t3NetAdjustment(t3Slips[holding.symbol] ?? []);
-          const openingLot = openingLots[holding.symbol] ?? 0;
-          const adjusted = applyAdjustments(holding, openingLot, t3Net);
+          const t3Net = adjustments
+            ? t3NetAdjustment(adjustments.t3Slips[holding.symbol] ?? [])
+            : 0;
+          const openingLot = adjustments
+            ? (adjustments.openingLots[holding.symbol] ?? 0)
+            : 0;
+          const shown = adjustments
+            ? applyAdjustments(holding, openingLot, t3Net)
+            : holding;
           const hasTransfers = holding.transferredShares > 0;
           const expanded = expandedSymbols.has(holding.symbol);
           return (
@@ -126,28 +144,31 @@ const HoldingsTable = ({
                   </Group>
                 </Table.Td>
                 <Table.Td ta="right">
-                  {sharesFormatter.format(adjusted.shares)}
+                  {sharesFormatter.format(shown.shares)}
                 </Table.Td>
                 <Table.Td ta="right">
-                  {adjusted.acbPerShare === null ? (
+                  {shown.acbPerShare === null ? (
                     <Text component="span" c="dimmed">
                       —
                     </Text>
                   ) : (
-                    formatCADDecimal(adjusted.acbPerShare)
+                    formatCADDecimal(shown.acbPerShare)
                   )}
                 </Table.Td>
                 <Table.Td ta="right">
-                  {formatCADDecimal(adjusted.costBasis)}
+                  {formatCADDecimal(shown.costBasis)}
                 </Table.Td>
-                {anyTransferred && (
+                {adjustments && anyTransferred && (
                   <Table.Td>
                     {hasTransfers ? (
                       <NumberInput
                         aria-label={`Opening lot ACB for ${holding.symbol}`}
                         value={openingLot === 0 ? "" : openingLot}
                         onChange={(value) =>
-                          onOpeningLotChange(holding.symbol, +value || 0)
+                          adjustments.onOpeningLotChange(
+                            holding.symbol,
+                            +value || 0,
+                          )
                         }
                         prefix="$"
                         min={0}
@@ -163,26 +184,28 @@ const HoldingsTable = ({
                     )}
                   </Table.Td>
                 )}
-                <Table.Td>
-                  <Group gap="xs" wrap="nowrap">
-                    <Button
-                      variant="subtle"
-                      size="xs"
-                      onClick={() => onEditT3(holding.symbol)}
-                    >
-                      Edit T3
-                    </Button>
-                    {t3Net !== 0 && (
-                      <Badge
-                        size="sm"
-                        variant="light"
-                        color={t3Net > 0 ? "teal" : "red"}
+                {adjustments && (
+                  <Table.Td>
+                    <Group gap="xs" wrap="nowrap">
+                      <Button
+                        variant="subtle"
+                        size="xs"
+                        onClick={() => adjustments.onEditT3(holding.symbol)}
                       >
-                        {`${t3Net < 0 ? "−" : "+"}${formatCADDecimal(Math.abs(t3Net))}`}
-                      </Badge>
-                    )}
-                  </Group>
-                </Table.Td>
+                        Edit T3
+                      </Button>
+                      {t3Net !== 0 && (
+                        <Badge
+                          size="sm"
+                          variant="light"
+                          color={t3Net > 0 ? "teal" : "red"}
+                        >
+                          {`${t3Net < 0 ? "−" : "+"}${formatCADDecimal(Math.abs(t3Net))}`}
+                        </Badge>
+                      )}
+                    </Group>
+                  </Table.Td>
+                )}
               </Table.Tr>
               {expandable && expanded && (
                 <Table.Tr>
