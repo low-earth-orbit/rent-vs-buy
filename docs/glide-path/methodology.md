@@ -467,6 +467,31 @@ The one-asset cells necessarily drop the cross-correlation, which the corr-only 
 immaterial.) Reproduce both:
 `python3 -m analysis.glide_path.research_history --sections blocks channels --accum 30 --retire 30 --savings 200000 --contrib 20000 --interval 5 --paths 8000`.
 
+**Robustness: era and country cuts.** Same scenario with the history restricted before rescaling
+(the forward anchors are unchanged, so only the sequencing pattern differs):
+
+| History cut                         | bond VR(10y) | equity VR(10y) | best flat | CE at best vs 100% |
+| ----------------------------------- | ------------ | -------------- | --------- | ------------------ |
+| full 1871–2020                      | 1.70         | 0.91           | **100%**  | —                  |
+| post-1950                           | 2.27         | 0.95           | **100%**  | —                  |
+| ex Germany + Japan                  | ~1.7         | ~0.9           | **100%**  | —                  |
+| stable six¹                         | 1.96         | 0.73           | 80%       | +0.5%              |
+| 1990–2020 (inflation-targeting era) | **0.50**     | 0.54           | **50%**   | +2.1%              |
+
+¹ USA, UK, Canada, Australia, Switzerland, Sweden — no hyperinflation, occupation, or market closure.
+
+The joint structure is **not** a Germany/Japan disaster artifact — it survives dropping them and is
+_stronger_ in the stable-six cut. It **is era-dependent**: in the 1990–2020 cut, bond returns flip
+from persistent to mean-reverting (VR(10y) 0.50, below the iid-null 5th percentile — largely the
+secular rate decline), the stock/bond correlation drops to ≈0, and the optimizer returns the
+interior bond tent. Three caveats on that cut: it is a single 31-year global regime (~16
+cross-correlated copies of one sample path); its bond mean reversion is substantially the
+one-off duration bull; and it ends in 2020 — excluding 2021–22, the one inflation-targeting-era
+episode that looked exactly like the long-sample joint structure (persistent real bond losses,
+equity recovery). Note also that every cut's CE-vs-flat-weight curve is shallow: the argmax moves
+between 50% and 100%, but the welfare spread across that range stays ≤ ~2% of CE — the era choice
+moves the _allocation_ answer far more than the _welfare_ answer.
+
 **What changed from iid:**
 
 - **The constant-$ accumulation path goes flat ~100%**, not falling-to-68. Equity at retirement is
@@ -561,7 +586,12 @@ first two — they are listed here to bound the iid baseline, not the product.
   sequencing even _deepens_ the tent via short-run momentum (VR(2y)≈1.1). The result needs bond
   persistence (VR(10y)≈1.7) degrading bonds at the same time as equity's decade-scale reversion
   de-risks high equity. That is an empirical property of the joint historical process — coherent,
-  but with no single-parameter knob to stress-test it against.
+  but with no single-parameter knob to stress-test it against. It is also **era-dependent**: the
+  1990–2020 inflation-targeting cut lacks it entirely (bonds mean-revert, the optimizer returns
+  the tent — §2f era table), though that cut is one 31-year regime that ends just before 2021–22.
+  Whether the long-sample structure or the IT-era structure better describes the next 60 years is
+  a monetary-regime judgment the data cannot settle; the shallow CE curves (≤ ~2% across
+  50–100% equity) keep the welfare cost of guessing wrong small.
 - **Survivorship and selection.** JST covers 16 developed markets with long, usable series — markets
   that survived. The recoveries that drive the §2f result are partly a property of that surviving
   sample (the standard critique of ACO applies equally here); investors in markets that closed or
