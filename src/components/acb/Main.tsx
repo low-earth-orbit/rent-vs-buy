@@ -156,6 +156,10 @@ const Main = () => {
     .map(Number)
     .sort((a, b) => a - b);
   const accountGroups = transactions ? groupByAccount(transactions) : null;
+  // Registered accounts excluded from Combined/By Year ACB calculations.
+  const excludedRegisteredAccounts = accountGroups
+    ? accountGroups.filter((g) => g.isRegistered)
+    : [];
   const previewFile =
     previewFileIndex !== null ? (loadedFiles[previewFileIndex] ?? null) : null;
   const modalEntries =
@@ -213,6 +217,25 @@ const Main = () => {
             w="fit-content"
           />
         )}
+        {holdings &&
+          viewMode === "combined" &&
+          excludedRegisteredAccounts.length > 0 && (
+            <Alert color="blue" title="Registered accounts excluded">
+              <Text size="sm">
+                ACB only applies to non-registered accounts. The following
+                account{excludedRegisteredAccounts.length > 1 ? "s are" : " is"}{" "}
+                excluded from this view:{" "}
+                {excludedRegisteredAccounts
+                  .map(
+                    (g) =>
+                      [g.accountType, g.accountId].filter(Boolean).join(" ·") ||
+                      "Unknown account",
+                  )
+                  .join(", ")}
+                . Switch to <strong>By Account</strong> to see all accounts.
+              </Text>
+            </Alert>
+          )}
         {holdings && viewMode === "combined" && (
           <Paper withBorder p="md" radius="md">
             <Stack gap="sm">
@@ -240,6 +263,24 @@ const Main = () => {
             </Stack>
           </Paper>
         )}
+        {holdings &&
+          nonRegisteredTransactions &&
+          viewMode === "byYear" &&
+          excludedRegisteredAccounts.length > 0 && (
+            <Alert color="blue" title="Registered accounts excluded">
+              <Text size="sm">
+                Year-by-year ACB covers non-registered accounts only.{" "}
+                {excludedRegisteredAccounts
+                  .map(
+                    (g) =>
+                      [g.accountType, g.accountId].filter(Boolean).join(" ·") ||
+                      "Unknown account",
+                  )
+                  .join(", ")}{" "}
+                {excludedRegisteredAccounts.length > 1 ? "are" : "is"} excluded.
+              </Text>
+            </Alert>
+          )}
         {holdings && nonRegisteredTransactions && viewMode === "byYear" && (
           <Stack gap="lg">
             {holdings.map((holding) => (

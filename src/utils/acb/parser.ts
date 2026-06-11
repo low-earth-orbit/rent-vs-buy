@@ -9,8 +9,12 @@
 // 2. A legacy format with a literal `Type` column (`buy`/`sell`/`dividend`).
 //
 // ACB semantics:
-// - `buy` rows add qty × price to the symbol's cost basis pool and qty to its
-//   share count (manual DRIP purchases are plain `buy` rows).
+// - `buy` rows add the actual cash paid (`|net_cash_amount|` when present,
+//   otherwise qty × price) to the symbol's cost basis pool and qty to its
+//   share count (manual DRIP purchases are plain `buy` rows). Wealthsimple
+//   rounds `unit_price` to 4 decimals, so qty × price can be off by a
+//   fraction of a cent per row; `net_cash_amount` is the exact amount and
+//   also includes any commission (CRA: ACB includes acquisition costs).
 // - `sell` rows reduce the share count AND reduce the cost basis pool pro-rata
 //   (CRA rule: pool × remaining_shares / shares_before_sell), so ACB/share is
 //   unchanged by a sale but total cost basis decreases proportionally.
@@ -283,6 +287,17 @@ export function detectOverlappingFiles(
   return false;
 }
 
+/**
+ * Actual cost of a buy: the exact cash paid (`|net_cash_amount|`) when the
+ * export provides it, otherwise qty × price. `unit_price` is rounded in
+ * Wealthsimple exports, so the product can drift cents from the real cost.
+ */
+function buyCost(tx: AcbTransaction): number {
+  return tx.netCashAmount !== undefined && tx.netCashAmount !== 0
+    ? Math.abs(tx.netCashAmount)
+    : tx.quantity * tx.price;
+}
+
 /** Aggregate transactions into per-symbol holdings with ACB. */
 export function computeHoldings(transactions: AcbTransaction[]): Holding[] {
   const bySymbol = new Map<
@@ -299,9 +314,7 @@ export function computeHoldings(transactions: AcbTransaction[]): Holding[] {
     };
     if (tx.type === "buy") {
       entry.shares += tx.quantity;
-      // Round each product to 4 decimal places to avoid accumulating IEEE 754
-      // float error across many small purchases.
-      entry.costBasis += Math.round(tx.quantity * tx.price * 10000) / 10000;
+      entry.costBasis += buyCost(tx);
     } else if (tx.type === "transfer") {
       // Transferred-in shares carry no purchase history: count the shares but
       // leave the cost basis pool unchanged. The user supplies an opening lot
@@ -314,8 +327,7 @@ export function computeHoldings(transactions: AcbTransaction[]): Holding[] {
       const sharesAfter = entry.shares - tx.quantity;
       entry.costBasis =
         entry.shares > 0
-          ? Math.round(entry.costBasis * (sharesAfter / entry.shares) * 10000) /
-            10000
+          ? entry.costBasis * (sharesAfter / entry.shares)
           : 0;
       entry.shares = sharesAfter;
     }
@@ -490,8 +502,7 @@ export function computeYearlyACB(
     }
     if (tx.type === "buy") {
       shares += tx.quantity;
-      // Same per-product rounding as computeHoldings.
-      costBasis += Math.round(tx.quantity * tx.price * 10000) / 10000;
+      costBasis += buyCost(tx);
       current.buyQty += tx.quantity;
     } else if (tx.type === "transfer") {
       // Same as computeHoldings: shares with no cost basis.
@@ -502,7 +513,7 @@ export function computeYearlyACB(
       const sharesAfter = shares - tx.quantity;
       costBasis =
         shares > 0
-          ? Math.round(costBasis * (sharesAfter / shares) * 10000) / 10000
+          ? costBasis * (sharesAfter / shares)
           : 0;
       shares = sharesAfter;
       current.sellQty += tx.quantity;

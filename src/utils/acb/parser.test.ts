@@ -475,31 +475,52 @@ describe("computeHoldings", () => {
     ]);
   });
 
-  it("rounds each buy product to 4 decimal places before pooling", () => {
-    // 3 × 0.1 = 0.30000000000000004 in IEEE 754; rounding keeps the pool
-    // at exactly 0.3 instead of accumulating drift.
+  it("uses |net_cash_amount| as the buy cost when present", () => {
+    // Wealthsimple rounds unit_price to 4 decimals: 208.0507 × 48.0652 =
+    // 9999.9985, but the actual cash paid was exactly $10,000.
+    const holdings = computeHoldings([
+      {
+        symbol: "XIC",
+        quantity: 208.0507,
+        price: 48.0652,
+        type: "buy",
+        netCashAmount: -10000,
+      },
+    ]);
+    expect(holdings[0].costBasis).toBe(10000);
+  });
+
+  it("falls back to qty × price when net_cash_amount is absent or zero", () => {
+    const holdings = computeHoldings([
+      { symbol: "XIC", quantity: 10, price: 40, type: "buy" },
+      { symbol: "XIC", quantity: 5, price: 40, type: "buy", netCashAmount: 0 },
+    ]);
+    expect(holdings[0].costBasis).toBe(600);
+  });
+
+  it("accumulates buy products at full IEEE 754 precision", () => {
+    // 3 × 0.1 = 0.30000000000000004 in IEEE 754; we keep full precision and
+    // only round at display time.
     const holdings = computeHoldings([tx("VEQT", 3, 0.1, "buy")]);
-    expect(holdings[0].costBasis).toBe(0.3);
+    expect(holdings[0].costBasis).toBeCloseTo(0.3, 10);
   });
 
   it("sum of many small purchases matches the expected total", () => {
     // 200 buys of 3 shares @ $0.10 → pool should be 200 × $0.30 = $60.
-    // Without per-product rounding each addend carries float error
-    // (3 × 0.1 = 0.30000000000000004) that compounds across the sum.
     const txs = Array.from({ length: 200 }, () => tx("VEQT", 3, 0.1, "buy"));
     const holdings = computeHoldings(txs);
     expect(holdings[0].shares).toBe(600);
     expect(holdings[0].costBasis).toBeCloseTo(60, 8);
   });
 
-  it("rounds the pro-rata sell reduction to 4 decimal places", () => {
-    // Pool $100, sell 1 of 3 shares → 100 × (2/3) = 66.666666… → 66.6667.
+  it("pro-rata sell reduction preserves full precision (no 4dp truncation)", () => {
+    // Pool $100, sell 1 of 3 shares → 100 × (2/3) = 66.666… kept in full.
     const holdings = computeHoldings([
       tx("VEQT", 3, 100 / 3, "buy"),
       tx("VEQT", 1, 50, "sell"),
     ]);
     expect(holdings[0].shares).toBe(2);
-    expect(holdings[0].costBasis).toBe(66.6667);
+    expect(holdings[0].costBasis).toBeCloseTo(66.6667, 4);
   });
 
   it("groups by symbol and sorts alphabetically", () => {

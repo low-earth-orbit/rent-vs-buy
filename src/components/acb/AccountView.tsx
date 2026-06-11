@@ -52,8 +52,9 @@ const AccountSection = ({
           <Title order={3} fz="lg">
             {header}
           </Title>
-          <Alert color="yellow" title="Registered account">
-            ACB not applicable for registered accounts — no holdings shown
+          <Alert color="blue" title="Registered account">
+            ACB does not apply to registered accounts (TFSA / RRSP / FHSA) —
+            no holdings shown.
           </Alert>
         </Stack>
       </Paper>
