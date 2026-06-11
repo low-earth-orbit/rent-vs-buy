@@ -1,0 +1,26 @@
+import type { Metadata } from "next";
+import Header from "@/components/shared/Header";
+import Footer from "@/components/shared/Footer";
+import AcbApp from "@/components/acb/AcbApp";
+
+export const metadata: Metadata = {
+  title: "ACB Calculator",
+  description:
+    "Calculate the adjusted cost basis of your non-registered holdings from a Wealthsimple activity export.",
+};
+
+export default function AcbPage() {
+  return (
+    <>
+      <Header
+        title="ACB Calculator"
+        subtitle="Upload a Wealthsimple activity export to compute the adjusted cost basis of your non-registered holdings."
+        showHomeLink
+      />
+      <main>
+        <AcbApp />
+      </main>
+      <Footer />
+    </>
+  );
+}

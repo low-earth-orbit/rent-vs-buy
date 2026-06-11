@@ -32,7 +32,7 @@ const TOOLS: Tool[] = [
     status: "updated",
   },
   {
-    emoji: "🔥",
+    emoji: "🏖",
     title: "When can I retire?",
     description:
       "A quick reality check on the earliest age you could retire, based on your savings and target income.",
@@ -45,7 +45,14 @@ const TOOLS: Tool[] = [
     description:
       "Find your optimal stock allocation across your lifetime. FOR NERDS.",
     href: "/glide-path",
-    status: "preview",
+    status: "new",
+  },
+  {
+    emoji: "🧾",
+    title: "ACB Calculator",
+    description:
+      "Compute the adjusted cost basis of your non-registered holdings from a Wealthsimple activity export.",
+    // href: "/acb",
   },
 ];
 
