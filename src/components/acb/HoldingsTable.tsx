@@ -43,7 +43,9 @@ const HoldingsTable = ({
   openingLots,
   onOpeningLotChange,
 }: HoldingsTableProps) => {
-  const anyTransferred = holdings.some((h) => h.transferredShares > 0);
+  // Hide ghost rows: fully sold positions carry no ACB to show.
+  const visibleHoldings = holdings.filter((h) => h.shares > 0);
+  const anyTransferred = visibleHoldings.some((h) => h.transferredShares > 0);
 
   return (
     <Table striped highlightOnHover withTableBorder>
@@ -58,7 +60,7 @@ const HoldingsTable = ({
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
-        {holdings.map((holding) => {
+        {visibleHoldings.map((holding) => {
           const t3Net = t3NetAdjustment(t3Slips[holding.symbol] ?? []);
           const openingLot = openingLots[holding.symbol] ?? 0;
           const adjusted = applyAdjustments(holding, openingLot, t3Net);

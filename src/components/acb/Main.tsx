@@ -15,9 +15,11 @@ import FilePreviewModal from "./FilePreviewModal";
 import FileUpload from "./FileUpload";
 import HoldingsTable, { type OpeningLots } from "./HoldingsTable";
 import T3Modal from "./T3Modal";
+import YearlyACBTable from "./YearlyACBTable";
 import {
   computeHoldings,
   computeMarginInterest,
+  computeYearlyACB,
   detectOverlappingFiles,
   groupByAccount,
   hasMixedCurrencies,
@@ -35,6 +37,21 @@ const interestFormatter = new Intl.NumberFormat("en-CA", {
   maximumFractionDigits: 2,
 });
 
+const sharesFormatter = new Intl.NumberFormat("en-CA", {
+  maximumFractionDigits: 4,
+});
+
+/** True when the transaction belongs to a registered account (TFSA/RRSP/FHSA). */
+function isRegisteredTransaction(tx: AcbTransaction): boolean {
+  return /tfsa|rrsp|fhsa/i.test(tx.accountType ?? "");
+}
+
+type ViewMode = "combined" | "byAccount" | "byYear";
+
+function isViewMode(value: string): value is ViewMode {
+  return value === "combined" || value === "byAccount" || value === "byYear";
+}
+
 const Main = () => {
   const [loadedFiles, setLoadedFiles] = useState<ParsedFile[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
@@ -42,9 +59,7 @@ const Main = () => {
   const [t3ModalSymbol, setT3ModalSymbol] = useState<string | null>(null);
   const [openingLots, setOpeningLots] = useState<OpeningLots>({});
   const [previewFileIndex, setPreviewFileIndex] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<"combined" | "byAccount">(
-    "combined",
-  );
+  const [viewMode, setViewMode] = useState<ViewMode>("combined");
 
   async function handleFilesAdded(newFiles: File[]) {
     const { parsed, errors } = await parseFiles(newFiles);
@@ -119,15 +134,23 @@ const Main = () => {
           .flatMap((file) => file.transactions)
           .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""))
       : null;
-  const holdings = transactions ? computeHoldings(transactions) : null;
+  // ACB only applies to non-registered accounts: exclude TFSA/RRSP/FHSA from
+  // the combined holdings and margin interest. By Account mode still receives
+  // every account (registered ones show a warning banner).
+  const nonRegisteredTransactions = transactions
+    ? transactions.filter((tx) => !isRegisteredTransaction(tx))
+    : null;
+  const holdings = nonRegisteredTransactions
+    ? computeHoldings(nonRegisteredTransactions)
+    : null;
   const mixedCurrencies = transactions
     ? hasMixedCurrencies(transactions)
     : false;
   const overlappingFiles = detectOverlappingFiles(
     loadedFiles.map((file) => file.transactions),
   );
-  const marginInterest = transactions
-    ? computeMarginInterest(transactions)
+  const marginInterest = nonRegisteredTransactions
+    ? computeMarginInterest(nonRegisteredTransactions)
     : {};
   const marginYears = Object.keys(marginInterest)
     .map(Number)
@@ -179,12 +202,13 @@ const Main = () => {
         {holdings && (
           <SegmentedControl
             value={viewMode}
-            onChange={(value) =>
-              setViewMode(value === "byAccount" ? "byAccount" : "combined")
-            }
+            onChange={(value) => {
+              if (isViewMode(value)) setViewMode(value);
+            }}
             data={[
               { label: "Combined", value: "combined" },
               { label: "By Account", value: "byAccount" },
+              { label: "By Year", value: "byYear" },
             ]}
             w="fit-content"
           />
@@ -215,6 +239,34 @@ const Main = () => {
               />
             </Stack>
           </Paper>
+        )}
+        {holdings && nonRegisteredTransactions && viewMode === "byYear" && (
+          <Stack gap="lg">
+            {holdings.map((holding) => (
+              <Paper key={holding.symbol} withBorder p="md" radius="md">
+                <Stack gap="sm">
+                  <Title order={2} fz="lg">
+                    {holding.symbol}
+                  </Title>
+                  <YearlyACBTable
+                    symbol={holding.symbol}
+                    snapshots={computeYearlyACB(
+                      nonRegisteredTransactions,
+                      holding.symbol,
+                    )}
+                  />
+                  <Text size="sm">
+                    Final: {sharesFormatter.format(holding.shares)} shares ·
+                    ACB/share{" "}
+                    {holding.acbPerShare === null
+                      ? "—"
+                      : interestFormatter.format(holding.acbPerShare)}{" "}
+                    · cost basis {interestFormatter.format(holding.costBasis)}
+                  </Text>
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
         )}
         {accountGroups && viewMode === "byAccount" && (
           <AccountView

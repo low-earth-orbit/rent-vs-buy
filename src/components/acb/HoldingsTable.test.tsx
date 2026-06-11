@@ -58,7 +58,7 @@ describe("HoldingsTable", () => {
     expect(within(veqtRow).getByText("$400.00")).toBeInTheDocument();
   });
 
-  it("shows an em dash for ACB when all shares are sold", () => {
+  it("hides ghost rows: holdings with zero shares are not rendered", () => {
     renderWithMantine(
       <HoldingsTable
         holdings={HOLDINGS}
@@ -69,8 +69,9 @@ describe("HoldingsTable", () => {
       />,
     );
 
-    const xeqtRow = screen.getByText("XEQT").closest("tr")!;
-    expect(within(xeqtRow).getByText("—")).toBeInTheDocument();
+    // XEQT was fully sold (0 shares): no row for it.
+    expect(screen.queryByText("XEQT")).not.toBeInTheDocument();
+    expect(screen.getByText("VEQT")).toBeInTheDocument();
   });
 
   it("applies the net T3 adjustment to cost basis and ACB per share", () => {
@@ -115,7 +116,7 @@ describe("HoldingsTable", () => {
   it("shows a signed badge next to Edit T3 when the net is non-zero", () => {
     renderWithMantine(
       <HoldingsTable
-        holdings={HOLDINGS}
+        holdings={HOLDINGS_WITH_TRANSFER}
         t3Slips={{
           VEQT: [{ year: 2024, box21: 0, box42: 50 }],
           XEQT: [{ year: 2024, box21: 120, box42: 0 }],

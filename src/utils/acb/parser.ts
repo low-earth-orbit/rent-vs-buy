@@ -245,28 +245,38 @@ export function hasMixedCurrencies(transactions: AcbTransaction[]): boolean {
 }
 
 /**
- * True when any two files have overlapping transaction date ranges —
- * a sign the same transactions may appear in more than one upload.
- * Files with no dated transactions are skipped.
+ * True when any two files have overlapping transaction date ranges for the
+ * same `(accountId, accountType)` account — a sign the same transactions may
+ * appear in more than one upload. Files covering different accounts never
+ * overlap, even when their date ranges intersect. Transactions with no date
+ * are skipped.
  */
 export function detectOverlappingFiles(
   fileTransactions: AcbTransaction[][],
 ): boolean {
-  const ranges: { min: string; max: string }[] = [];
+  // Per file: accountKey → [minDate, maxDate] over that account's dated rows.
+  const fileRanges: Map<string, { min: string; max: string }>[] = [];
   for (const transactions of fileTransactions) {
-    const dates = transactions
-      .map((tx) => tx.date ?? "")
-      .filter((d) => d !== "");
-    if (dates.length === 0) continue;
-    ranges.push({
-      min: dates.reduce((a, b) => (a < b ? a : b)),
-      max: dates.reduce((a, b) => (a > b ? a : b)),
-    });
+    const ranges = new Map<string, { min: string; max: string }>();
+    for (const tx of transactions) {
+      const date = tx.date ?? "";
+      if (date === "") continue;
+      const key = `${tx.accountId ?? ""} ${tx.accountType ?? ""}`;
+      const range = ranges.get(key);
+      if (!range) {
+        ranges.set(key, { min: date, max: date });
+      } else {
+        if (date < range.min) range.min = date;
+        if (date > range.max) range.max = date;
+      }
+    }
+    fileRanges.push(ranges);
   }
-  for (let i = 0; i < ranges.length; i++) {
-    for (let j = i + 1; j < ranges.length; j++) {
-      if (ranges[i].min <= ranges[j].max && ranges[j].min <= ranges[i].max) {
-        return true;
+  for (let i = 0; i < fileRanges.length; i++) {
+    for (let j = i + 1; j < fileRanges.length; j++) {
+      for (const [key, a] of fileRanges[i]) {
+        const b = fileRanges[j].get(key);
+        if (b && a.min <= b.max && b.min <= a.max) return true;
       }
     }
   }
@@ -289,7 +299,9 @@ export function computeHoldings(transactions: AcbTransaction[]): Holding[] {
     };
     if (tx.type === "buy") {
       entry.shares += tx.quantity;
-      entry.costBasis += tx.quantity * tx.price;
+      // Round each product to 4 decimal places to avoid accumulating IEEE 754
+      // float error across many small purchases.
+      entry.costBasis += Math.round(tx.quantity * tx.price * 10000) / 10000;
     } else if (tx.type === "transfer") {
       // Transferred-in shares carry no purchase history: count the shares but
       // leave the cost basis pool unchanged. The user supplies an opening lot
@@ -301,7 +313,10 @@ export function computeHoldings(transactions: AcbTransaction[]): Holding[] {
       // remaining_pool = pool × (shares_before - sold) / shares_before
       const sharesAfter = entry.shares - tx.quantity;
       entry.costBasis =
-        entry.shares > 0 ? entry.costBasis * (sharesAfter / entry.shares) : 0;
+        entry.shares > 0
+          ? Math.round(entry.costBasis * (sharesAfter / entry.shares) * 10000) /
+            10000
+          : 0;
       entry.shares = sharesAfter;
     }
     bySymbol.set(tx.symbol, entry);
@@ -475,7 +490,8 @@ export function computeYearlyACB(
     }
     if (tx.type === "buy") {
       shares += tx.quantity;
-      costBasis += tx.quantity * tx.price;
+      // Same per-product rounding as computeHoldings.
+      costBasis += Math.round(tx.quantity * tx.price * 10000) / 10000;
       current.buyQty += tx.quantity;
     } else if (tx.type === "transfer") {
       // Same as computeHoldings: shares with no cost basis.
@@ -484,13 +500,19 @@ export function computeYearlyACB(
     } else {
       // CRA rule: sell reduces the pool pro-rata so ACB/share is unchanged.
       const sharesAfter = shares - tx.quantity;
-      costBasis = shares > 0 ? costBasis * (sharesAfter / shares) : 0;
+      costBasis =
+        shares > 0
+          ? Math.round(costBasis * (sharesAfter / shares) * 10000) / 10000
+          : 0;
       shares = sharesAfter;
       current.sellQty += tx.quantity;
     }
     current.endShares = shares;
     current.costBasis = costBasis;
-    current.acbPerShare = shares > 0 ? costBasis / shares : null;
+    // A transfer-only history leaves shares with no cost basis: ACB is
+    // unknown (null), not $0.
+    current.acbPerShare =
+      shares > 0 && costBasis > 0 ? costBasis / shares : null;
   }
   if (current !== null) snapshots.push(current);
 

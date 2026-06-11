@@ -278,12 +278,18 @@ describe("hasMixedCurrencies", () => {
 });
 
 describe("detectOverlappingFiles", () => {
-  const tx = (date: string): AcbTransaction => ({
+  const tx = (
+    date: string,
+    accountId?: string,
+    accountType?: string,
+  ): AcbTransaction => ({
     symbol: "VEQT",
     quantity: 1,
     price: 10,
     type: "buy",
     date,
+    ...(accountId !== undefined ? { accountId } : {}),
+    ...(accountType !== undefined ? { accountType } : {}),
   });
 
   it("returns false for zero or one file", () => {
@@ -323,6 +329,55 @@ describe("detectOverlappingFiles", () => {
       detectOverlappingFiles([
         [{ symbol: "VEQT", quantity: 1, price: 10, type: "buy" }],
         [tx("2024-01-01"), tx("2024-12-31")],
+      ]),
+    ).toBe(false);
+  });
+
+  it("does not flag overlapping date ranges in different accounts", () => {
+    // One file is non-registered only, the other TFSA only: same dates, but
+    // no account appears in both files, so there is no real overlap.
+    expect(
+      detectOverlappingFiles([
+        [
+          tx("2024-01-01", "acc1", "non-registered"),
+          tx("2024-12-31", "acc1", "non-registered"),
+        ],
+        [tx("2024-03-01", "acc2", "tfsa"), tx("2024-09-01", "acc2", "tfsa")],
+      ]),
+    ).toBe(false);
+  });
+
+  it("flags overlapping date ranges for the same account across files", () => {
+    expect(
+      detectOverlappingFiles([
+        [
+          tx("2024-01-01", "acc1", "non-registered"),
+          tx("2024-06-30", "acc1", "non-registered"),
+        ],
+        [
+          tx("2024-06-01", "acc1", "non-registered"),
+          tx("2024-12-31", "acc1", "non-registered"),
+        ],
+      ]),
+    ).toBe(true);
+  });
+
+  it("compares per account within multi-account files", () => {
+    // File A: non-registered Jan–Jun, TFSA Jul–Dec.
+    // File B: non-registered Jul–Dec — overlaps A's TFSA dates, but not A's
+    // non-registered dates, so there is no overlap.
+    expect(
+      detectOverlappingFiles([
+        [
+          tx("2024-01-01", "acc1", "non-registered"),
+          tx("2024-06-30", "acc1", "non-registered"),
+          tx("2024-07-01", "acc2", "tfsa"),
+          tx("2024-12-31", "acc2", "tfsa"),
+        ],
+        [
+          tx("2024-07-01", "acc1", "non-registered"),
+          tx("2024-12-31", "acc1", "non-registered"),
+        ],
       ]),
     ).toBe(false);
   });
@@ -418,6 +473,33 @@ describe("computeHoldings", () => {
         transferredShares: 0,
       },
     ]);
+  });
+
+  it("rounds each buy product to 4 decimal places before pooling", () => {
+    // 3 × 0.1 = 0.30000000000000004 in IEEE 754; rounding keeps the pool
+    // at exactly 0.3 instead of accumulating drift.
+    const holdings = computeHoldings([tx("VEQT", 3, 0.1, "buy")]);
+    expect(holdings[0].costBasis).toBe(0.3);
+  });
+
+  it("sum of many small purchases matches the expected total", () => {
+    // 200 buys of 3 shares @ $0.10 → pool should be 200 × $0.30 = $60.
+    // Without per-product rounding each addend carries float error
+    // (3 × 0.1 = 0.30000000000000004) that compounds across the sum.
+    const txs = Array.from({ length: 200 }, () => tx("VEQT", 3, 0.1, "buy"));
+    const holdings = computeHoldings(txs);
+    expect(holdings[0].shares).toBe(600);
+    expect(holdings[0].costBasis).toBeCloseTo(60, 8);
+  });
+
+  it("rounds the pro-rata sell reduction to 4 decimal places", () => {
+    // Pool $100, sell 1 of 3 shares → 100 × (2/3) = 66.666666… → 66.6667.
+    const holdings = computeHoldings([
+      tx("VEQT", 3, 100 / 3, "buy"),
+      tx("VEQT", 1, 50, "sell"),
+    ]);
+    expect(holdings[0].shares).toBe(2);
+    expect(holdings[0].costBasis).toBe(66.6667);
   });
 
   it("groups by symbol and sorts alphabetically", () => {
@@ -838,6 +920,23 @@ describe("computeYearlyACB", () => {
       costBasis: 650,
     });
     expect(snapshots[1]).toMatchObject({ endShares: 20, costBasis: 950 });
+  });
+
+  it("returns null ACB for a year with only transfer rows (no purchase history)", () => {
+    const txs: AcbTransaction[] = [
+      {
+        symbol: "XIC",
+        quantity: 100,
+        price: 0,
+        type: "transfer",
+        date: "2025-03-01",
+      },
+    ];
+    const snapshots = computeYearlyACB(txs, "XIC");
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].acbPerShare).toBeNull();
+    expect(snapshots[0].endShares).toBe(100);
+    expect(snapshots[0].costBasis).toBe(0);
   });
 
   it("returns null ACB/share for a year ending with zero shares", () => {

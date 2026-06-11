@@ -1,12 +1,9 @@
 import { useState } from "react";
 import {
-  Anchor,
   Button,
   CloseButton,
-  Collapse,
   FileInput,
   Group,
-  List,
   Stack,
   Text,
 } from "@mantine/core";
@@ -28,7 +25,6 @@ const FileUpload = ({
   onRemoveFile,
   onPreview,
 }: FileUploadProps) => {
-  const [showInstructions, setShowInstructions] = useState(false);
   // Remount the FileInput after each selection so it resets to empty and
   // selecting the same file again still fires onChange.
   const [inputKey, setInputKey] = useState(0);
