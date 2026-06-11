@@ -164,7 +164,7 @@ describe("HoldingsTable", () => {
       <HoldingsTable holdings={HOLDINGS} adjustments={emptyAdjustments()} />,
     );
 
-    expect(screen.queryByText("Opening lot ACB ($)")).not.toBeInTheDocument();
+    expect(screen.queryByText("Opening lot ACB")).not.toBeInTheDocument();
   });
 
   it("flags holdings with transferred shares and shows the opening lot input", () => {
@@ -175,7 +175,7 @@ describe("HoldingsTable", () => {
       />,
     );
 
-    expect(screen.getByText("Opening lot ACB ($)")).toBeInTheDocument();
+    expect(screen.getByText("Opening lot ACB")).toBeInTheDocument();
     const xeqtRow = screen.getByText("XEQT").closest("tr")!;
     expect(within(xeqtRow).getByText("5 transferred")).toBeInTheDocument();
     expect(
@@ -229,7 +229,7 @@ describe("HoldingsTable", () => {
     expect(
       screen.queryByRole("button", { name: "Edit T3" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText("Opening lot ACB ($)")).not.toBeInTheDocument();
+    expect(screen.queryByText("Opening lot ACB")).not.toBeInTheDocument();
     // Unadjusted figures straight from the holding.
     const veqtRow = screen.getByText("VEQT").closest("tr")!;
     expect(within(veqtRow).getByText("$400.00")).toBeInTheDocument();

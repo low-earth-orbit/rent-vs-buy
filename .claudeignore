@@ -1,0 +1,18 @@
+# generated bundles — large auto-generated files, not useful as context
+src/utils/glide-path/jstData.ts
+
+# analysis data downloads
+analysis/.data/
+
+# build output
+out/
+.next/
+
+# deps
+node_modules/
+
+# backups from caveman-compress
+*.original.md
+
+# methodology docs — large, load on demand via Read tool
+docs/

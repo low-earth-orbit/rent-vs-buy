@@ -90,7 +90,7 @@ const HoldingsTable = ({
           <Table.Th ta="right">ACB/share</Table.Th>
           <Table.Th ta="right">Total cost basis</Table.Th>
           {adjustments && anyTransferred && (
-            <Table.Th>Opening lot ACB ($)</Table.Th>
+            <Table.Th>Opening lot ACB</Table.Th>
           )}
           {adjustments && <Table.Th>T3 slips</Table.Th>}
         </Table.Tr>
