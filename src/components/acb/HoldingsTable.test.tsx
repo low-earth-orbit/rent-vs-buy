@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { renderWithMantine, screen, within } from "@/test-utils";
 import HoldingsTable from "./HoldingsTable";
-import type { Holding } from "@/utils/acb/parser";
+import type { AcbTransaction, Holding } from "@/utils/acb/parser";
 
 const HOLDINGS: Holding[] = [
   {
@@ -236,5 +236,59 @@ describe("HoldingsTable", () => {
     const input = screen.getByLabelText("Opening lot ACB for XEQT");
     await user.type(input, "75");
     expect(onOpeningLotChange).toHaveBeenLastCalledWith("XEQT", 75);
+  });
+
+  it("shows no row-expansion toggles when transactions are not provided", () => {
+    renderWithMantine(
+      <HoldingsTable
+        holdings={HOLDINGS}
+        t3Slips={{}}
+        onEditT3={noop}
+        openingLots={{}}
+        onOpeningLotChange={noop}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /Toggle year-by-year ACB/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("expands a row to its year-by-year ACB breakdown when transactions are provided", async () => {
+    const user = userEvent.setup();
+    const transactions: AcbTransaction[] = [
+      {
+        symbol: "VEQT",
+        quantity: 10,
+        price: 40,
+        type: "buy",
+        date: "2023-03-01",
+      },
+    ];
+    renderWithMantine(
+      <HoldingsTable
+        holdings={HOLDINGS}
+        t3Slips={{}}
+        onEditT3={noop}
+        openingLots={{}}
+        onOpeningLotChange={noop}
+        transactions={transactions}
+      />,
+    );
+
+    const toggle = screen.getByRole("button", {
+      name: "Toggle year-by-year ACB for VEQT",
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("2023")).not.toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("2023")).toBeInTheDocument();
+    expect(screen.getByText("Cost Basis")).toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("2023")).not.toBeInTheDocument();
   });
 });

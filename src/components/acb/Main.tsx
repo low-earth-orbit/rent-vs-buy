@@ -4,27 +4,29 @@ import {
   Container,
   List,
   Paper,
-  SegmentedControl,
   Stack,
   Table,
+  Tabs,
   Text,
   Title,
 } from "@mantine/core";
 import AccountView from "./AccountView";
 import FilePreviewModal from "./FilePreviewModal";
-import FileUpload from "./FileUpload";
+import FileUpload, { type UploadedFileSummary } from "./FileUpload";
 import HoldingsTable, { type OpeningLots } from "./HoldingsTable";
+import SummaryBar from "./SummaryBar";
 import T3Modal from "./T3Modal";
-import YearlyACBTable from "./YearlyACBTable";
 import {
+  applyAdjustments,
   computeHoldings,
   computeMarginInterest,
-  computeYearlyACB,
   detectOverlappingFiles,
   groupByAccount,
   hasMixedCurrencies,
   parseFiles,
+  t3NetAdjustment,
   type AcbTransaction,
+  type AccountGroup,
   type ParsedFile,
   type T3Entry,
   type T3Slips,
@@ -37,19 +39,40 @@ const interestFormatter = new Intl.NumberFormat("en-CA", {
   maximumFractionDigits: 2,
 });
 
-const sharesFormatter = new Intl.NumberFormat("en-CA", {
-  maximumFractionDigits: 4,
-});
-
 /** True when the transaction belongs to a registered account (TFSA/RRSP/FHSA). */
 function isRegisteredTransaction(tx: AcbTransaction): boolean {
   return /tfsa|rrsp|fhsa/i.test(tx.accountType ?? "");
 }
 
-type ViewMode = "combined" | "byAccount" | "byYear";
+/** "TYPE · ID" label for an account group, or "Unknown account". */
+function accountLabel(group: AccountGroup): string {
+  return (
+    [group.accountType, group.accountId].filter(Boolean).join(" · ") ||
+    "Unknown account"
+  );
+}
 
-function isViewMode(value: string): value is ViewMode {
-  return value === "combined" || value === "byAccount" || value === "byYear";
+/** `{ min, max }` over dated transactions; null when none carry a date. */
+function dateRangeOf(
+  transactions: AcbTransaction[],
+): { min: string; max: string } | null {
+  let min = "";
+  let max = "";
+  for (const tx of transactions) {
+    const date = tx.date ?? "";
+    if (date === "") continue;
+    if (min === "" || date < min) min = date;
+    if (date > max) max = date;
+  }
+  return min === "" ? null : { min, max };
+}
+
+/** "N transactions · 2023-01-03 → 2024-12-30" summary line for one file. */
+function fileDetail(file: ParsedFile): string {
+  const count = file.transactions.length;
+  const countLabel = `${count} transaction${count === 1 ? "" : "s"}`;
+  const range = dateRangeOf(file.transactions);
+  return range ? `${countLabel} · ${range.min} → ${range.max}` : countLabel;
 }
 
 const Main = () => {
@@ -59,7 +82,7 @@ const Main = () => {
   const [t3ModalSymbol, setT3ModalSymbol] = useState<string | null>(null);
   const [openingLots, setOpeningLots] = useState<OpeningLots>({});
   const [previewFileIndex, setPreviewFileIndex] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("combined");
+  const [activeTab, setActiveTab] = useState<string | null>("holdings");
 
   async function handleFilesAdded(newFiles: File[]) {
     const { parsed, errors } = await parseFiles(newFiles);
@@ -127,39 +150,46 @@ const Main = () => {
     setOpeningLots((prev) => ({ ...prev, [symbol]: value }));
   }
 
+  const hasFiles = loadedFiles.length > 0;
+
   // Merge all files into one chronologically sorted transaction list.
-  const transactions =
-    loadedFiles.length > 0
-      ? loadedFiles
-          .flatMap((file) => file.transactions)
-          .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""))
-      : null;
-  // ACB only applies to non-registered accounts: exclude TFSA/RRSP/FHSA from
-  // the combined holdings and margin interest. By Account mode still receives
-  // every account (registered ones show a warning banner).
-  const nonRegisteredTransactions = transactions
-    ? transactions.filter((tx) => !isRegisteredTransaction(tx))
-    : null;
-  const holdings = nonRegisteredTransactions
-    ? computeHoldings(nonRegisteredTransactions)
-    : null;
-  const mixedCurrencies = transactions
-    ? hasMixedCurrencies(transactions)
-    : false;
+  const transactions = loadedFiles
+    .flatMap((file) => file.transactions)
+    .sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+  // ACB pools across all of a taxpayer's non-registered accounts (CRA rule),
+  // so the Holdings tab combines them and excludes TFSA/RRSP/FHSA. The By
+  // account tab still receives every account for reconciliation.
+  const nonRegisteredTransactions = transactions.filter(
+    (tx) => !isRegisteredTransaction(tx),
+  );
+  const holdings = computeHoldings(nonRegisteredTransactions);
+  const visibleHoldings = holdings.filter((h) => h.shares > 0);
+  const mixedCurrencies = hasMixedCurrencies(transactions);
   const overlappingFiles = detectOverlappingFiles(
     loadedFiles.map((file) => file.transactions),
   );
-  const marginInterest = nonRegisteredTransactions
-    ? computeMarginInterest(nonRegisteredTransactions)
-    : {};
+  const marginInterest = computeMarginInterest(nonRegisteredTransactions);
   const marginYears = Object.keys(marginInterest)
     .map(Number)
     .sort((a, b) => a - b);
-  const accountGroups = transactions ? groupByAccount(transactions) : null;
-  // Registered accounts excluded from Combined/By Year ACB calculations.
-  const excludedRegisteredAccounts = accountGroups
-    ? accountGroups.filter((g) => g.isRegistered)
-    : [];
+  const accountGroups = groupByAccount(transactions);
+  const excludedRegisteredAccounts = accountGroups.filter(
+    (g) => g.isRegistered,
+  );
+  const totalCostBasis = visibleHoldings.reduce(
+    (sum, holding) =>
+      sum +
+      applyAdjustments(
+        holding,
+        openingLots[holding.symbol] ?? 0,
+        t3NetAdjustment(t3Slips[holding.symbol] ?? []),
+      ).costBasis,
+    0,
+  );
+  const fileSummaries: UploadedFileSummary[] = loadedFiles.map((file) => ({
+    name: file.name,
+    detail: fileDetail(file),
+  }));
   const previewFile =
     previewFileIndex !== null ? (loadedFiles[previewFileIndex] ?? null) : null;
   const modalEntries =
@@ -170,7 +200,7 @@ const Main = () => {
       <Stack gap="lg">
         <Paper withBorder p="md" radius="md">
           <FileUpload
-            fileNames={loadedFiles.map((file) => file.name)}
+            files={fileSummaries}
             onFilesAdded={handleFilesAdded}
             onRemoveFile={handleRemoveFile}
             onPreview={setPreviewFileIndex}
@@ -184,6 +214,28 @@ const Main = () => {
               ))}
             </List>
           </Alert>
+        )}
+        {!hasFiles && (
+          <Paper withBorder p="md" radius="md">
+            <Stack gap="sm">
+              <Title order={2} fz="lg">
+                How it works
+              </Title>
+              <List type="ordered" size="sm" spacing="xs">
+                <List.Item>
+                  Export your account activity as a CSV from Wealthsimple.
+                </List.Item>
+                <List.Item>
+                  Upload one or more files. Everything is parsed locally in your
+                  browser — nothing is uploaded.
+                </List.Item>
+                <List.Item>
+                  Review your pooled ACB. Enter T3 amounts (box 21 / box 42) and
+                  the opening-lot ACB for any transferred-in shares.
+                </List.Item>
+              </List>
+            </Stack>
+          </Paper>
         )}
         {overlappingFiles && (
           <Alert color="yellow" title="Overlapping date ranges detected">
@@ -203,150 +255,123 @@ const Main = () => {
             </Text>
           </Alert>
         )}
-        {holdings && (
-          <SegmentedControl
-            value={viewMode}
-            onChange={(value) => {
-              if (isViewMode(value)) setViewMode(value);
-            }}
-            data={[
-              { label: "Combined", value: "combined" },
-              { label: "By Account", value: "byAccount" },
-              { label: "By Year", value: "byYear" },
-            ]}
-            w="fit-content"
+        {hasFiles && (
+          <SummaryBar
+            totalCostBasis={totalCostBasis}
+            holdingsCount={visibleHoldings.length}
+            nonRegisteredAccounts={
+              accountGroups.length - excludedRegisteredAccounts.length
+            }
+            registeredAccounts={excludedRegisteredAccounts.length}
+            transactionCount={transactions.length}
+            dateRange={dateRangeOf(transactions)}
           />
         )}
-        {holdings &&
-          viewMode === "combined" &&
-          excludedRegisteredAccounts.length > 0 && (
-            <Alert color="blue" title="Registered accounts excluded">
-              <Text size="sm">
-                ACB only applies to non-registered accounts. The following
-                account{excludedRegisteredAccounts.length > 1 ? "s are" : " is"}{" "}
-                excluded from this view:{" "}
-                {excludedRegisteredAccounts
-                  .map(
-                    (g) =>
-                      [g.accountType, g.accountId].filter(Boolean).join(" ·") ||
-                      "Unknown account",
-                  )
-                  .join(", ")}
-                . Switch to <strong>By Account</strong> to see all accounts.
-              </Text>
-            </Alert>
-          )}
-        {holdings && viewMode === "combined" && (
-          <Paper withBorder p="md" radius="md">
-            <Stack gap="sm">
-              <Title order={2} fz="lg">
-                Holdings
-              </Title>
-              <Text c="dimmed" size="sm">
-                ACB per share = total cost basis ÷ shares held. Sells reduce
-                both shares and the cost basis pool pro-rata (CRA rule), so
-                ACB/share stays constant after a sale. Click{" "}
-                <strong>Edit T3</strong> to enter capital gains distributions
-                (box 21, adds to ACB) and return of capital (box 42, reduces
-                ACB) from your T3 slips, per tax year. For holdings with
-                transferred-in shares, enter the{" "}
-                <strong>opening lot ACB</strong> (total cost basis of the
-                transferred shares) so the ACB is complete.
-              </Text>
-              <HoldingsTable
-                holdings={holdings}
-                t3Slips={t3Slips}
-                onEditT3={handleEditT3}
-                openingLots={openingLots}
-                onOpeningLotChange={handleOpeningLotChange}
-              />
-            </Stack>
-          </Paper>
-        )}
-        {holdings &&
-          nonRegisteredTransactions &&
-          viewMode === "byYear" &&
-          excludedRegisteredAccounts.length > 0 && (
-            <Alert color="blue" title="Registered accounts excluded">
-              <Text size="sm">
-                Year-by-year ACB covers non-registered accounts only.{" "}
-                {excludedRegisteredAccounts
-                  .map(
-                    (g) =>
-                      [g.accountType, g.accountId].filter(Boolean).join(" ·") ||
-                      "Unknown account",
-                  )
-                  .join(", ")}{" "}
-                {excludedRegisteredAccounts.length > 1 ? "are" : "is"} excluded.
-              </Text>
-            </Alert>
-          )}
-        {holdings && nonRegisteredTransactions && viewMode === "byYear" && (
-          <Stack gap="lg">
-            {holdings.map((holding) => (
-              <Paper key={holding.symbol} withBorder p="md" radius="md">
-                <Stack gap="sm">
-                  <Title order={2} fz="lg">
-                    {holding.symbol}
-                  </Title>
-                  <YearlyACBTable
-                    symbol={holding.symbol}
-                    snapshots={computeYearlyACB(
-                      nonRegisteredTransactions,
-                      holding.symbol,
+        {hasFiles && (
+          <Tabs value={activeTab} onChange={setActiveTab}>
+            <Tabs.List>
+              <Tabs.Tab value="holdings">Holdings</Tabs.Tab>
+              <Tabs.Tab value="byAccount">By account</Tabs.Tab>
+            </Tabs.List>
+            <Tabs.Panel value="holdings" pt="lg">
+              <Stack gap="lg">
+                {excludedRegisteredAccounts.length > 0 && (
+                  <Alert color="blue" title="Registered accounts excluded">
+                    <Text size="sm">
+                      ACB doesn&apos;t apply to registered accounts (TFSA / RRSP
+                      / FHSA). Excluded:{" "}
+                      {excludedRegisteredAccounts.map(accountLabel).join(", ")}.
+                      See the By account tab.
+                    </Text>
+                  </Alert>
+                )}
+                <Paper withBorder p="md" radius="md">
+                  <Stack gap="sm">
+                    <Title order={2} fz="lg">
+                      Holdings
+                    </Title>
+                    <Text c="dimmed" size="sm">
+                      Pooled across all non-registered accounts (CRA rule). ACB
+                      per share = total cost basis ÷ shares held. Sells reduce
+                      both shares and the cost basis pool pro-rata, so ACB/share
+                      stays constant after a sale. Expand a row for its
+                      year-by-year ACB history. Click <strong>Edit T3</strong>{" "}
+                      to enter capital gains distributions (box 21, adds to ACB)
+                      and return of capital (box 42, reduces ACB) from your T3
+                      slips, per tax year. For holdings with transferred-in
+                      shares, enter the <strong>opening lot ACB</strong> (total
+                      cost basis of the transferred shares) so the ACB is
+                      complete.
+                    </Text>
+                    {visibleHoldings.length > 0 ? (
+                      <HoldingsTable
+                        holdings={holdings}
+                        t3Slips={t3Slips}
+                        onEditT3={handleEditT3}
+                        openingLots={openingLots}
+                        onOpeningLotChange={handleOpeningLotChange}
+                        transactions={nonRegisteredTransactions}
+                      />
+                    ) : (
+                      <Text c="dimmed" size="sm">
+                        No non-registered holdings found.
+                      </Text>
                     )}
-                  />
+                  </Stack>
+                </Paper>
+                {marginYears.length > 0 && (
+                  <Paper withBorder p="md" radius="md">
+                    <Stack gap="sm">
+                      <Title order={2} fz="lg">
+                        Margin Interest Paid
+                      </Title>
+                      <Text c="dimmed" size="sm">
+                        Potentially deductible against taxable income (line
+                        22100)
+                      </Text>
+                      <Table striped withTableBorder>
+                        <Table.Thead>
+                          <Table.Tr>
+                            <Table.Th>Tax Year</Table.Th>
+                            <Table.Th ta="right">Interest Paid</Table.Th>
+                          </Table.Tr>
+                        </Table.Thead>
+                        <Table.Tbody>
+                          {marginYears.map((year) => (
+                            <Table.Tr key={year}>
+                              <Table.Td>{year}</Table.Td>
+                              <Table.Td ta="right">
+                                {interestFormatter.format(marginInterest[year])}
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    </Stack>
+                  </Paper>
+                )}
+              </Stack>
+            </Tabs.Panel>
+            <Tabs.Panel value="byAccount" pt="lg">
+              <Stack gap="lg">
+                <Alert color="yellow" title="For reconciliation only">
                   <Text size="sm">
-                    Final: {sharesFormatter.format(holding.shares)} shares ·
-                    ACB/share{" "}
-                    {holding.acbPerShare === null
-                      ? "—"
-                      : interestFormatter.format(holding.acbPerShare)}{" "}
-                    · cost basis {interestFormatter.format(holding.costBasis)}
+                    The CRA requires ACB to be pooled across all of your
+                    non-registered accounts when the same security is held in
+                    more than one. Use the Holdings tab for tax figures; use
+                    this view to reconcile against account statements.
                   </Text>
-                </Stack>
-              </Paper>
-            ))}
-          </Stack>
-        )}
-        {accountGroups && viewMode === "byAccount" && (
-          <AccountView
-            groups={accountGroups}
-            t3Slips={t3Slips}
-            onEditT3={handleEditT3}
-            openingLots={openingLots}
-            onOpeningLotChange={handleOpeningLotChange}
-          />
-        )}
-        {viewMode === "combined" && marginYears.length > 0 && (
-          <Paper withBorder p="md" radius="md">
-            <Stack gap="sm">
-              <Title order={2} fz="lg">
-                Margin Interest Paid
-              </Title>
-              <Text c="dimmed" size="sm">
-                Potentially deductible against taxable income (line 22100)
-              </Text>
-              <Table striped withTableBorder>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Tax Year</Table.Th>
-                    <Table.Th ta="right">Interest Paid</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {marginYears.map((year) => (
-                    <Table.Tr key={year}>
-                      <Table.Td>{year}</Table.Td>
-                      <Table.Td ta="right">
-                        {interestFormatter.format(marginInterest[year])}
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Stack>
-          </Paper>
+                </Alert>
+                <AccountView
+                  groups={accountGroups}
+                  t3Slips={t3Slips}
+                  onEditT3={handleEditT3}
+                  openingLots={openingLots}
+                  onOpeningLotChange={handleOpeningLotChange}
+                />
+              </Stack>
+            </Tabs.Panel>
+          </Tabs>
         )}
         <FilePreviewModal
           file={previewFile}

@@ -8,9 +8,15 @@ import {
   Text,
 } from "@mantine/core";
 
+export type UploadedFileSummary = {
+  name: string;
+  /** Short description of the file's contents, e.g. transaction count and date range. */
+  detail: string;
+};
+
 type FileUploadProps = {
-  /** Names of files already uploaded and parsed. */
-  fileNames: string[];
+  /** Files already uploaded and parsed. */
+  files: UploadedFileSummary[];
   /** Called with newly selected files; they ADD to the existing list. */
   onFilesAdded: (files: File[]) => void;
   /** Remove the file at the given index from the list. */
@@ -20,7 +26,7 @@ type FileUploadProps = {
 };
 
 const FileUpload = ({
-  fileNames,
+  files,
   onFilesAdded,
   onRemoveFile,
   onPreview,
@@ -43,12 +49,13 @@ const FileUpload = ({
           setInputKey((key) => key + 1);
         }}
       />
-      {fileNames.length > 0 && (
+      {files.length > 0 && (
         <Stack gap={2}>
-          {fileNames.map((name, index) => (
-            <Group key={`${name}-${index}`} gap="xs" wrap="nowrap">
-              <Text size="sm" c="dimmed">
-                {name}
+          {files.map((file, index) => (
+            <Group key={`${file.name}-${index}`} gap="xs" wrap="nowrap">
+              <Text size="sm">{file.name}</Text>
+              <Text size="xs" c="dimmed">
+                {file.detail}
               </Text>
               <Button
                 variant="subtle"
@@ -59,7 +66,7 @@ const FileUpload = ({
               </Button>
               <CloseButton
                 size="sm"
-                aria-label={`Remove ${name}`}
+                aria-label={`Remove ${file.name}`}
                 onClick={() => onRemoveFile(index)}
               />
             </Group>

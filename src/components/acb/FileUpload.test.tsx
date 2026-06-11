@@ -5,11 +5,16 @@ import FileUpload from "./FileUpload";
 
 const noop = () => {};
 
+const FILES = [
+  { name: "2024.csv", detail: "12 transactions · 2024-01-02 → 2024-12-30" },
+  { name: "2025.csv", detail: "1 transaction" },
+];
+
 describe("FileUpload", () => {
-  it("lists each uploaded file with preview and remove buttons", () => {
+  it("lists each uploaded file with its detail, preview, and remove buttons", () => {
     renderWithMantine(
       <FileUpload
-        fileNames={["2024.csv", "2025.csv"]}
+        files={FILES}
         onFilesAdded={noop}
         onRemoveFile={noop}
         onPreview={noop}
@@ -18,6 +23,10 @@ describe("FileUpload", () => {
 
     expect(screen.getByText("2024.csv")).toBeInTheDocument();
     expect(screen.getByText("2025.csv")).toBeInTheDocument();
+    expect(
+      screen.getByText("12 transactions · 2024-01-02 → 2024-12-30"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 transaction")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Preview" })).toHaveLength(2);
     expect(
       screen.getByRole("button", { name: "Remove 2024.csv" }),
@@ -30,7 +39,7 @@ describe("FileUpload", () => {
   it("shows no file list when nothing is uploaded", () => {
     renderWithMantine(
       <FileUpload
-        fileNames={[]}
+        files={[]}
         onFilesAdded={noop}
         onRemoveFile={noop}
         onPreview={noop}
@@ -45,7 +54,7 @@ describe("FileUpload", () => {
     const onRemoveFile = vi.fn();
     renderWithMantine(
       <FileUpload
-        fileNames={["2024.csv", "2025.csv"]}
+        files={FILES}
         onFilesAdded={noop}
         onRemoveFile={onRemoveFile}
         onPreview={noop}
@@ -61,7 +70,7 @@ describe("FileUpload", () => {
     const onPreview = vi.fn();
     renderWithMantine(
       <FileUpload
-        fileNames={["2024.csv", "2025.csv"]}
+        files={FILES}
         onFilesAdded={noop}
         onRemoveFile={noop}
         onPreview={onPreview}

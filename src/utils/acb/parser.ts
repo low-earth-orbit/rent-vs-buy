@@ -326,9 +326,7 @@ export function computeHoldings(transactions: AcbTransaction[]): Holding[] {
       // remaining_pool = pool × (shares_before - sold) / shares_before
       const sharesAfter = entry.shares - tx.quantity;
       entry.costBasis =
-        entry.shares > 0
-          ? entry.costBasis * (sharesAfter / entry.shares)
-          : 0;
+        entry.shares > 0 ? entry.costBasis * (sharesAfter / entry.shares) : 0;
       entry.shares = sharesAfter;
     }
     bySymbol.set(tx.symbol, entry);
@@ -511,10 +509,7 @@ export function computeYearlyACB(
     } else {
       // CRA rule: sell reduces the pool pro-rata so ACB/share is unchanged.
       const sharesAfter = shares - tx.quantity;
-      costBasis =
-        shares > 0
-          ? costBasis * (sharesAfter / shares)
-          : 0;
+      costBasis = shares > 0 ? costBasis * (sharesAfter / shares) : 0;
       shares = sharesAfter;
       current.sellQty += tx.quantity;
     }

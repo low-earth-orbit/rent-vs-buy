@@ -1,19 +1,8 @@
-import { useState } from "react";
-import {
-  Alert,
-  Anchor,
-  Collapse,
-  Paper,
-  Stack,
-  Table,
-  Title,
-} from "@mantine/core";
+import { Alert, Paper, Stack, Table, Title } from "@mantine/core";
 import HoldingsTable, { type OpeningLots } from "./HoldingsTable";
-import YearlyACBTable from "./YearlyACBTable";
 import {
   computeHoldings,
   computeMarginInterest,
-  computeYearlyACB,
   type AccountGroup,
   type T3Slips,
 } from "@/utils/acb/parser";
@@ -40,7 +29,6 @@ const AccountSection = ({
   openingLots,
   onOpeningLotChange,
 }: AccountSectionProps) => {
-  const [yearsExpanded, setYearsExpanded] = useState(false);
   const header =
     [group.accountType, group.accountId].filter(Boolean).join(" · ") ||
     "Unknown account";
@@ -53,8 +41,8 @@ const AccountSection = ({
             {header}
           </Title>
           <Alert color="blue" title="Registered account">
-            ACB does not apply to registered accounts (TFSA / RRSP / FHSA) —
-            no holdings shown.
+            ACB does not apply to registered accounts (TFSA / RRSP / FHSA) — no
+            holdings shown.
           </Alert>
         </Stack>
       </Paper>
@@ -79,34 +67,8 @@ const AccountSection = ({
           onEditT3={onEditT3}
           openingLots={openingLots}
           onOpeningLotChange={onOpeningLotChange}
+          transactions={group.transactions}
         />
-        {holdings.length > 0 && (
-          <Stack gap={4}>
-            <Anchor
-              component="button"
-              type="button"
-              size="sm"
-              onClick={() => setYearsExpanded((open) => !open)}
-              aria-expanded={yearsExpanded}
-            >
-              {yearsExpanded ? "Hide year-by-year ACB" : "Year-by-year ACB"}
-            </Anchor>
-            <Collapse expanded={yearsExpanded}>
-              <Stack gap="xs">
-                {holdings.map((holding) => (
-                  <YearlyACBTable
-                    key={holding.symbol}
-                    symbol={holding.symbol}
-                    snapshots={computeYearlyACB(
-                      group.transactions,
-                      holding.symbol,
-                    )}
-                  />
-                ))}
-              </Stack>
-            </Collapse>
-          </Stack>
-        )}
         {marginYears.length > 0 && (
           <Stack gap="xs">
             <Title order={4} fz="md">
@@ -148,9 +110,9 @@ type AccountViewProps = {
 /**
  * By-account breakdown: one section per (accountId, accountType) group.
  * Registered accounts (TFSA / RRSP / FHSA) show a notice instead of holdings;
- * non-registered accounts get their own holdings table, a collapsible
- * year-by-year ACB breakdown per symbol, and (for margin accounts) a margin
- * interest summary. T3 slips and opening lots apply globally by symbol.
+ * non-registered accounts get their own holdings table with expandable
+ * year-by-year ACB rows and (for margin accounts) a margin interest summary.
+ * T3 slips and opening lots apply globally by symbol.
  */
 const AccountView = ({
   groups,

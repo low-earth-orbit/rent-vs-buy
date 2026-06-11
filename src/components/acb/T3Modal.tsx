@@ -46,7 +46,7 @@ const T3Modal = ({ symbol, entries, onChange, onClose }: T3ModalProps) => {
   function addEntry() {
     onChange([
       ...entries,
-      { year: new Date().getFullYear(), box21: 0, box42: 0 },
+      { year: new Date().getFullYear() - 1, box21: 0, box42: 0 },
     ]);
   }
 

@@ -62,7 +62,7 @@ describe("T3Modal", () => {
     await user.click(screen.getByRole("button", { name: "+ Add year" }));
     expect(onChange).toHaveBeenCalledWith([
       ...ENTRIES,
-      { year: new Date().getFullYear(), box21: 0, box42: 0 },
+      { year: new Date().getFullYear() - 1, box21: 0, box42: 0 },
     ]);
   });
 
