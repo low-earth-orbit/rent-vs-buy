@@ -23,11 +23,11 @@ Types: **TypeScript** `.ts`/`.tsx`. Shared domain types: `src/types.ts`.
 
 ### Task tiers
 
-| Tier | Examples | Who plans | Who executes | Who reviews |
-|------|----------|-----------|--------------|-------------|
-| **trivial** | lint fix, rename, label change | nobody | Codex | human spot-check |
-| **standard** | new feature, multi-file, test coverage | Claude (1 turn) | Codex | human reviews diff |
-| **complex** | finance engine, new tool, architecture | Claude full plan + risks | Codex | Claude reviews diff |
+| Tier         | Examples                               | Who plans                | Who executes | Who reviews         |
+| ------------ | -------------------------------------- | ------------------------ | ------------ | ------------------- |
+| **trivial**  | lint fix, rename, label change         | nobody                   | Codex        | human spot-check    |
+| **standard** | new feature, multi-file, test coverage | Claude (1 turn)          | Codex        | human reviews diff  |
+| **complex**  | finance engine, new tool, architecture | Claude full plan + risks | Codex        | Claude reviews diff |
 
 For small 1-2 file edits where Claude already in context — Claude does it directly; no Codex handoff.
 
@@ -42,6 +42,7 @@ scripts/codex-run.sh complex  "<task>"   # gpt-5.5,      high
 ```
 
 Or raw:
+
 ```bash
 codex exec -m <model> -c model_reasoning_effort=<level> -s workspace-write -C <repo> "<task>" < /dev/null
 ```
@@ -55,12 +56,12 @@ codex exec -m <model> -c model_reasoning_effort=<level> -s workspace-write -C <r
 
 ## Tools
 
-| Route | Tool | Description |
-|-------|------|-------------|
-| `/rent-vs-buy` | Rent vs Buy | Year-by-year net worth comparison, MC bands, win probability |
-| `/retirement` | When can I retire? | Portfolio projection in real $; grows to retirement, draws to target income |
-| `/glide-path` | Lifetime Allocation Optimizer | MC coordinate ascent, CRRA utility, optimized vs constant allocation |
-| `/acb` | ACB Calculator | Computes adjusted cost basis from Wealthsimple activity CSV export |
+| Route          | Tool                          | Description                                                                 |
+| -------------- | ----------------------------- | --------------------------------------------------------------------------- |
+| `/rent-vs-buy` | Rent vs Buy                   | Year-by-year net worth comparison, MC bands, win probability                |
+| `/retirement`  | When can I retire?            | Portfolio projection in real $; grows to retirement, draws to target income |
+| `/glide-path`  | Lifetime Allocation Optimizer | MC coordinate ascent, CRRA utility, optimized vs constant allocation        |
+| `/acb`         | ACB Calculator                | Computes adjusted cost basis from Wealthsimple activity CSV export          |
 
 **New tool pattern:** `src/app/<tool>/` + `src/components/<tool>/`. Reuse `src/components/shared/` and `src/utils/`. Import alias: `@/` → `./src/`.
 
@@ -73,6 +74,7 @@ codex exec -m <model> -c model_reasoning_effort=<level> -s workspace-write -C <r
 **CSS:** Tailwind v4 + Mantine via `@layer(tailwind-base, mantine, tailwind-utilities)` — Tailwind preflight never overrides Mantine.
 
 **UI (`src/components/`):**
+
 - `shared/`: `Header`, `Footer`, `DisclaimerModal`, `FieldLabel`, `UserInputFormItem` (Mantine NumberInput + optional `$`/`%` toggle), `UserInputRangeItem` (base + ±2σ expand)
 - `rent-vs-buy/Main.tsx`: state container; persists all state to localStorage via `storage.ts`
 - `Result.tsx` → `NetWorthChart.tsx`: dispatches MC to Web Worker, renders chart + Summary Alert + data table + CSV
@@ -88,6 +90,7 @@ codex exec -m <model> -c model_reasoning_effort=<level> -s workspace-write -C <r
 ## Tool-Specific Methodology
 
 See `docs/` for per-tool deep dives:
+
 - [docs/rent-vs-buy/methodology.md](docs/rent-vs-buy/methodology.md) — MC architecture, modeling assumptions, summary tier logic
 - [docs/retirement/swr-methodology.md](docs/retirement/swr-methodology.md) — SWR engine, safe withdrawal assumptions
 - [docs/glide-path/methodology.md](docs/glide-path/methodology.md) — CRRA utility, coordinate ascent, forward-block bootstrap

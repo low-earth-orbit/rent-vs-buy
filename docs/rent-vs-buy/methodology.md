@@ -16,24 +16,24 @@ Two-layer uncertainty model:
 
 **Layer 1 — long-run mean (drawn once per sim in `drawScenario()`):**
 
-| Sigma | Captures |
-|-------|----------|
-| `homePriceGrowthSigma` | Long-run home price growth mean |
-| `investmentReturnSigma` | Long-run portfolio return mean |
-| `rentIncreaseSigma` | Long-run rent growth mean |
-| `ownerCostGrowthSigma` | Long-run recurring owner cost growth mean |
-| `mortgageRateSigma` | Long-run mortgage rate mean |
-| `dividendYieldSigma` | Long-run dividend yield mean |
+| Sigma                   | Captures                                  |
+| ----------------------- | ----------------------------------------- |
+| `homePriceGrowthSigma`  | Long-run home price growth mean           |
+| `investmentReturnSigma` | Long-run portfolio return mean            |
+| `rentIncreaseSigma`     | Long-run rent growth mean                 |
+| `ownerCostGrowthSigma`  | Long-run recurring owner cost growth mean |
+| `mortgageRateSigma`     | Long-run mortgage rate mean               |
+| `dividendYieldSigma`    | Long-run dividend yield mean              |
 
 `maintPct`/`propertyTaxRate` have no sigma — path driven by `ownerCostGrowthRate`.
 
 **Layer 2 — annual realized vol (drawn per year in `drawPath()`):**
 
-| Constant | Notes |
-|----------|-------|
-| `inflation` | Hidden common factor σ |
+| Constant        | Notes                        |
+| --------------- | ---------------------------- |
+| `inflation`     | Hidden common factor σ       |
 | `homePriceIdio` | Idiosyncratic real housing σ |
-| `investment` | Equity lognormal σ |
+| `investment`    | Equity lognormal σ           |
 
 `INFLATION_BETA` couples home prices, rents, owner costs, mortgage rates through inflation factor.
 
@@ -45,8 +45,8 @@ Two-layer uncertainty model:
 
 ## Summary Tier Logic
 
-| Win % | Title | Color |
-|-------|-------|-------|
-| ≥70% | "{Option} clearly leads" | teal/indigo |
-| 60–70% | "{Option} likely leads" | teal/indigo |
-| <60% | "Too close to call" | gray |
+| Win %  | Title                    | Color       |
+| ------ | ------------------------ | ----------- |
+| ≥70%   | "{Option} clearly leads" | teal/indigo |
+| 60–70% | "{Option} likely leads"  | teal/indigo |
+| <60%   | "Too close to call"      | gray        |
