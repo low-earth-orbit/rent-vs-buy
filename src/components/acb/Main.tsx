@@ -61,12 +61,12 @@ function dateRangeOf(
   return min === "" ? null : { min, max };
 }
 
-/** "142 transactions · 2023-01-03 → 2024-12-30" summary line for one file. */
+/** "142 transactions · 2023-01-03 – 2024-12-30" summary line for one file. */
 function fileDetail(file: ParsedFile): string {
   const count = file.transactions.length;
   const countLabel = `${count} transaction${count === 1 ? "" : "s"}`;
   const range = dateRangeOf(file.transactions);
-  return range ? `${countLabel} · ${range.min} → ${range.max}` : countLabel;
+  return range ? `${countLabel} · ${range.min} – ${range.max}` : countLabel;
 }
 
 const Main = () => {

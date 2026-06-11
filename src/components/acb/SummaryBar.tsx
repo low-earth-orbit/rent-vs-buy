@@ -39,7 +39,7 @@ const SummaryBar = ({
       <Stat label="Transactions" value={String(transactionCount)} />
       <Stat
         label="Coverage"
-        value={dateRange ? `${dateRange.min} → ${dateRange.max}` : "—"}
+        value={dateRange ? `${dateRange.min} – ${dateRange.max}` : "—"}
       />
     </SimpleGrid>
   </Paper>

@@ -6,7 +6,7 @@ import FileUpload from "./FileUpload";
 const noop = () => {};
 
 const FILES = [
-  { name: "2024.csv", detail: "12 transactions · 2024-01-02 → 2024-12-30" },
+  { name: "2024.csv", detail: "12 transactions · 2024-01-02 – 2024-12-30" },
   { name: "2025.csv", detail: "1 transaction" },
 ];
 
@@ -24,7 +24,7 @@ describe("FileUpload", () => {
     expect(screen.getByText("2024.csv")).toBeInTheDocument();
     expect(screen.getByText("2025.csv")).toBeInTheDocument();
     expect(
-      screen.getByText("12 transactions · 2024-01-02 → 2024-12-30"),
+      screen.getByText("12 transactions · 2024-01-02 – 2024-12-30"),
     ).toBeInTheDocument();
     expect(screen.getByText("1 transaction")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Preview" })).toHaveLength(2);
