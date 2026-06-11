@@ -19,7 +19,7 @@ import {
   type Holding,
   type T3Slips,
 } from "@/utils/acb/parser";
-import { formatCAD } from "@/utils/format";
+import { formatCADDecimal } from "@/utils/format";
 
 export type OpeningLots = Record<string, number>;
 
@@ -35,13 +35,6 @@ type HoldingsTableProps = {
    */
   transactions?: AcbTransaction[];
 };
-
-const currencyFormatter = new Intl.NumberFormat("en-CA", {
-  style: "currency",
-  currency: "CAD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 
 const sharesFormatter = new Intl.NumberFormat("en-CA", {
   maximumFractionDigits: 4,
@@ -141,11 +134,11 @@ const HoldingsTable = ({
                       —
                     </Text>
                   ) : (
-                    currencyFormatter.format(adjusted.acbPerShare)
+                    formatCADDecimal(adjusted.acbPerShare)
                   )}
                 </Table.Td>
                 <Table.Td ta="right">
-                  {currencyFormatter.format(adjusted.costBasis)}
+                  {formatCADDecimal(adjusted.costBasis)}
                 </Table.Td>
                 {anyTransferred && (
                   <Table.Td>
@@ -185,7 +178,7 @@ const HoldingsTable = ({
                         variant="light"
                         color={t3Net > 0 ? "teal" : "red"}
                       >
-                        {`${t3Net < 0 ? "−" : "+"}${currencyFormatter.format(Math.abs(t3Net))}`}
+                        {`${t3Net < 0 ? "−" : "+"}${formatCADDecimal(Math.abs(t3Net))}`}
                       </Badge>
                     )}
                   </Group>
