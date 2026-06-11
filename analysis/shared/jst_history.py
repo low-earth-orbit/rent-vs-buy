@@ -293,12 +293,23 @@ def rescale_to_targets(
     marginals x sequencing factorial.
     """
     label = f"{history.label} ({label_suffix})"
+    equity = _affine_to_target(history.equity, equity_mean, equity_vol)
+    fixed_income = _affine_to_target(history.fixed_income, fixed_income_mean, fixed_income_vol)
+    # An arithmetic return at or below -100% is not a valid total return; the simulation
+    # engines assume r > -1 (e.g. mid-year affordability divides by 1 + r/2). The current
+    # JST series rescaled to the app's CMAs stays well clear, but a future target/vol
+    # combination could push a disaster year past the boundary — fail loudly here.
+    for name, values in (("equity", equity), ("fixed_income", fixed_income)):
+        worst = float(values.min())
+        if worst <= -1.0:
+            raise ValueError(
+                f"rescaled {name} series contains a return of {worst:.2%} <= -100%; "
+                "the requested target mean/vol over-stretch the historical left tail"
+            )
     return ReturnHistory(
         years=history.years,
-        equity=_affine_to_target(history.equity, equity_mean, equity_vol),
-        fixed_income=_affine_to_target(
-            history.fixed_income, fixed_income_mean, fixed_income_vol
-        ),
+        equity=equity,
+        fixed_income=fixed_income,
         label=label,
         country_count=history.country_count,
         segment_ids=history.segment_ids,

@@ -145,9 +145,10 @@ def main(argv=None):
     ap.add_argument("--inflation", type=float, default=2.1,
                     help="inflation %% used to deflate the iid-mc curve to real")
     ap.add_argument("--mode", choices=RETURN_MODES,
-                    default="forward-block", help="return path generation mode "
+                    default=None, help="return path generation mode "
                     "(default: forward-block — historical sequences rescaled to the forward-CMA "
-                    "marginals, then block-bootstrapped; iid-mc = forward-CMA iid normal)")
+                    "marginals, then block-bootstrapped; iid-mc = forward-CMA iid normal. "
+                    "The --demo showcase defaults to iid-mc instead)")
     ap.add_argument("--block-years", type=int, default=10,
                     help="average stationary circular-block length for block modes "
                     "(historical-block, forward-block)")
@@ -171,19 +172,22 @@ def main(argv=None):
     ap.add_argument("--plot", type=str, default=None, help="save a step-plot of the recommendation to this PNG")
     ap.add_argument("--show", action="store_true", help="display the plot interactively")
     args = ap.parse_args(argv)
+    # The lever-sweep showcase defaults to iid-mc (forward-block makes every cell ~flat 100%);
+    # a single recommendation defaults to forward-block like the engine.
+    mode = args.mode or ("iid-mc" if args.demo else "forward-block")
 
     if args.block_years < 1:
         ap.error("--block-years must be >= 1")
-    if args.curve and args.mode != "iid-mc":
+    if args.curve and mode != "iid-mc":
         ap.error("--curve is only supported with --mode iid-mc; historical modes use raw JST returns")
     exclusions = bool(args.exclude_countries or args.exclude_years)
-    if args.mode == "iid-mc" and exclusions:
+    if mode == "iid-mc" and exclusions:
         ap.error("--exclude-* apply only to historical modes")
     if exclusions and args.dataset != "pooled":
         ap.error("--exclude-countries/--exclude-years require --dataset pooled")
     exclude_years = parse_year_windows(args.exclude_years) if args.exclude_years else None
     if args.demo:
-        run_demo("analysis/artifacts/glide_path/demo")
+        run_demo("analysis/artifacts/glide_path/demo", return_mode=mode)
         return
 
     curve = load_curve(args.curve) if args.curve else PWL_CURVE
@@ -193,7 +197,7 @@ def main(argv=None):
         max_leverage=args.max_leverage, borrow_cost=args.borrow_cost,
         start_age=args.start_age, current_savings=args.savings, annual_contribution=args.contrib,
         target_income=args.target_income, withdrawal_rate=args.withdrawal_rate, inflation=args.inflation,
-        return_mode=args.mode, block_years=args.block_years,
+        return_mode=mode, block_years=args.block_years,
         dataset=args.dataset, exclude_countries=args.exclude_countries,
         exclude_years=exclude_years,
         n_paths=args.n_paths,

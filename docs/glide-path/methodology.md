@@ -95,8 +95,9 @@ already-diversified world series, not of the (stock/bond) candidate set.
 
 3. **Why the iid tent and ACO differ — and why the default closes the gap.** The iid constant-$ tent
    bottoms at/just after retirement (matching ACO's location) but its accumulation path **falls** rather
-   than staying flat near 100%. That gap is the **missing recovery**: iid removes the multi-decade mean
-   reversion ACO's history carries, so derisking looks worth it. Restore the recovery (forward-block, §2f)
+   than staying flat near 100%. That gap is the **missing recovery**: iid removes the decade-scale
+   sequencing history carries (our 10-year average blocks restore it up to roughly the block length,
+   attenuated beyond), so derisking looks worth it. Restore the recovery (forward-block, §2f)
    or add a bequest motive / higher premium, and our path moves to **ACO's flat-high** result.
 
 4. **Both studies are right in their own world.** ACO's flat-100% is optimal _when spending is flexible (or wealth is valued), or once realistic mean reversion is in the model_; ERN/Kitces–Pfau's rising retirement glide is the _iid, rigid-spending_ shape — and even there ERN's CAPE-conditional SWR _boost_ does not reproduce under iid.
@@ -133,9 +134,10 @@ and independent evaluation-sample comparison:
   The default `L` is 10 years, an annual approximation of the 120-month average used by ACO.
 - **`forward-block`** affine-rescales each asset's historical series to the forward-CMA marginals
   (the same `w=0` and `w=1` mean/vol `iid-mc` uses), then block-bootstraps exactly like
-  `historical-block`. Being affine, the rescale preserves each asset's autocorrelation and the
-  stock/bond correlation, so this isolates _sequencing_ from the historical return/risk level — the
-  missing cell of the marginals × sequencing factorial.
+  `historical-block`. Being affine, the rescale preserves each asset's _arithmetic-return_
+  autocorrelation and the stock/bond correlation exactly; log-return statistics (e.g. the
+  variance ratio) shift slightly under the ~2× vol shrink. This isolates _sequencing_ from the
+  historical return/risk level — the missing cell of the marginals × sequencing factorial.
 
 **What each mode actually does** (the distinctions that matter when reading results):
 
@@ -169,7 +171,9 @@ does). They are bootstrap backtests, not overlapping realized lifecycle windows.
 dataset, the block bootstrap resamples an already-diversified annual equal-weight-world
 series; the default `pooled` dataset instead preserves single-country sequence risk. Either way these are
 annual sequencing sensitivity checks, not an ACO replication (ACO bootstraps a monthly
-country-level four-asset panel).
+country-level four-asset panel with 120-month average blocks, mortality-weighted horizons, and
+terminal wealth in the objective — our annual 10-year blocks carry related but not identical
+sequencing content).
 
 ### Returns — our own assumptions, no history
 
@@ -209,7 +213,10 @@ retirement years). We optimize it by **coordinate ascent**: hold all ages fixed 
 that age over a 10pp equity grid on a **shared** shock matrix (common random numbers), take the
 best, and cycle (alternating sweep direction) until the whole vector stops moving. CRN makes each
 one-dimensional search exact for the drawn markets, and **no parametric shape is imposed** — so
-flat / tent / monotone shapes all compete on equal footing.
+flat / tent / monotone shapes all compete on equal footing. Coordinate ascent converges to a
+**coordinate-wise** optimum, not a guaranteed global one; the shape-neutral flat init and the
+alternating sweep direction mitigate but do not eliminate the risk of a local optimum
+(most plausible under leverage with tail-dominated CE).
 
 ### Zero-income states and the CRRA impossible trinity
 
@@ -256,8 +263,11 @@ Two honesty checks accompany every result:
   with accumulation _forced_ to 100%. If the optimized accumulation shape doesn't beat flat-100% out
   of sample, we don't believe it.
 - **Product recommender fallback.** The recommender applies one extra robustness guard: after
-  coordinate ascent, it scores the optimized glide and the best constant allocation on an
-  independent draw. The Python CLI flags the constant allocation as the robust choice when its
+  coordinate ascent, the best constant allocation is chosen on its **own selection draw**
+  (independent of both the optimization draw and the scoring draw — an argmax on the scoring
+  draw would hand the constant comparator a selection advantage over the fixed glide), and then
+  both the glide and that constant are scored on the same independent evaluation draw. The
+  Python CLI flags the constant allocation as the robust choice when its
   CE beats the glide's by more than 5%. The web UI biases harder toward simplicity: it
   recommends the constant allocation whenever it wins on CE income outright, or comes within 2%
   on CE income **and** within 1pp on drawdown shortfall **and** within 2pp on full-path
@@ -395,8 +405,9 @@ Two readings, both important:
 The web app and Python recommender **default to forward-block pooled**, not iid. Re-running the §2b–§2e
 scenarios under that engine (JST single-country sequences affine-rescaled to the forward CMAs, then
 stationary-block-bootstrapped; per-age glide; γ = 4) changes the constant-$ answer qualitatively. The
-empirical equity mean reversion forward-block preserves (VR(10y)≈0.91 — see §4) lets a high-equity path
-recover in time, so the iid derisking incentive mostly evaporates.
+decade-scale equity mean reversion forward-block preserves (VR(10y)≈0.91 — see §4; blocks averaging
+10 years carry autocovariance up to roughly that horizon, attenuated beyond it) lets a high-equity
+path recover in time, so the iid derisking incentive mostly evaporates.
 
 **Retirement-horizon sweep (acc = 30y).** Compare directly to §2b.
 
@@ -418,6 +429,11 @@ optimized glide vs the best single constant weight:
 | constant $ | 50y          | $48,364 | $48,388 (100%)  | **−$24**               |
 | semi-flex  | 30y          | $70,682 | $70,682 (100%)  | $0                     |
 | flexible   | 30y          | $70,747 | $70,747 (100%)  | $0                     |
+
+Differences of this size (±tens of $/yr on a ~$50k CE) are within Monte Carlo sampling error —
+read them as "≈ $0", not as the flat weight genuinely beating the glide. (These figures predate
+the move of the flat-comparator argmax onto its own selection draw; that change removes a small
+selection advantage the flat weight previously enjoyed on the scoring draw.)
 
 **What changed from iid:**
 
@@ -466,13 +482,19 @@ per-age optima — it is the assumptions:
    insurance to stay aggressive. **Pure iid removes that recovery guarantee**, so the sequence
    protection of derisking is worth more under iid than in history.
 
-**§2f resolves this empirically, not just in theory.** Restoring the historical mean reversion —
+**§2f resolves this empirically, not just in theory.** Restoring the historical sequencing —
 without touching the bequest motive or the premium — is exactly what the default **forward-block
 pooled** engine does, and it moves our constant-$ accumulation path from iid's _falling-to-68_ back to
 **flat ~100%**, matching ACO. So of the two assumptions above, **(2) the missing recovery is the
 operative one**: the iid tent is mostly a no-recovery artifact, and the model's _default_ already
 behaves like ACO. The bequest channel (1) remains a secondary lever — adding a terminal-wealth motive
-would push even the iid path up. The honest, default-model conclusion for constant-$ is therefore
+would push even the iid path up. Two qualifiers: the "sequencing" the bootstrap restores bundles
+**equity mean reversion together with bond persistence and the historical real stock/bond
+correlation** — the bond side makes bonds a worse diversifier than the forward curve implies and
+pushes toward equity through its own channel, which we have not separated from the recovery channel
+(see §4). And because JST and ACO's panel draw on largely the **same developed-market historical
+episodes**, reproducing ACO's flat-100% here is _consistency_, not independent confirmation. The
+honest, default-model conclusion for constant-$ is therefore
 **flat ~100% with a shallow dip near retirement** (§2f), with the residual cost borne as depletion
 risk; the iid "hold a moderate level and derisk" result (§2e) is the no-mean-reversion bound, useful as
 a stress case but not the recommendation.
@@ -489,9 +511,31 @@ first two — they are listed here to bound the iid baseline, not the product.
 
 - **No valuation signal / no mean reversion (iid only).** The iid sweep cannot reproduce ERN's
   _CAPE-conditional_ SWR boost, and (as §2f shows) overstates the constant-$ derisking incentive by
-  assuming no recovery. The default forward-block engine preserves the empirical equity mean reversion
-  from JST history (~VR(10y)≈0.91) and bond persistence (VR>1) in the bootstrap sequences; neither the
+  assuming no recovery. The default forward-block engine preserves the decade-scale equity mean
+  reversion from JST history (~VR(10y)≈0.91) and bond persistence (VR>1) in the bootstrap sequences —
+  up to roughly the 10-year average block length, attenuated beyond it; neither the
   CAPE-_timing_ signal nor a tradable valuation rule is modeled in either engine.
+- **The mean-reversion signal is statistically weak — and the headline flip rests on it.**
+  VR(10y)≈0.91 is mild, estimated from overlapping windows on cross-country-correlated series with
+  ~150 calendar years of effective data, and we report no confidence interval; it is likely not
+  distinguishable from VR=1 at conventional levels. We also have not run a **block-length
+  sensitivity** (does the §2f flip survive `--block-years` 5 or strengthen at 20–40?). Until both
+  exist, read §2f as the realistic-sequencing bracket of an iid↔historical pair, not as a settled
+  point estimate.
+- **The bond channel is not separated from the recovery channel.** forward-block matches only the
+  `w=0`/`w=1` anchors; intermediate-weight risk comes from the _historical_ real stock/bond
+  correlation (positive — a common inflation factor) and bond-return persistence (VR>1). Both make
+  bonds a worse diversifier than the forward curve assumes and push the optimum toward equity
+  independently of equity mean reversion. The missing factorial cell — iid bivariate normal draws
+  with the historical correlation but no sequencing — would isolate it.
+- **Survivorship and selection.** JST covers 16 developed markets with long, usable series — markets
+  that survived. The recoveries that drive the §2f result are partly a property of that surviving
+  sample (the standard critique of ACO applies equally here); investors in markets that closed or
+  were expropriated never got their mean reversion.
+- **Sequencing is assumed independent of the return level.** The affine rescale shrinks the equity
+  premium to ~3.3pp while keeping the historical sequence structure, but historical mean reversion
+  arose from valuation cycles at the _historical_ premium. Whether the same recovery dynamics hold
+  at a lower forward premium is an untestable maintained assumption.
 - **One equity asset, our curve.** No domestic/international split, so ACO's ⅓/⅔ tilt and its
   diversification benefit are out of scope — we test only the _stock-vs-bond_ and _flat-vs-glide_
   axes, on a ~3.3pp premium deliberately lower than ACO's US-tilted history.
@@ -522,12 +566,16 @@ can recommend the flat path when it is materially better. It returns the per-ste
 independent-evaluation CE income, income CV, and two depletion views: full-path depletion
 (`depletion`), which includes pre-retirement market luck from today, and drawdown-only depletion
 (`drawdown_depletion`), which starts from the deterministic expected retirement balance and matches
-the `/retirement` headline semantics. It also returns the **best single constant allocation** — the
+the `/retirement` headline semantics. "Depletion" in both views means an **income shortfall** — at
+least one retirement year in which the portfolio could not fund the targeted draw — not "balance
+hit zero" (a year fully covered by guaranteed income has a $0 target and can never count as a
+shortfall); the web engine and Python recommender share this definition. It also returns the **best single constant allocation** — the
 simpler alternative whose CE the glide path usually beats by only a hair (§2e) — and ships a
 `plot_glide_path()` helper.
 
 `python3 analysis/recommend_glide.py --demo` sweeps **each lever across all three spending
-rules** under `iid-mc` — holding every other input at its default — and writes
+rules** under `iid-mc` (the demo's default, since forward-block makes every cell near-flat 100%;
+pass `--mode` to sweep under another engine) — holding every other input at its default — and writes
 `glide_<spending>_by_<lever>.png` (spending ∈ {`constant`, `semiflex`, `flexible`}; lever ∈
 {`guaranteed`, `gamma`}) plus a `glide_by_spending.png` overview to
 gitignored `analysis/artifacts/glide_path/demo/`. What each lever does — and how the

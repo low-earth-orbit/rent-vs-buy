@@ -124,9 +124,9 @@ DATASETS = ("world", "pooled")
 
 # ── utility ─────────────────────────────────────────────────────────────────--
 
-# Numerical floor shared by _crra and the depletion test in _stats. Prevents
-# log(0)/division blowup; not a real-world consumption floor assumption.
-# All values are in real dollars, so $1 is effectively zero consumption.
+# Numerical floor used by _crra. Prevents log(0)/division blowup; not a real-world
+# consumption floor assumption. All values are in real dollars, so $1 is effectively
+# zero consumption.
 _FLOOR = 1.0
 
 
@@ -446,7 +446,10 @@ def _stats(weights, sample, accum_years, retire_years, market, *, flex, gap_arr,
         bal = grown - wdr * (1 + r / 2)
         C[t] = guar_arr[t] + wdr
         cons_eu += disc[t] * _crra(C[t], gamma)
-        depleted |= bal <= _FLOOR
+        # Shortfall = the portfolio couldn't fund the targeted draw (income fell short of
+        # plan). Not "balance hit zero": a fully guaranteed-income-covered year has target 0
+        # and no shortfall. Matches the web engine's computeStats semantics.
+        depleted |= wdr < target
     return {
         "ce_income": _ce_from_util(cons_eu.mean() / disc.sum(), gamma),
         "depletion": float(depleted.mean()),
@@ -489,7 +492,7 @@ def _drawdown_stats(weights, sample, accum_years, retire_years, market, *, flex,
         bal = grown - wdr * (1 + r / 2)
         C[t] = guar_arr[t] + wdr
         cons_eu += disc[t] * _crra(C[t], gamma)
-        depleted |= bal <= _FLOOR
+        depleted |= wdr < target  # shortfall semantics — see _stats
     return {
         "ce_income": _ce_from_util(cons_eu.mean() / disc.sum(), gamma),
         "depletion": float(depleted.mean()),
@@ -643,18 +646,23 @@ def recommend_glide_path(
                                   gamma=gamma, **common)
 
     # Best single CONSTANT (flat) equity weight — the simpler alternative to the glide path.
-    # Choose it on the independent evaluation sample, not the optimization sample; tail-sensitive
-    # utility plus leverage can otherwise overfit rare bad paths and pick a fragile constant
-    # weight. The raw optimized glide is still returned and charted; callers can recommend this
-    # flatter comparator when it is materially better.
+    # Choose it on its own SELECTION sample (independent of both the optimization sample and
+    # the evaluation sample), then score the winner on the evaluation sample. Selecting on the
+    # optimization sample lets tail-sensitive utility plus leverage overfit rare bad paths;
+    # selecting on the evaluation sample would hand the flat comparator an argmax advantage
+    # over the fixed glide on the very draw that scores them both. The raw optimized glide is
+    # still returned and charted; callers can recommend this flatter comparator when it is
+    # materially better.
+    select_sample = market.sample(n_years, max(n_paths, 40_000), seed + 4242)
     flat_stats = []
     for allocation in candidates:
-        candidate = _stats(_constant_path(allocation), eval_sample, accum_years, retire_years, market,
-                           gamma=gamma, **common)
+        candidate = _stats(_constant_path(allocation), select_sample, accum_years, retire_years,
+                           market, gamma=gamma, **common)
         flat_stats.append(candidate)
     best_flat_i = int(np.argmax([s["ce_income"] for s in flat_stats]))
     best_flat_allocation = candidates[best_flat_i]
-    flat_st = flat_stats[best_flat_i]
+    flat_st = _stats(_constant_path(best_flat_allocation), eval_sample, accum_years, retire_years,
+                     market, gamma=gamma, **common)
     flat_drawdown_st = _drawdown_stats(_constant_path(best_flat_allocation), eval_sample, accum_years,
                                        retire_years, market, gamma=gamma, **common)
 
@@ -668,9 +676,11 @@ def recommend_glide_path(
     twin = min(15, retire_years)
     tent_i = int(np.argmin(ret[:twin])) if retire_years else 0
     accum_dir = classify(acc[-1] - acc[0]) if accum_years >= 2 else "n/a"
-    # Measure full retirement phase, not just the first 15 years (twin is only
-    # used for the tent search, not for the overall slope direction).
-    retire_dir = classify(ret[-1] - ret[0]) if retire_years >= 2 else "n/a"
+    # The retirement slope drops the final year: with no bequest the optimizer drives equity
+    # toward 0 at the fixed horizon (an artifact, not real) that would otherwise skew the
+    # read. Matches the web engine. Accumulation has no such artifact.
+    ret_eff = ret[:-1] if len(ret) >= 3 else ret
+    retire_dir = classify(ret_eff[-1] - ret_eff[0]) if len(ret_eff) >= 2 else "n/a"
 
     # Build the interval schedule.
     schedule = []
@@ -720,8 +730,9 @@ def recommend_glide_path(
             **market.metadata,
         },
     }
-    # The full best-constant CE-vs-equity-weight curve (already computed above), so callers can
-    # see how peaked the optimum is rather than just the argmax. No extra simulation cost.
+    # The full best-constant CE-vs-equity-weight curve (from the selection sample, already
+    # computed above), so callers can see how peaked the optimum is rather than just the
+    # argmax. No extra simulation cost.
     if return_flat_curve:
         result["flat_curve"] = [
             {
@@ -932,8 +943,12 @@ def format_reproduction_command(
 
 
 # ── demo (sweep mode) ─────────────────────────────────────────────────────────
-def run_demo(out_dir):
-    """Sweep key levers across three spending rules and write plots."""
+def run_demo(out_dir, return_mode="iid-mc"):
+    """Sweep key levers across three spending rules and write plots.
+
+    Defaults to `iid-mc` (unlike the recommender's `forward-block` default): the lever
+    sweeps are meant to show how the tent moves, and under forward-block every cell is
+    near-flat ~100% equity. Pass another mode to sweep under it."""
     import os
     os.makedirs(out_dir, exist_ok=True)
     AGE, INTERVAL = 35, 5
@@ -951,9 +966,10 @@ def run_demo(out_dir):
 
     def one(flex, **kw):
         return recommend_glide_path(flexibility=flex, alloc_curve=PWL_CURVE,
-                                    start_age=AGE, interval=INTERVAL, **kw)
+                                    start_age=AGE, interval=INTERVAL,
+                                    return_mode=return_mode, **kw)
 
-    print(f"Demo mode — PWL curve, start age {AGE}, {INTERVAL}y steps\n")
+    print(f"Demo mode — PWL curve, start age {AGE}, {INTERVAL}y steps, {return_mode}\n")
     figs = []
     for slug, flex, label in SPENDING:
         for lslug, ltitle, kwarg, fmt, values in SWEEPS:
@@ -1197,6 +1213,6 @@ if __name__ == "__main__":
             elif arg.startswith("--mode="):
                 demo_mode = arg.split("=", 1)[1]
         out_dir = os.path.join("analysis", "artifacts", "glide_path", "demo")
-        run_demo(out_dir)
+        run_demo(out_dir, return_mode=demo_mode)
     else:
         _run_interactive()
