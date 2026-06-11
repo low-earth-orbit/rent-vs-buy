@@ -43,20 +43,34 @@ Validation prototype:
 
 A two-phase, real-dollar (inflation-adjusted) Monte Carlo:
 
-- **Accumulation** (`accumulationBalances`): deterministic, grows start savings at the
-  accumulation mean real return plus annual contributions.
+- **Accumulation** (`accumulationBalances`): deterministic for the headline answer — grows start
+  savings at the accumulation mean real return plus annual contributions. A separate stochastic
+  accumulation pass (`retirementAgeRange`) simulates saving-path luck to report the 25th–75th
+  percentile range of the earliest feasible retirement age.
 - **Drawdown** (`simulate`): stochastic. Starting from the balance at a candidate retirement
   age, each year draws a real return `r = mean + deviation`, withdraws the income gap
-  (target − guaranteed/pension), and absorbs at zero if depleted. Withdrawals are mid-year
-  (earn a half-year of return), matching the rent-vs-buy convention.
+  (target − guaranteed/pension; the **full** target during a pre-pension bridge), and absorbs at
+  zero if depleted. Withdrawals are mid-year (earn a half-year of return), matching the
+  rent-vs-buy convention.
+- **Spending guardrail** (`GUARDRAIL_TRIGGER = 1.2`): when `spendingFlexibilityPct > 0`, spending
+  stays at the full target until a weak sequence lifts the current withdrawal rate 20% above the
+  rate at retirement, then trims to the floor (target less the flexibility %) — a simplified,
+  downside-only, memoryless Guyton–Klinger. At 0% flexibility this reduces exactly to the fixed
+  real withdrawal the SWR tables in this note assume.
 - **Feasibility** (`computeRetirement`): the earliest age whose drawdown sim clears the user's
   target success rate (e.g. 90%).
-- **Headline SWR** (`computePlanSWR`): portfolio withdrawal ÷ required wealth at the chosen age.
+- **Headline SWR** (`computePlanSWR`): the first retirement year's portfolio draw ÷ the
+  (deterministic) savings at the chosen age — the plan's true initial withdrawal rate. Because
+  the age search steps annually, savings at the chosen age generally overshoot the minimum
+  required wealth slightly, so this rate sits at or below the marginal SWR.
 - **Reference SWR** (`safeWithdrawalRate`): pure-portfolio SWR for a given mean/vol/horizon —
   powers the technical-note table; independent of the user's savings/pension.
 
 Returns are **normal (arithmetic)** around the phase mean; compounding produces the usual
 volatility drag (geometric ≈ arithmetic − σ²/2). Fixed PRNG seed ⇒ deterministic output.
+Simulation counts: 1,000 paths for the headline feasibility/bands, 300 sims × 800 paths for the
+age-range pass, 4,000 for each technical-note table cell (the Python validation in §4 uses
+20,000) — at 1,000 paths the success rate carries ~±1pp of Monte Carlo noise at a 90% target.
 
 ### Return / volatility presets (real, derived from nominal − inflation)
 
@@ -199,9 +213,12 @@ weaker bond persistence (VR ~1.7) and stronger within-country equity mean revers
 favorable long-run sequence structure for a 60/40 retiree.
 
 **7. §A — US exceptionalism.**
-At 30y: 4.54%. Matches the literature's "4% rule" at 30y. The ~0.8pp premium over the world
-average is entirely explained by the US's higher historical real returns (geo 5.47% vs 4.69%).
-Canadian forward CMAs do not project returns at this level.
+At 30y: 4.54%. In the same ballpark as the literature's "4% rule" — though not the same
+criterion: Bengen's 4% is the _worst-case_ (100% success) constant withdrawal over US history,
+while §A is a 90%-success overlapping-window figure, so the proximity of the two numbers is
+partly coincidental. The ~0.8pp premium over the world average is entirely explained by the
+US's higher historical real returns (geo 5.47% vs 4.69%). Canadian forward CMAs do not project
+returns at this level.
 
 ### Summary interpretation
 
@@ -211,6 +228,29 @@ US history (§A, 4.54%). The app's parametric iid output of **3.68%** sits just 
 (~0.1pp above §G, pooled fwd-block), reflecting the slightly higher PWL ALLOC return assumption
 (60/40 nominal 5.67% → real 3.50%) vs the linear per-asset blend (3.37%). The discrepancy is
 small and does not warrant a model change; using iid with the ALLOC parameters is well-justified.
+
+### Caveats on the historical inference
+
+The same caveats established for the glide-path research
+([methodology §4](../glide-path/methodology.md#4-caveats--what-the-iid-baseline-cannot-see))
+apply to this factorial — it uses the same JST data and bootstrap machinery:
+
+- **Survivorship.** JST covers 16 developed markets that survived with usable series; §B/§C's
+  world floor and the within-country recoveries that lift §G are partly properties of that
+  surviving sample.
+- **Tiny effective sample.** Overlapping windows look numerous (~120 per series at 30y) but
+  contain only ~4–5 non-overlapping windows per country, heavily cross-correlated across
+  countries (same wars, same inflation waves). None of the §-column differences come with a
+  confidence interval.
+- **Era dependence.** The §G≈§H conclusion ("iid is mildly optimistic vs empirical sequencing")
+  is a full-sample (1871–2020) statement. The glide-path era cuts show the sequence structure
+  inverts in the 1990–2020 inflation-targeting era (bonds flip from persistent to
+  mean-reverting), under which empirical sequencing would sit _above_ iid instead. The two eras
+  bracket iid from both sides — which is itself a decent argument for keeping the parametric
+  iid default.
+- **Normal marginals in §H.** The app's engine draws normal returns; the §G comparator carries
+  history's fat tails. The ~0.1pp §G–§H gap already nets this against the sequencing effect, so
+  it is accounted for, not ignored — but the two effects are not separable from this table.
 
 ---
 
@@ -250,8 +290,10 @@ allocation (`SWR_TABLE_ALLOCATIONS`) × horizon (`SWR_TABLE_HORIZONS`), computed
 - **Keep `RETURN_AUTOCORRELATION = 0`.** The full factorial (§4) shows the app's iid is ~0.1pp
   above pooled fwd-block (§G, 3.57% at 30y vs iid 3.68%) — mildly optimistic, not conservative.
   The gap is small and does not justify adding ρ = −0.05; the bond side has opposite-sign
-  persistence that partially cancels equity mean reversion. Use the historical bootstrap modes
-  for research, not the parametric engine.
+  persistence that partially cancels equity mean reversion. The era cuts strengthen the case:
+  full-sample sequencing sits slightly _below_ iid, 1990–2020 sequencing slightly _above_ —
+  iid is bracketed from both sides (§4 caveats). Use the historical bootstrap modes for
+  research, not the parametric engine.
 - To revisit the empirical basis, re-run `python3 -m analysis.retirement.jst_swr_bootstrap`
   (tweak the CONFIG block: allocation, `TARGET`, `BLOCK_YEARS`, `HORIZONS`).
 
