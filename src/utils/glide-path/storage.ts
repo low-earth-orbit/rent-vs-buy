@@ -49,7 +49,7 @@ export function saveInput(input: GlidePathInput): void {
 }
 
 const RETURN_MODE_KEY = "glide_return_mode";
-const DEFAULT_RETURN_MODE: GlidePathReturnMode = "forward-block";
+const DEFAULT_RETURN_MODE: GlidePathReturnMode = "iid-mc";
 
 export function loadReturnMode(): GlidePathReturnMode {
   if (typeof window === "undefined") return DEFAULT_RETURN_MODE;

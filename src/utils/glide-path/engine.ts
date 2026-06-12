@@ -8,9 +8,10 @@
  * leverage (equity weight > 1, borrowing at a real cost).
  *
  * Two sampling modes:
+ *   "iid-mc" — iid normal returns from the forward-CMA curve (default; the regime-robust
+ *     recommendation — see docs/glide-path/methodology.md §2f robustness).
  *   "forward-block" — stationary block bootstrap from JST pooled history rescaled to
- *     forward-CMA marginals (captures sequence structure; default).
- *   "iid-mc" — iid normal returns from the forward-CMA curve (original behavior).
+ *     forward-CMA marginals (the historical-sequencing scenario).
  *
  * The hot path (`meanUtility`) is specialized per mode. Intended to run inside a Web Worker.
  */
@@ -312,6 +313,10 @@ function computeStats(
       sumC2 += c * c;
       // Shortfall = the portfolio couldn't fund the targeted draw (income fell short of plan).
       // Not "balance hit zero": a fully guaranteed-income-covered year has target 0 and no shortfall.
+      // CAVEAT: at flex=1 the target is `wr * bal` (a fraction of the live balance), which is always
+      // affordable, so shortfall is structurally ~0 regardless of markets. That's correct, not a bug —
+      // flexible spending trades depletion risk for income volatility. Judge tail risk by CE income /
+      // income CV at high flexibility, not by shortfall.
       if (wdr < target) shortfall = true;
     }
     consEuSum += consEu;
@@ -522,16 +527,19 @@ export function buildEquityGrid(maxLeverage: number): Float64Array {
  * and the out-of-sample stats. Intended to be called from the Web Worker.
  *
  * `returnMode`:
- *   "forward-block" (default) — stationary block bootstrap from JST pooled history rescaled to
- *     forward-CMA marginals. Captures sequence risk (mean reversion, bond persistence) while
- *     honoring the user's return assumptions.
- *   "iid-mc" — iid normal draws from the forward-CMA curve (original behavior).
+ *   "iid-mc" (default) — iid normal draws from the forward-CMA curve. The regime-robust
+ *     default: its interior recommendation is near-optimal across every historical cut,
+ *     while forward-block's flat-100% holds only under the full-sample joint sequence
+ *     structure (see methodology §2f robustness).
+ *   "forward-block" — stationary block bootstrap from JST pooled history rescaled to
+ *     forward-CMA marginals. Captures sequence risk (mean reversion, bond persistence)
+ *     while honoring the user's return assumptions — the historical-sequencing scenario.
  */
 export function recommendGlidePath(
   input: GlidePathInput,
   curve: AllocAnchor[] = DEFAULT_ALLOC_CURVE,
   seed = 0,
-  returnMode: GlidePathReturnMode = "forward-block",
+  returnMode: GlidePathReturnMode = "iid-mc",
 ): GlidePathResult {
   const accumYears = Math.max(
     1,

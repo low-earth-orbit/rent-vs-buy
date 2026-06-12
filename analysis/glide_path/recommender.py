@@ -19,6 +19,13 @@ KEY INPUTS
   flexibility               : spending rule in [0,1]. 0 = constant real $ (rigid floor),
                               1 = fully flexible (spend `withdrawal_rate` of the live balance),
                               0.5 = half-and-half. Blends the two targets proportionally each year.
+                              NOTE: the depletion/shortfall outputs are "couldn't fund the target
+                              draw" rates. With flexibility=1 the target IS a fraction of the live
+                              balance (`withdrawal_rate * bal`), which is fundable by construction, so
+                              shortfall is ~0 regardless of market luck. That is correct, not a bug:
+                              flexible spending never overdraws — it trades depletion risk for income
+                              VOLATILITY. At high flexibility read `income_cv` / `ce_income`, not
+                              shortfall, to judge tail risk.
   withdrawal_rate           : the flexible-spending fraction of the live balance (used only when
                               flexibility > 0). E.g. 0.04 = spend 4% of current balance per year.
   guaranteed_income         : guaranteed real annual income in retirement (CPP/OAS/DB, in dollars).
@@ -37,12 +44,14 @@ KEY INPUTS
                               Must match the units of `alloc_curve` (default: percent, i.e. 2.1).
                               Used only by `iid-mc`.
   returns_in_percent        : if True (default), `alloc_curve` means/vols are in % per year.
-  return_mode               : "forward-block" (default — history rescaled to forward-CMA
-                              marginals, then block-bootstrapped; previously "iid-mc"),
-                              "historical-iid" (paired stock/bond years sampled with
-                              replacement), "historical-block" (paired stock/bond years sampled
-                              with a stationary circular block bootstrap), or "iid-mc"
-                              (forward-CMA normal Monte Carlo with no sequencing).
+  return_mode               : "iid-mc" (default — forward-CMA normal Monte Carlo, no
+                              sequencing; the regime-robust choice — see the methodology's
+                              §2f robustness notes), "forward-block" (history rescaled to
+                              forward-CMA marginals, then block-bootstrapped — the
+                              historical-sequencing scenario), "historical-iid" (paired
+                              stock/bond years sampled with replacement), or
+                              "historical-block" (paired stock/bond years in a stationary
+                              circular block bootstrap).
   block_years               : average years per historical block (default 10). Used only by the
                               block modes; realized block lengths are geometric.
   dataset                   : "pooled" (default — each country's own sequence concatenated, so
@@ -449,6 +458,8 @@ def _stats(weights, sample, accum_years, retire_years, market, *, flex, gap_arr,
         # Shortfall = the portfolio couldn't fund the targeted draw (income fell short of
         # plan). Not "balance hit zero": a fully guaranteed-income-covered year has target 0
         # and no shortfall. Matches the web engine's computeStats semantics.
+        # CAVEAT: at flex=1 `target = wr * bal` is self-scaling and ~always affordable, so this
+        # is structurally ~0. Read income_cv / ce_income for tail risk there, not shortfall.
         depleted |= wdr < target
     return {
         "ce_income": _ce_from_util(cons_eu.mean() / disc.sum(), gamma),
@@ -492,7 +503,7 @@ def _drawdown_stats(weights, sample, accum_years, retire_years, market, *, flex,
         bal = grown - wdr * (1 + r / 2)
         C[t] = guar_arr[t] + wdr
         cons_eu += disc[t] * _crra(C[t], gamma)
-        depleted |= wdr < target  # shortfall semantics — see _stats
+        depleted |= wdr < target  # shortfall semantics — see _stats (flex=1 ⇒ ~0 by construction)
     return {
         "ce_income": _ce_from_util(cons_eu.mean() / disc.sum(), gamma),
         "depletion": float(depleted.mean()),
@@ -513,7 +524,7 @@ def recommend_glide_path(
     # capital-market input units
     inflation: float = 2.1,
     returns_in_percent: bool = True,
-    return_mode: str = "forward-block",
+    return_mode: str = "iid-mc",
     block_years: int = 10,
     dataset: str = "pooled",
     exclude_countries: Sequence[str] | None = None,
@@ -946,9 +957,9 @@ def format_reproduction_command(
 def run_demo(out_dir, return_mode="iid-mc"):
     """Sweep key levers across three spending rules and write plots.
 
-    Defaults to `iid-mc` (unlike the recommender's `forward-block` default): the lever
-    sweeps are meant to show how the tent moves, and under forward-block every cell is
-    near-flat ~100% equity. Pass another mode to sweep under it."""
+    Defaults to `iid-mc` (the recommender's default): the lever sweeps are meant to show
+    how the tent moves, and under forward-block every cell is near-flat ~100% equity.
+    Pass another mode to sweep under it."""
     import os
     os.makedirs(out_dir, exist_ok=True)
     AGE, INTERVAL = 35, 5
@@ -1065,12 +1076,12 @@ def _run_interactive():
     print("  iid-mc uses the app's forward capital-market assumptions;")
     print("  historical modes bootstrap raw paired stock/bond returns from JST history.")
     return_mode = _ask_choice(
-        "Return mode", "forward-block", RETURN_MODES,
+        "Return mode", "iid-mc", RETURN_MODES,
         labels={
-            "iid-mc": "forward-CMA normal Monte Carlo (no sequencing)",
+            "iid-mc": "forward-CMA normal Monte Carlo, no sequencing (recommended)",
             "historical-iid": "raw history, years sampled independently",
             "historical-block": "raw history, stationary circular blocks (keeps sequencing)",
-            "forward-block": "history rescaled to forward marginals, then block-bootstrapped (recommended)",
+            "forward-block": "history rescaled to forward marginals, then block-bootstrapped (historical-sequencing scenario)",
         },
     )
     dataset = (

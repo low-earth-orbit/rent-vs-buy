@@ -48,9 +48,15 @@ interface ResultProps {
   onReroll?: () => void;
 }
 
-const SIMPLICITY_CE_THRESHOLD = 0.02;
-const SIMPLICITY_DRAWDOWN_THRESHOLD = 0.01;
-const SIMPLICITY_FULLPATH_THRESHOLD = 0.02;
+// Calibration (methodology §2e/§2f): the glide's honest out-of-sample CE edge is ≤ ~0.6%
+// and MC noise at 8,000 stats paths is ~0.3%, while the era/mode brackets move CE by
+// 2–3% — so CE gaps under 3% are within the model's own uncertainty and shouldn't
+// overturn the simpler pick. The shortfall gates carry the real veto: 0.5pp/1.5pp are
+// 2–4× the Monte Carlo standard error of those rates, so the simpler pick can't add
+// meaningful tail risk, but noise can't flip the recommendation either.
+const SIMPLICITY_CE_THRESHOLD = 0.03;
+const SIMPLICITY_DRAWDOWN_THRESHOLD = 0.005;
+const SIMPLICITY_FULLPATH_THRESHOLD = 0.015;
 const DRAWDOWN_RISK_HIGHLIGHT_THRESHOLD = 0.15;
 const FULLPATH_RISK_HIGHLIGHT_THRESHOLD = 0.3;
 const LOW_DRAWDOWN_SHORTFALL_THRESHOLD = 0.05;
@@ -58,7 +64,7 @@ const LOW_DRAWDOWN_SHORTFALL_THRESHOLD = 0.05;
 const METRIC_HELP = {
   ce: "Certainty-equivalent income — the steady, guaranteed yearly income that would feel as good as this uncertain plan once the bad years are penalised. It sits below the simple average because shortfalls hurt more than surpluses help.",
   drawdown:
-    "Share of simulated retirements with at least one year the portfolio can't fully fund your target spending — measured from the expected balance at retirement.",
+    "Share of simulated retirements with at least one year the portfolio can't fully fund your target spending — measured from the expected balance at retirement. With high spending flexibility this reads near 0 by design: flexible spending scales the target down to whatever the balance allows, so it rarely 'falls short' — the risk shows up as income variability (CE income) instead, not shortfall.",
   fullPath:
     "The same shortfall measure taken over the whole path from today, so it also reflects the luck of markets in the years before you retire.",
 } as const;
@@ -450,7 +456,14 @@ export default function Result({
     !reco.inconclusive &&
     primary.stats.fullPathShortfall >= FULLPATH_RISK_HIGHLIGHT_THRESHOLD;
   const planNeedsAdjustment = hasHighDrawdownRisk || hasHighFullPathRisk;
+  // At high spending flexibility the shortfall rate is ~0 by construction (the target scales with
+  // the balance), so a low drawdown shortfall no longer signals genuine slack — suppress the
+  // "room to adjust" nudge there and let CE income / income variability carry the tail-risk read.
+  const flexibility =
+    typeof input.flexibility === "number" ? input.flexibility : 0;
+  const shortfallIsMeaningful = flexibility < 0.5;
   const hasRoomToAdjustPlan =
+    shortfallIsMeaningful &&
     !reco.inconclusive &&
     primary.stats.drawdownDepletion < LOW_DRAWDOWN_SHORTFALL_THRESHOLD &&
     !hasHighFullPathRisk;

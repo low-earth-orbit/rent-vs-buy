@@ -20,4 +20,4 @@ MC coordinate ascent → welfare-maximizing equity allocation curve (accumulatio
 
 ## Simplicity bias
 
-`Result.tsx` `SIMPLICITY_*` constants: constant allocation wins when CE income outright OR within 2% CE + within 1pp/2pp shortfall rates.
+`Result.tsx` `SIMPLICITY_*` constants: constant allocation wins when CE income outright OR within 3% CE + within 0.5pp/1.5pp shortfall rates (CE gaps <3% are within model uncertainty; the shortfall gates carry the veto).
