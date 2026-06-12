@@ -84,7 +84,7 @@ const TransferModal = ({
                   <Table.Td>
                     <NumberInput
                       aria-label={`Opening lot ACB for ${symbol} lot ${index + 1}`}
-                      value={acbs[index] ? acbs[index] : ""}
+                      value={acbs[index] ?? ""}
                       onChange={(value) => updateAcb(index, +value || 0)}
                       prefix="$"
                       min={0}
