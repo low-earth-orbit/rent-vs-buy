@@ -29,12 +29,13 @@ Each mode is a cell in the marginals × sequencing factorial:
                     or pooled (single-country sequences concatenated end to end)
 
 ─────────────────────────────────────────────────────────────────────────────
-                        │ marginals: historical  │ marginals: forward-CMA
-  ──────────────────────┼────────────────────────┼──────────────────────────
-  sequencing: none      │ overlapping (§A/B)     │ iid parametric (§G)
-  sequencing: block     │ block bootstrap (§C/D) │ forward-block (§E/F)
-  ──────────────────────┼────────────────────────┼──────────────────────────
-                        │  world=§A  pooled=§B   │  world=§E  pooled=§F
+                        │ marginals: historical   │ marginals: forward-CMA
+  ──────────────────────┼─────────────────────────┼──────────────────────────
+  sequencing: none      │ overlapping (§A/§B/§D)  │ iid parametric (§H)
+  sequencing: block     │ block bootstrap (§C/§E) │ forward-block (§F/§G)
+  ──────────────────────┼─────────────────────────┼──────────────────────────
+                        │ USA=§A world=§B/§C      │ world=§F  pooled=§G
+                        │ pooled=§D/§E            │
 ─────────────────────────────────────────────────────────────────────────────
 
 FORWARD-CMA ANCHORS (real, derived from PWL_CURVE at w=0 and w=1, 2.1% inflation)
@@ -285,18 +286,6 @@ def main() -> None:
     print(f"  Pooled fwd-rescaled: {describe(_portfolio(pooled_fwd, eq_w))}")
     print(f"  App ALLOC iid: nominal={alloc_nom_pct:.2f}%  real={app_mean*100:.2f}%  "
           f"vol={app_vol*100:.2f}%  (ALLOCATIONS[{eq_pct}/{100-eq_pct}])")
-
-    # ── Section headers ────────────────────────────────────────────────────────
-    cols = [
-        ("§A  USA  overlapping",           None),
-        ("§B  World  overlapping",          None),
-        ("§C  World  block  (hist marg)",   None),
-        ("§D  Pooled overlapping (in-seg)", None),
-        ("§E  Pooled block (hist marg)",    None),
-        ("§F  World  fwd-block",            None),
-        ("§G  Pooled fwd-block",            None),
-        ("§H  App iid parametric",          None),
-    ]
 
     header = f"{'Horizon':>7s} | {'§A USA':>7} | {'§B Wld-OL':>9} | " \
              f"{'§C Wld-Blk':>10} | {'§D Pool-OL':>10} | {'§E Pool-Blk':>11} | " \

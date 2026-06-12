@@ -36,6 +36,7 @@ const FLOOR = 1.0; // numerical floor on consumption (real $); a numerical guard
 const FLAT_BAND = 0.1; // |Δ equity| within this is "Flat"
 const SEED = 0x9e3779b9;
 const STATS_SEED = 0x85ebca6b;
+const SELECT_SEED = 0xc2b2ae35;
 const MIN_OPT_PATHS = 200;
 const MAX_OPT_PATHS = 10000;
 const MAX_STATS_PATHS = 8000;
@@ -73,13 +74,19 @@ function buildGridStats(
   curve: AllocAnchor[],
   inflationPct: number,
   borrowCostPct: number,
-): { gridMean: Float64Array; gridVol: Float64Array } {
+): {
+  gridMean: Float64Array;
+  gridVol: Float64Array;
+  eqMean: number;
+  bondMean: number;
+} {
   const sorted = [...curve].sort((a, b) => a[0] - b[0]);
   const cw = sorted.map((t) => t[0]);
   const cmReal = sorted.map((t) => realMean(t[1], inflationPct));
   const cv = sorted.map((t) => t[2] / 100);
   const eqMean = interp(1, cw, cmReal);
   const eqVol = interp(1, cw, cv);
+  const bondMean = interp(0, cw, cmReal);
   const borrowReal = borrowCostPct / 100;
 
   const gridMean = new Float64Array(grid.length);
@@ -94,7 +101,7 @@ function buildGridStats(
       gridVol[g] = interp(w, cw, cv);
     }
   }
-  return { gridMean, gridVol };
+  return { gridMean, gridVol, eqMean, bondMean };
 }
 
 // ── simulation context ────────────────────────────────────────────────────────
@@ -104,6 +111,13 @@ interface SimCtx {
   // iid mode — per-grid precomputed (mean, vol)
   gridMean: Float64Array;
   gridVol: Float64Array;
+  /**
+   * Per-grid expected annual return of the sampled paths — what the deterministic
+   * mean-return projection should compound. iid: same as gridMean (the curve). Block: the
+   * linear stock/bond mix of the rescaled-history anchor means (the block data's actual
+   * means), matching the Python recommender's market.mean_returns.
+   */
+  detMean: Float64Array;
   // block mode — equity weights per grid index + realized return paths
   grid: Float64Array;
   eqPaths: Float32Array; // [nYears * nPaths] row-major
@@ -315,10 +329,10 @@ function computeStats(
 }
 
 function deterministicAccumBalance(yearIdx: Int32Array, ctx: SimCtx): number {
-  const { gridMean, accumYears, contrib, startSavings } = ctx;
+  const { detMean, accumYears, contrib, startSavings } = ctx;
   let bal = startSavings;
   for (let i = 0; i < accumYears; i++) {
-    const r = gridMean[yearIdx[i]];
+    const r = detMean[yearIdx[i]];
     const grown = bal * (1 + r);
     bal = (grown < 0 ? 0 : grown) + contrib * (1 + r / 2);
   }
@@ -535,7 +549,7 @@ export function recommendGlidePath(
   // Grid of candidate equity weights 0..maxLeverage (weights > 1 are leveraged).
   const grid = buildEquityGrid(maxLeverage);
   const G = grid.length;
-  const { gridMean, gridVol } = buildGridStats(
+  const { gridMean, gridVol, eqMean, bondMean } = buildGridStats(
     grid,
     curve,
     input.inflation,
@@ -565,25 +579,30 @@ export function recommendGlidePath(
   const nOpt = clampPathCount(input.numPaths, MIN_OPT_PATHS, MAX_OPT_PATHS);
   const nStats = MAX_STATS_PATHS;
   const passes = 6;
-  // Offset both seeds by the re-roll nonce so a new draw is independent yet reproducible.
-  // seed = 0 leaves SEED/STATS_SEED untouched (the canonical draw).
+  // Offset all seeds by the re-roll nonce so a new draw is independent yet reproducible.
+  // seed = 0 leaves the base seeds untouched (the canonical draw).
   const optSeed = (SEED + Math.imul(seed, 0x9e3779b9)) >>> 0;
   const statsSeed = (STATS_SEED + Math.imul(seed, 0x85ebca6b)) >>> 0;
+  const selectSeed = (SELECT_SEED + Math.imul(seed, 0x27d4eb2f)) >>> 0;
 
-  // Build mode-specific samples for optimization and stats.
+  // Build mode-specific samples for optimization, stats, and flat-comparator selection.
   // iid: Box-Muller normals; block: stationary bootstrap from pre-rescaled JST history.
   const isBlock = returnMode === "forward-block";
   const borrowReal = input.borrowCost / 100;
   let Z: Float64Array;
   let Zf: Float64Array;
+  let Zs: Float64Array;
   let optEqPaths: Float32Array;
   let optBdPaths: Float32Array;
   let stEqPaths: Float32Array;
   let stBdPaths: Float32Array;
+  let selEqPaths: Float32Array;
+  let selBdPaths: Float32Array;
 
   if (isBlock) {
     Z = new Float64Array(0);
     Zf = new Float64Array(0);
+    Zs = new Float64Array(0);
     ({ eqPaths: optEqPaths, bdPaths: optBdPaths } = sampleBlockPaths(
       nYears,
       nOpt,
@@ -594,21 +613,45 @@ export function recommendGlidePath(
       nStats,
       statsSeed,
     ));
+    ({ eqPaths: selEqPaths, bdPaths: selBdPaths } = sampleBlockPaths(
+      nYears,
+      nStats,
+      selectSeed,
+    ));
   } else {
     Z = fillNormals(optSeed, nYears * nOpt);
     Zf = fillNormals(statsSeed, nYears * nStats);
+    Zs = fillNormals(selectSeed, nYears * nStats);
     optEqPaths = new Float32Array(0);
     optBdPaths = new Float32Array(0);
     stEqPaths = new Float32Array(0);
     stBdPaths = new Float32Array(0);
+    selEqPaths = new Float32Array(0);
+    selBdPaths = new Float32Array(0);
   }
 
-  // Build the optimization context (opt paths) and stats context (stats paths).
-  // The two share everything except the sampled paths.
+  // The deterministic mean-return projection compounds the expected return of whatever
+  // the engine actually samples: the curve under iid, the rescaled-history anchor mix
+  // under block (the curve's interpolated means differ slightly at intermediate weights).
+  let detMean = gridMean;
+  if (isBlock) {
+    detMean = new Float64Array(G);
+    for (let g = 0; g < G; g++) {
+      const w = grid[g];
+      detMean[g] =
+        w > 1
+          ? w * eqMean - (w - 1) * borrowReal
+          : w * eqMean + (1 - w) * bondMean;
+    }
+  }
+
+  // Build the optimization context (opt paths), stats context (stats paths), and the
+  // flat-selection context. The three share everything except the sampled paths.
   const ctxBase = {
     mode: isBlock ? ("block" as const) : ("iid" as const),
     gridMean,
     gridVol,
+    detMean,
     grid,
     borrowReal,
     accumYears,
@@ -634,6 +677,11 @@ export function recommendGlidePath(
     eqPaths: stEqPaths,
     bdPaths: stBdPaths,
   };
+  const ctxSelect: SimCtx = {
+    ...ctxBase,
+    eqPaths: selEqPaths,
+    bdPaths: selBdPaths,
+  };
 
   // ── optimization + out-of-sample stats ───────────────────────────────────────
   const blockIdx = optimize(
@@ -656,23 +704,26 @@ export function recommendGlidePath(
   // ── best single constant (flat) equity weight ────────────────────────────────
   // The glide path's edge over the best *constant* allocation is typically tiny, so we
   // report that simpler alternative for the UI to quantify the gap and recommend the
-  // behaviorally-stickier flat weight. Choose it by out-of-sample CE income, not the
-  // in-sample optimization matrix; tail-sensitive utility plus leverage can otherwise
-  // overfit rare bad paths and pick a fragile constant weight. The raw optimized glide
-  // is still returned and charted; the UI can recommend this flatter comparator when
-  // it is materially better.
+  // behaviorally-stickier flat weight. Choose it on its own selection sample, independent
+  // of both the optimization sample (tail-sensitive utility plus leverage can overfit
+  // rare bad paths and pick a fragile constant weight) and the stats sample (an argmax
+  // over candidates on the scoring draw would hand the flat comparator a selection
+  // advantage over the fixed glide). The winner is then scored on the same stats sample
+  // as the glide. The raw optimized glide is still returned and charted; the UI can
+  // recommend this flatter comparator when it is materially better.
   const flatIdx = new Int32Array(nYears);
   let bestFlatG = 0;
-  let flatStats = computeStats(flatIdx, ctxStats, Zf, nStats, gamma);
+  let bestFlatCe = computeStats(flatIdx, ctxSelect, Zs, nStats, gamma).ceIncome;
   for (let g = 1; g < G; g++) {
     flatIdx.fill(g);
-    const candidate = computeStats(flatIdx, ctxStats, Zf, nStats, gamma);
-    if (candidate.ceIncome > flatStats.ceIncome) {
-      flatStats = candidate;
+    const candidate = computeStats(flatIdx, ctxSelect, Zs, nStats, gamma);
+    if (candidate.ceIncome > bestFlatCe) {
+      bestFlatCe = candidate.ceIncome;
       bestFlatG = g;
     }
   }
   flatIdx.fill(bestFlatG);
+  const flatStats = computeStats(flatIdx, ctxStats, Zf, nStats, gamma);
   const flatDrawdownStats = computeDrawdownStats(
     flatIdx,
     ctxStats,

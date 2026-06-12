@@ -109,7 +109,10 @@ export default function Methodology() {
           shows up as the reported shortfall rates instead. Under the optional
           iid mode (which assumes no recovery), rigid spending derisks into a
           &ldquo;bond tent&rdquo; near retirement. Flexible spending (income
-          moves with the market) stays near 100% equity in both.
+          moves with the market) stays near 100% equity in both. The
+          recovery-driven result leans on the histories of surviving developed
+          markets — treat the two modes as bracketing the answer (see the
+          analysis note&apos;s caveats).
         </Point>
         <Point heading="The shape is worth little; the level matters.">
           Out of sample, the full per-age glide path beats the best single flat
