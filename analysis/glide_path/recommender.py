@@ -19,6 +19,13 @@ KEY INPUTS
   flexibility               : spending rule in [0,1]. 0 = constant real $ (rigid floor),
                               1 = fully flexible (spend `withdrawal_rate` of the live balance),
                               0.5 = half-and-half. Blends the two targets proportionally each year.
+                              NOTE: the depletion/shortfall outputs are "couldn't fund the target
+                              draw" rates. With flexibility=1 the target IS a fraction of the live
+                              balance (`withdrawal_rate * bal`), which is fundable by construction, so
+                              shortfall is ~0 regardless of market luck. That is correct, not a bug:
+                              flexible spending never overdraws — it trades depletion risk for income
+                              VOLATILITY. At high flexibility read `income_cv` / `ce_income`, not
+                              shortfall, to judge tail risk.
   withdrawal_rate           : the flexible-spending fraction of the live balance (used only when
                               flexibility > 0). E.g. 0.04 = spend 4% of current balance per year.
   guaranteed_income         : guaranteed real annual income in retirement (CPP/OAS/DB, in dollars).
@@ -449,6 +456,8 @@ def _stats(weights, sample, accum_years, retire_years, market, *, flex, gap_arr,
         # Shortfall = the portfolio couldn't fund the targeted draw (income fell short of
         # plan). Not "balance hit zero": a fully guaranteed-income-covered year has target 0
         # and no shortfall. Matches the web engine's computeStats semantics.
+        # CAVEAT: at flex=1 `target = wr * bal` is self-scaling and ~always affordable, so this
+        # is structurally ~0. Read income_cv / ce_income for tail risk there, not shortfall.
         depleted |= wdr < target
     return {
         "ce_income": _ce_from_util(cons_eu.mean() / disc.sum(), gamma),
@@ -492,7 +501,7 @@ def _drawdown_stats(weights, sample, accum_years, retire_years, market, *, flex,
         bal = grown - wdr * (1 + r / 2)
         C[t] = guar_arr[t] + wdr
         cons_eu += disc[t] * _crra(C[t], gamma)
-        depleted |= wdr < target  # shortfall semantics — see _stats
+        depleted |= wdr < target  # shortfall semantics — see _stats (flex=1 ⇒ ~0 by construction)
     return {
         "ce_income": _ce_from_util(cons_eu.mean() / disc.sum(), gamma),
         "depletion": float(depleted.mean()),

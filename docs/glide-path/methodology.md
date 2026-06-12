@@ -510,6 +510,31 @@ one-off duration bull; and it ends in 2020 — excluding 2021–22, the one infl
 episode that looked exactly like the long-sample joint structure (persistent real bond losses,
 equity recovery). Note also that every cut's CE-vs-flat-weight curve is shallow: the argmax moves
 between 50% and 100%, but the welfare spread across that range stays ≤ ~2% of CE — the era choice
+moves the _allocation_ answer far more than the _welfare_ answer.
+
+**Robustness: the bond menu.** The channel factorial says the flip is driven by what history does
+to the _bond_ leg, which raises the question: is flat-100% about equity's merit, or about the only
+modeled alternative being long nominal bonds? Replacing the bond leg with a synthetic VR=1 real
+asset (iid, zero equity correlation — an idealized short-TIPS/RRB ladder) while equity keeps its
+full forward-block sequencing:
+
+| Non-equity asset                              | best flat | CE at best | Deplete |
+| --------------------------------------------- | --------- | ---------- | ------- |
+| a) nominal bonds, joint structure (default)   | **100%**  | $54.9k     | 5.3%    |
+| b) synthetic, same mean/vol (1.42%/5.4%), iid | 45%       | $57.9k     | 3.5%    |
+| c) short-TIPS ladder (1.42% real, 2% vol)     | 20%       | $59.6k     | 1.7%    |
+| d) short-TIPS ladder at 2.0% real             | 10%       | $60.0k     | 0.1%    |
+
+Cell (b) is the decisive one: it holds the bond's mean **and** vol constant and removes only the
+sequencing and correlation — and the optimum collapses from 100% to 45% while CE _rises_ ~$3k/yr.
+**The flat-100% result is a verdict on long nominal bonds, not a celebration of equity.** With an
+implementable real ladder (c), the optimizer wants mostly the ladder, CE improves by ~$4.7k/yr
+(~9%) over the all-equity answer — a larger welfare gain than every allocation refinement in this
+note combined — and depletion drops from 5.3% to 1.7%. Caveats: the synthetic asset is idealized
+(no real-rate duration risk — long TIPS lost ~12% in 2022 — no liquidity or issuance constraints;
+Canada stopped issuing RRBs in 2022), so read (c)/(d) as upper bounds. The product's two-asset
+candidate set cannot express this; it is the most consequential menu limitation (§7).
+Reproduce: `--sections menu` on the same `research_history` command as above.
 
 ---
 
@@ -741,11 +766,13 @@ new claim.
    data cannot adjudicate which regime the next 60 years resemble (§2f era table, §4). The two
    engines are best read as scenario brackets — iid: "no recovery, bonds work"; forward-block:
    "history's joint structure persists" — not as a settled point estimate plus a stress case.
-4. **Part of the verdict on bonds is about the menu, not the asset class.** The historical
-   indictment applies to _nominal long bonds_ in inflationary regimes. Real-return bonds, which
-   neutralize most of that channel, exist today but not in the JST sample or in our two-asset
-   candidate set — the most consequential modeling gap if one wanted to soften the flat-100%
-   conclusion honestly (§4).
+4. **The verdict on bonds is about the menu, not the asset class — now measured, not just
+   suspected.** The bond-menu experiment (§2f) holds the bond's mean and vol constant and removes
+   only its historical sequencing and correlation: the optimum collapses from flat-100% to 45%
+   equity and CE _rises_. An idealized short-TIPS/RRB ladder takes the optimum to ~20% equity and
+   adds ~9% of CE — a larger welfare gain than every allocation refinement in this note combined.
+   Flat-100% is conditional on the only safe asset being long nominal bonds; a third (real,
+   short-duration) asset is the highest-value extension to the candidate set (§4).
 5. **Lifecycle-horizon historical inference runs on priors, not power.** 150 years × 16
    correlated countries ≈ a handful of independent 60-year observations. The per-channel
    factorial (§2f) and the variance-ratio diagnostics are how we discipline the story

@@ -12,6 +12,8 @@ Sections (choose with --sections; default all):
   blocks  : block-length sweep (sequencing strength) on the pooled dataset
   channels: which ingredient flips the answer — corr, marginal shapes, equity-only or
             bond-only sequencing, vs the full joint sequence structure
+  menu    : replace the nominal-bond leg with a synthetic VR=1 real asset (idealized
+            short-TIPS/RRB ladder) — how much of flat-100% is the bond menu?
   gamma   : risk-aversion sweep across the key modes
   curves  : CE vs constant equity weight (how peaked is "100% equity"?)
   vr      : variance-ratio diagnostic (mean reversion) for world vs pooled
@@ -201,6 +203,76 @@ def run_channels(args):
     print(summary_row("f) forward-block (joint)", recommend_glide_path(**fwd)))
 
 
+def run_menu(args):
+    """Replace the nominal-bond leg with a synthetic VR=1 real asset (corr 0, iid).
+
+    Equity keeps its forward-block sequencing throughout; only the non-equity asset changes:
+      a) forward-block default      : rescaled historical long nominal bonds (joint structure)
+      b) synth bond, same marginals : iid normal at the SAME bond mean/vol — isolates the
+                                      bond-side sequencing+correlation, holding risk constant
+      c) short-TIPS ladder          : iid normal, bond mean, 2% vol (idealized real ladder)
+      d) short-TIPS ladder @2% real : c) with a 2.0% real yield
+
+    The synthetic asset is idealized: no real-rate duration risk, no equity correlation, no
+    liquidity/issuance constraints (Canada stopped RRB issuance in 2022). Read c/d as upper
+    bounds on what a real ladder buys.
+    """
+    from unittest.mock import patch
+
+    from analysis.glide_path import recommender as R
+    from analysis.shared import jst_history as J
+
+    eq_m, eq_v, bd_m, bd_v = R._forward_anchors(R.PWL_CURVE, 2.1, True)
+    rescaled = J.rescale_to_targets(
+        J.load_pooled_country_returns(),
+        equity_mean=eq_m, equity_vol=eq_v,
+        fixed_income_mean=bd_m, fixed_income_vol=bd_v,
+        label_suffix="forward-CMA rescaled",
+    )
+
+    def with_synth_bond(mean, vol, seed=11):
+        rng = np.random.default_rng(seed)
+        synth = mean + vol * rng.standard_normal(rescaled.observations)
+        return J.ReturnHistory(
+            years=rescaled.years, equity=rescaled.equity, fixed_income=synth,
+            label="synth-bond", country_count=rescaled.country_count,
+            segment_ids=rescaled.segment_ids,
+        )
+
+    def split_sample(history, n_years, n_paths, *, mode, block_years, seed):
+        """Equity rows in stationary blocks; bond rows iid (kills persistence and corr)."""
+        blk = J.sample_indices(history.observations, n_years, n_paths,
+                               mode="historical-block", block_years=block_years,
+                               seed=seed, segment_ids=history.segment_ids)
+        iid = J.sample_indices(history.observations, n_years, n_paths,
+                               mode="historical-iid", block_years=block_years,
+                               seed=seed + 1)
+        return history.equity[blk], history.fixed_income[iid]
+
+    print("\n" + "=" * 100)
+    print("BOND-MENU EXPERIMENT  (equity keeps forward-block sequencing; only the safe asset changes)")
+    print("  Reads: b) holds bond risk constant and removes only its sequencing+corr — if the optimum")
+    print("  drops from 100%, the flat-100% result is about the bond menu, not equity's merit.")
+    print("=" * 100)
+
+    print(summary_row("a) nominal bonds (default)", recommend_glide_path(
+        **base_kwargs(args, return_mode="forward-block", dataset="pooled",
+                      block_years=args.block_years))))
+    cells = [
+        ("b) synth bond, same marginals", bd_m, bd_v),
+        ("c) short-TIPS ladder (2% vol)", bd_m, 0.02),
+        ("d) short-TIPS ladder @2% real", 0.02, 0.02),
+    ]
+    for label, mean, vol in cells:
+        history = with_synth_bond(mean, vol)
+        with patch.object(R, "_load_history", return_value=history), \
+             patch.object(J, "sample_return_paths", split_sample):
+            rec = recommend_glide_path(
+                **base_kwargs(args, return_mode="historical-block", dataset="pooled",
+                              block_years=args.block_years))
+        print(summary_row(label, rec))
+
+
 def run_gamma_sweep(args):
     print("\n" + "=" * 100)
     print("RISK-AVERSION SWEEP  (does the mode ranking hold across γ?)")
@@ -283,6 +355,7 @@ SECTIONS = {
     "matrix": run_matrix,
     "blocks": run_block_sweep,
     "channels": run_channels,
+    "menu": run_menu,
     "gamma": run_gamma_sweep,
     "curves": run_flat_curves,
     "vr": run_variance_ratios,

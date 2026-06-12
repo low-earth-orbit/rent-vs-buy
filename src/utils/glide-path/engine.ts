@@ -312,6 +312,10 @@ function computeStats(
       sumC2 += c * c;
       // Shortfall = the portfolio couldn't fund the targeted draw (income fell short of plan).
       // Not "balance hit zero": a fully guaranteed-income-covered year has target 0 and no shortfall.
+      // CAVEAT: at flex=1 the target is `wr * bal` (a fraction of the live balance), which is always
+      // affordable, so shortfall is structurally ~0 regardless of markets. That's correct, not a bug —
+      // flexible spending trades depletion risk for income volatility. Judge tail risk by CE income /
+      // income CV at high flexibility, not by shortfall.
       if (wdr < target) shortfall = true;
     }
     consEuSum += consEu;
