@@ -90,36 +90,38 @@ export default function Methodology() {
           market paths (common random numbers), keeps the best, then repeats for
           every other step — cycling until nothing improves. No parametric shape
           (flat, rising, falling) is assumed; the shape emerges from the math.
-          By default, returns come from historical stock and bond sequences (the
-          JST Macrohistory cross-country panel) rescaled to our PWL / FP-Canada
-          capital-market assumptions in real (today&apos;s) dollars, then
-          block-bootstrapped — so the simulations keep history&apos;s sequence
-          structure (crashes followed by recoveries) while honoring forward
-          return assumptions. An iid Monte Carlo mode with no historical
-          sequencing is available via the Simulation toggle.
+          By default, returns are independent (iid) Monte Carlo draws from our
+          PWL / FP-Canada capital-market assumptions in real (today&apos;s)
+          dollars — the model whose recommendation holds up across historical
+          regimes. A sequence-aware mode (the Simulation toggle) instead replays
+          historical stock and bond sequences (the JST Macrohistory
+          cross-country panel) rescaled to the same assumptions and
+          block-bootstrapped, preserving history&apos;s multi-year structure —
+          crashes followed by recoveries, persistent inflation decades.
         </Text>
 
         <Title order={3} fz="md">
           Key findings
         </Title>
         <Point heading="The return model and the spending rule set the shape.">
-          Under the default historical-sequence engine, the optimizer stays near
-          100% equity even with rigid constant-$ spending — history&apos;s
-          recoveries make derisking mostly unnecessary, and the residual risk
-          shows up as the reported shortfall rates instead. Under the optional
-          iid mode (which assumes no recovery), rigid spending derisks into a
-          &ldquo;bond tent&rdquo; near retirement. Flexible spending (income
-          moves with the market) stays near 100% equity in both. The
-          recovery-driven result leans on the histories of surviving developed
-          markets — treat the two modes as bracketing the answer (see the
-          analysis note&apos;s caveats).
+          Under the default independent (iid) mode, rigid constant-$ spending
+          derisks into a moderate &ldquo;bond tent&rdquo; near retirement — an
+          answer that stays near-optimal across every historical era and country
+          cut we tested. Under the sequence-aware mode, history&apos;s joint
+          pattern (equities recover, while long nominal bonds quietly fail in
+          inflation decades) pushes the optimum to ~100% equity — but that
+          result leans on pre-1990 monetary regimes, surviving developed
+          markets, and long nominal bonds being the only alternative, so we
+          treat it as a scenario rather than the default. Flexible spending
+          (income moves with the market) stays near 100% equity in both — the
+          two modes bracket the answer (see the analysis note&apos;s caveats).
         </Point>
         <Point heading="The shape is worth little; the level matters.">
           Out of sample, the full per-age glide path beats the best single flat
-          weight by only ~0.5% of certainty-equivalent income under the iid
-          mode, and essentially nothing under the default engine. Getting the
-          equity level right matters far more than optimizing the curve. That is
-          why we also report the best{" "}
+          weight by only ~0.5% of certainty-equivalent income under the default
+          iid mode, and essentially nothing under the sequence-aware mode.
+          Getting the equity level right matters far more than optimizing the
+          curve. That is why we also report the best{" "}
           <Text span fw={600}>
             constant
           </Text>{" "}

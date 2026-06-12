@@ -237,14 +237,14 @@ export default function InputForm({
               <Stack gap={4}>
                 <FieldHeader
                   label="Return model"
-                  description="Sequence-aware (forward-block) replays real historical return sequences, rescaled to our forward capital-market assumptions, so multi-year patterns like mean reversion are preserved. Independent (IID Monte Carlo) draws each year independently, ignoring how returns clustered historically."
+                  description="Independent (IID Monte Carlo, default) draws each year independently from our forward capital-market assumptions — its recommendation holds up across historical regimes. Sequence-aware (forward-block) replays real historical return sequences rescaled to the same assumptions, preserving multi-year patterns like mean reversion and inflation decades; treat it as the what-if-history's-patterns-repeat scenario."
                 />
                 <SegmentedControl
                   value={returnMode}
                   onChange={(v) => onReturnModeChange(v as GlidePathReturnMode)}
                   data={[
-                    { value: "forward-block", label: "Sequence-aware" },
                     { value: "iid-mc", label: "Independent" },
+                    { value: "forward-block", label: "Sequence-aware" },
                   ]}
                   size="sm"
                 />

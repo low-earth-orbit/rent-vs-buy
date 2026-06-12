@@ -8,9 +8,10 @@
  * leverage (equity weight > 1, borrowing at a real cost).
  *
  * Two sampling modes:
+ *   "iid-mc" — iid normal returns from the forward-CMA curve (default; the regime-robust
+ *     recommendation — see docs/glide-path/methodology.md §2f robustness).
  *   "forward-block" — stationary block bootstrap from JST pooled history rescaled to
- *     forward-CMA marginals (captures sequence structure; default).
- *   "iid-mc" — iid normal returns from the forward-CMA curve (original behavior).
+ *     forward-CMA marginals (the historical-sequencing scenario).
  *
  * The hot path (`meanUtility`) is specialized per mode. Intended to run inside a Web Worker.
  */
@@ -526,16 +527,19 @@ export function buildEquityGrid(maxLeverage: number): Float64Array {
  * and the out-of-sample stats. Intended to be called from the Web Worker.
  *
  * `returnMode`:
- *   "forward-block" (default) — stationary block bootstrap from JST pooled history rescaled to
- *     forward-CMA marginals. Captures sequence risk (mean reversion, bond persistence) while
- *     honoring the user's return assumptions.
- *   "iid-mc" — iid normal draws from the forward-CMA curve (original behavior).
+ *   "iid-mc" (default) — iid normal draws from the forward-CMA curve. The regime-robust
+ *     default: its interior recommendation is near-optimal across every historical cut,
+ *     while forward-block's flat-100% holds only under the full-sample joint sequence
+ *     structure (see methodology §2f robustness).
+ *   "forward-block" — stationary block bootstrap from JST pooled history rescaled to
+ *     forward-CMA marginals. Captures sequence risk (mean reversion, bond persistence)
+ *     while honoring the user's return assumptions — the historical-sequencing scenario.
  */
 export function recommendGlidePath(
   input: GlidePathInput,
   curve: AllocAnchor[] = DEFAULT_ALLOC_CURVE,
   seed = 0,
-  returnMode: GlidePathReturnMode = "forward-block",
+  returnMode: GlidePathReturnMode = "iid-mc",
 ): GlidePathResult {
   const accumYears = Math.max(
     1,

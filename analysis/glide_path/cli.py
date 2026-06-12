@@ -146,9 +146,9 @@ def main(argv=None):
                     help="inflation %% used to deflate the iid-mc curve to real")
     ap.add_argument("--mode", choices=RETURN_MODES,
                     default=None, help="return path generation mode "
-                    "(default: forward-block — historical sequences rescaled to the forward-CMA "
-                    "marginals, then block-bootstrapped; iid-mc = forward-CMA iid normal. "
-                    "The --demo showcase defaults to iid-mc instead)")
+                    "(default: iid-mc — forward-CMA iid normal Monte Carlo, the regime-robust "
+                    "choice; forward-block = historical sequences rescaled to the forward-CMA "
+                    "marginals then block-bootstrapped, the historical-sequencing scenario)")
     ap.add_argument("--block-years", type=int, default=10,
                     help="average stationary circular-block length for block modes "
                     "(historical-block, forward-block)")
@@ -172,9 +172,7 @@ def main(argv=None):
     ap.add_argument("--plot", type=str, default=None, help="save a step-plot of the recommendation to this PNG")
     ap.add_argument("--show", action="store_true", help="display the plot interactively")
     args = ap.parse_args(argv)
-    # The lever-sweep showcase defaults to iid-mc (forward-block makes every cell ~flat 100%);
-    # a single recommendation defaults to forward-block like the engine.
-    mode = args.mode or ("iid-mc" if args.demo else "forward-block")
+    mode = args.mode or "iid-mc"
 
     if args.block_years < 1:
         ap.error("--block-years must be >= 1")

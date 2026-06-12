@@ -44,12 +44,14 @@ KEY INPUTS
                               Must match the units of `alloc_curve` (default: percent, i.e. 2.1).
                               Used only by `iid-mc`.
   returns_in_percent        : if True (default), `alloc_curve` means/vols are in % per year.
-  return_mode               : "forward-block" (default — history rescaled to forward-CMA
-                              marginals, then block-bootstrapped; previously "iid-mc"),
-                              "historical-iid" (paired stock/bond years sampled with
-                              replacement), "historical-block" (paired stock/bond years sampled
-                              with a stationary circular block bootstrap), or "iid-mc"
-                              (forward-CMA normal Monte Carlo with no sequencing).
+  return_mode               : "iid-mc" (default — forward-CMA normal Monte Carlo, no
+                              sequencing; the regime-robust choice — see the methodology's
+                              §2f robustness notes), "forward-block" (history rescaled to
+                              forward-CMA marginals, then block-bootstrapped — the
+                              historical-sequencing scenario), "historical-iid" (paired
+                              stock/bond years sampled with replacement), or
+                              "historical-block" (paired stock/bond years in a stationary
+                              circular block bootstrap).
   block_years               : average years per historical block (default 10). Used only by the
                               block modes; realized block lengths are geometric.
   dataset                   : "pooled" (default — each country's own sequence concatenated, so
@@ -522,7 +524,7 @@ def recommend_glide_path(
     # capital-market input units
     inflation: float = 2.1,
     returns_in_percent: bool = True,
-    return_mode: str = "forward-block",
+    return_mode: str = "iid-mc",
     block_years: int = 10,
     dataset: str = "pooled",
     exclude_countries: Sequence[str] | None = None,
@@ -955,9 +957,9 @@ def format_reproduction_command(
 def run_demo(out_dir, return_mode="iid-mc"):
     """Sweep key levers across three spending rules and write plots.
 
-    Defaults to `iid-mc` (unlike the recommender's `forward-block` default): the lever
-    sweeps are meant to show how the tent moves, and under forward-block every cell is
-    near-flat ~100% equity. Pass another mode to sweep under it."""
+    Defaults to `iid-mc` (the recommender's default): the lever sweeps are meant to show
+    how the tent moves, and under forward-block every cell is near-flat ~100% equity.
+    Pass another mode to sweep under it."""
     import os
     os.makedirs(out_dir, exist_ok=True)
     AGE, INTERVAL = 35, 5
@@ -1074,12 +1076,12 @@ def _run_interactive():
     print("  iid-mc uses the app's forward capital-market assumptions;")
     print("  historical modes bootstrap raw paired stock/bond returns from JST history.")
     return_mode = _ask_choice(
-        "Return mode", "forward-block", RETURN_MODES,
+        "Return mode", "iid-mc", RETURN_MODES,
         labels={
-            "iid-mc": "forward-CMA normal Monte Carlo (no sequencing)",
+            "iid-mc": "forward-CMA normal Monte Carlo, no sequencing (recommended)",
             "historical-iid": "raw history, years sampled independently",
             "historical-block": "raw history, stationary circular blocks (keeps sequencing)",
-            "forward-block": "history rescaled to forward marginals, then block-bootstrapped (recommended)",
+            "forward-block": "history rescaled to forward marginals, then block-bootstrapped (historical-sequencing scenario)",
         },
     )
     dataset = (

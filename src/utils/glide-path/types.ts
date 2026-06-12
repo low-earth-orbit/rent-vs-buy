@@ -81,7 +81,7 @@ export interface GlidePathRequest {
   requestId: number;
   /** Re-roll nonce: 0 = canonical draw; >0 reseeds the Monte Carlo to a new reproducible draw. */
   seed?: number;
-  /** Simulation engine. Defaults to "forward-block" when omitted. */
+  /** Simulation engine. Defaults to "iid-mc" when omitted. */
   returnMode?: GlidePathReturnMode;
 }
 

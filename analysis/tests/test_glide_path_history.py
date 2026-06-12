@@ -416,14 +416,11 @@ class GlidePathMarketTests(unittest.TestCase):
         self.assertEqual(kwargs["exclude_countries"], ["Germany", "Japan"])
         self.assertEqual(kwargs["exclude_years"], [1923, (1914, 1923)])
 
-    def test_default_mode_is_forward_block_pooled(self):
-        # Default recommend_glide_path call should use forward-block + pooled.
-        with patch(
-            "analysis.glide_path.recommender._load_history",
-            return_value=synthetic_history(),
-        ):
-            result = self._recommend()
-        self.assertEqual(result["params"]["return_mode"], "forward-block")
+    def test_default_mode_is_iid_mc(self):
+        # Default recommend_glide_path call uses iid-mc (the regime-robust default;
+        # forward-block is the historical-sequencing scenario mode).
+        result = self._recommend()
+        self.assertEqual(result["params"]["return_mode"], "iid-mc")
 
     def test_all_modes_are_deterministic_end_to_end(self):
         history = synthetic_history()

@@ -137,7 +137,7 @@ def run_channels(args):
     d) equity-block/bond-iid : block-sample equity only, iid-shuffle bonds — equity sequencing
                                (decade reversion AND short-run momentum) without bond persistence
     e) equity-iid/bond-block : the reverse — bond persistence without equity sequencing
-    f) forward-block         : the full joint sequence structure (the product default)
+    f) forward-block         : the full joint sequence structure (the scenario mode)
 
     The one-asset cells (d, e) necessarily drop the cross-correlation; cell b shows that
     channel is immaterial on its own.
@@ -207,7 +207,7 @@ def run_menu(args):
     """Replace the nominal-bond leg with a synthetic VR=1 real asset (corr 0, iid).
 
     Equity keeps its forward-block sequencing throughout; only the non-equity asset changes:
-      a) forward-block default      : rescaled historical long nominal bonds (joint structure)
+      a) forward-block              : rescaled historical long nominal bonds (joint structure)
       b) synth bond, same marginals : iid normal at the SAME bond mean/vol — isolates the
                                       bond-side sequencing+correlation, holding risk constant
       c) short-TIPS ladder          : iid normal, bond mean, 2% vol (idealized real ladder)
@@ -255,7 +255,7 @@ def run_menu(args):
     print("  drops from 100%, the flat-100% result is about the bond menu, not equity's merit.")
     print("=" * 100)
 
-    print(summary_row("a) nominal bonds (default)", recommend_glide_path(
+    print(summary_row("a) nominal bonds (forward-block)", recommend_glide_path(
         **base_kwargs(args, return_mode="forward-block", dataset="pooled",
                       block_years=args.block_years))))
     cells = [
