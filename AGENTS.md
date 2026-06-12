@@ -36,10 +36,15 @@ For small 1-2 file edits where Claude already in context — Claude does it dire
 Wrapper script picks model + effort from tier automatically:
 
 ```bash
+scripts/codex-run.sh auto     "<task>"   # conservative keyword routing
 scripts/codex-run.sh trivial  "<task>"   # gpt-5.4-mini, low
 scripts/codex-run.sh standard "<task>"   # gpt-5.4,      medium
 scripts/codex-run.sh complex  "<task>"   # gpt-5.5,      high
 ```
+
+`auto` promotes finance/modeling, methodology, architecture, migration, and security work to `complex`; chooses `trivial` only for clearly mechanical tasks; and defaults uncertain work to `standard`. Preview routing without launching Codex using `scripts/codex-run.sh --dry-run auto "<task>"`.
+
+Use `$route-codex-task` when classification needs judgment or file inspection. The repo-scoped skill recommends a tier and verification scope; the wrapper performs the actual model and effort selection.
 
 Or raw:
 
