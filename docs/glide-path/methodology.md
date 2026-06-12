@@ -273,10 +273,14 @@ Two honesty checks accompany every result:
   both the glide and that constant are scored on the same independent evaluation draw. The
   Python CLI flags the constant allocation as the robust choice when its
   CE beats the glide's by more than 5%. The web UI biases harder toward simplicity: it
-  recommends the constant allocation whenever it wins on CE income outright, or comes within 2%
-  on CE income **and** within 1pp on drawdown shortfall **and** within 2pp on full-path
-  shortfall (`SIMPLICITY_*` thresholds in `src/components/glide-path/Result.tsx`). Either way
-  the raw optimized glide stays charted and reported.
+  recommends the constant allocation whenever it wins on CE income outright, or comes within 3%
+  on CE income **and** within 0.5pp on drawdown shortfall **and** within 1.5pp on full-path
+  shortfall (`SIMPLICITY_*` thresholds in `src/components/glide-path/Result.tsx`). The
+  calibration follows §2e/§2f: CE gaps under ~3% are within the model's own uncertainty
+  (measured glide edge ≤ ~0.6%, MC noise ~0.3%, era/mode brackets ~2–3%), so CE alone should
+  not overturn the simpler pick; the tighter shortfall gates (2–4× the Monte Carlo standard
+  error of those rates) carry the real veto so the simpler pick cannot add meaningful tail
+  risk. Either way the raw optimized glide stays charted and reported.
 
 ---
 

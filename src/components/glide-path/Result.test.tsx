@@ -126,7 +126,26 @@ describe("glide-path Result", () => {
     ).toHaveLength(0);
   });
 
-  it("prefers the constant when drawdown depletion is within 1 point", () => {
+  it("prefers the constant when drawdown depletion is within half a point", () => {
+    renderResult(
+      makeResult({
+        ceIncome: 60000,
+        flatCeIncome: 59400,
+        drawdownDepletion: 0.05,
+        flatDrawdownDepletion: 0.054,
+        depletion: 0.1,
+        flatDepletion: 0.1,
+      }),
+    );
+    expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/The constant allocation is preferred/i),
+    ).toBeInTheDocument();
+  });
+
+  it("prefers the glide when the constant's drawdown shortfall is meaningfully higher", () => {
+    // Same CE story, but the constant adds >0.5pp of drawdown shortfall — the
+    // tightened gate vetoes the simplicity pick.
     renderResult(
       makeResult({
         ceIncome: 60000,
@@ -139,7 +158,7 @@ describe("glide-path Result", () => {
     );
     expect(screen.getByText(/Recommended allocation/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/The constant allocation is preferred/i),
+      screen.getByText(/The glide path is preferred/i),
     ).toBeInTheDocument();
   });
 

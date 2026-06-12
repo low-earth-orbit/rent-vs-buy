@@ -48,9 +48,15 @@ interface ResultProps {
   onReroll?: () => void;
 }
 
-const SIMPLICITY_CE_THRESHOLD = 0.02;
-const SIMPLICITY_DRAWDOWN_THRESHOLD = 0.01;
-const SIMPLICITY_FULLPATH_THRESHOLD = 0.02;
+// Calibration (methodology §2e/§2f): the glide's honest out-of-sample CE edge is ≤ ~0.6%
+// and MC noise at 8,000 stats paths is ~0.3%, while the era/mode brackets move CE by
+// 2–3% — so CE gaps under 3% are within the model's own uncertainty and shouldn't
+// overturn the simpler pick. The shortfall gates carry the real veto: 0.5pp/1.5pp are
+// 2–4× the Monte Carlo standard error of those rates, so the simpler pick can't add
+// meaningful tail risk, but noise can't flip the recommendation either.
+const SIMPLICITY_CE_THRESHOLD = 0.03;
+const SIMPLICITY_DRAWDOWN_THRESHOLD = 0.005;
+const SIMPLICITY_FULLPATH_THRESHOLD = 0.015;
 const DRAWDOWN_RISK_HIGHLIGHT_THRESHOLD = 0.15;
 const FULLPATH_RISK_HIGHLIGHT_THRESHOLD = 0.3;
 const LOW_DRAWDOWN_SHORTFALL_THRESHOLD = 0.05;
