@@ -498,21 +498,29 @@ immaterial.) Reproduce both:
 **Robustness: era and country cuts.** Same scenario with the history restricted before rescaling
 (the forward anchors are unchanged, so only the sequencing pattern differs):
 
-| History cut                         | bond VR(10y) | equity VR(10y) | best flat | CE at best vs 100% |
-| ----------------------------------- | ------------ | -------------- | --------- | ------------------ |
-| full 1871–2020                      | 1.70         | 0.91           | **100%**  | —                  |
-| post-1950                           | 2.27         | 0.95           | **100%**  | —                  |
-| ex Germany + Japan                  | ~1.7         | ~0.9           | **100%**  | —                  |
-| stable six¹                         | 1.96         | 0.73           | 80%       | +0.5%              |
-| 1990–2020 (inflation-targeting era) | **0.50**     | 0.54           | **50%**   | +2.1%              |
+| History cut                         | bond VR(10y) | bill VR(10y) | equity VR(10y) | best flat | CE at best vs 100% |
+| ----------------------------------- | ------------ | ------------ | -------------- | --------- | ------------------ |
+| full 1871–2020                      | 1.70         | 2.44         | 0.91           | **100%**  | —                  |
+| post-1950                           | 2.27         | 4.89         | 0.95           | **100%**  | —                  |
+| ex Germany + Japan                  | 2.74         | 3.55         | 1.01           | **100%**  | —                  |
+| stable six¹                         | 1.96         | 3.23         | 0.73           | 80%       | +0.5%              |
+| 1990–2020 (inflation-targeting era) | **0.50**     | 3.90         | 0.54           | **50%**   | +2.1%              |
 
 ¹ USA, UK, Canada, Australia, Switzerland, Sweden — no hyperinflation, occupation, or market closure.
 
 The joint structure is **not** a Germany/Japan disaster artifact — it survives dropping them and is
-_stronger_ in the stable-six cut. It **is era-dependent**: in the 1990–2020 cut, bond returns flip
+_stronger_ in the stable-six cut. It **is era-dependent for bonds**: in the 1990–2020 cut, bond returns flip
 from persistent to mean-reverting (VR(10y) 0.50, below the iid-null 5th percentile — largely the
 secular rate decline), the stock/bond correlation drops to ≈0, and the optimizer returns the
-interior bond tent. Three caveats on that cut: it is a single 31-year global regime (~16
+interior bond tent. **Bills do not flip with bonds** — they stay strongly persistent in _every_ cut
+(VR(10y) 2.4–4.9), and are _most_ persistent precisely where bonds mean-revert (post-1950 4.89,
+1990–2020 3.90). The reason the era that fixed long bonds left bills untouched: bonds' 1990–2020
+mean reversion is the one-off duration bull (a falling-rate price tailwind that bills, having no
+duration, never received), while bills' persistence is the slow-adjusting nominal rate lagging
+realized inflation — a low-vol disinflation just turns that into a smooth, persistently positive
+real-carry drift (bill vol falls to 2.4% in that cut). **Short is not safe-from-persistence in any
+era; only inflation-linked is** (§2f's bond-menu finding, now confirmed against the empirical short
+asset across every era cut). Three caveats on that cut: it is a single 31-year global regime (~16
 cross-correlated copies of one sample path); its bond mean reversion is substantially the
 one-off duration bull; and it ends in 2020 — excluding 2021–22, the one inflation-targeting-era
 episode that looked exactly like the long-sample joint structure (persistent real bond losses,
@@ -543,6 +551,61 @@ note combined — and depletion drops from 5.3% to 1.7%. Caveats: the synthetic 
 Canada stopped issuing RRBs in 2022), so read (c)/(d) as upper bounds. The product's two-asset
 candidate set cannot express this; it is the most consequential menu limitation (§7).
 Reproduce: `--sections menu` on the same `research_history` command as above.
+
+**Is the synthetic VR=1 leg realistic? The empirical short asset says short helps but is not
+enough.** Cells (b)–(d) assume the alternative asset is mean-reverting (VR=1 or a clean
+real ladder). That is a property of being _inflation-linked_, not of being _short_. JST carries
+an actual short asset — rolling short-term government **bills** (`bill_rate`, deflated by CPI) —
+so the assumption can be checked against history rather than asserted. The empirical short asset
+is **more** persistent than long bonds, not less:
+
+| Asset (pooled, real)       | vol   | VR(2y) | VR(5y) | VR(10y)  | VR(15y) |
+| -------------------------- | ----- | ------ | ------ | -------- | ------- |
+| equity                     | 22.3% | 1.08   | 1.00   | 0.91     | 0.86    |
+| long government bonds      | 11.8% | 1.22   | 1.47   | **1.70** | 1.83    |
+| short government **bills** | 8.1%  | 1.26   | 1.94   | **2.44** | 2.61    |
+
+Bills have ~no _price_ risk, yet their _real_ return carries decade-scale persistence at or above
+long bonds' (VR(10y) 2.44 vs 1.70 pooled; 4.96 vs 3.77 world; 3.75 vs 2.30 ex-disasters — bills
+≥ bonds in every cut). A decomposition (pooled) says why: the **nominal** bill rate is the
+stickiest series in the dataset (VR(10y)≈8 — a slow-moving policy rate, near a random walk in
+levels), **inflation** itself is persistent (VR(10y)≈2.6 — hot decades cluster), and the **real**
+bill return (VR(10y)≈2.4) tracks _inflation's_ profile almost exactly. The nominal rate does not
+keep up with inflation year-to-year, so real bills bleed in the same decades long bonds do — the
+slow-bleed mechanism is **unexpected inflation, not duration**. This is the empirical anchor under
+the menu result: replacing long bonds with a real-world _short nominal_ ladder would **not**
+collapse the optimum the way cell (c) does. It takes short **and inflation-linked** — a property
+no nominal instrument has — to deliver the VR=1 leg, which is precisely why an idealized
+short-TIPS/RRB ladder, not a bill ladder, is the asset that flips the answer.
+
+**This is not "short duration is bad" — short fixes a different axis.** A safe asset can fail on
+two independent dimensions, and VR measures only the second:
+
+- **Amplitude** — how _deep_ a bad spell goes (vol, drawdown size). Set by **duration**. A rate
+  shock marks a long bond down ~15% (long TIPS lost ~12% in 2022); a bill barely moves.
+- **Persistence** — whether a bad spell _compounds over a decade or fades_ (VR). Set by
+  **inflation linkage**, not duration. A nominal real return inherits inflation's autocorrelation
+  regardless of maturity.
+
+On amplitude, **short is strictly better** and it is the cheapest real risk to cut: bill vol runs
+below bond vol in every cut (8.1% vs 11.8% pooled; 2.4% vs 9.4% in 1990–2020), with no 2022-style
+crash. The bills result does **not** say short bonds are a poor holding — it says short alone
+leaves the _persistence_ axis open. The cells stack on these two axes:
+
+| Asset             | amplitude (vol / drawdown) | persistence (VR) |
+| ----------------- | -------------------------- | ---------------- |
+| long nominal      | bad                        | bad              |
+| **short nominal** | **good**                   | still bad        |
+| short + real      | good                       | good (VR≈1)      |
+
+So short nominal (a plain GIC/bill ladder) is a genuine upgrade over long nominal bonds — shallower
+and faster-recovering — but a hot-inflation decade still erodes it slowly and one-directionally.
+Only inflation linkage closes the second axis. One reading caveat: VR>1 flags persistence in
+_either_ direction, and a _persistently positive_ real carry (e.g. the 2.4%-vol disinflation drift
+that gives 1990–2020 bills VR(10y)=3.90) scores high without being a danger. The danger is only the
+persistent _negative_ run — a hot-inflation decade like the 1970s — which is why the full-sample
+and post-1950 cuts (which contain it) are the ones that matter for sizing a real-asset slice.
+Reproduce: `--sections vr` on the same `research_history` command (now prints a `bills` row).
 
 ---
 

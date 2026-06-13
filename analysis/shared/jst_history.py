@@ -86,6 +86,22 @@ def real_stock_fixed_income_returns(sub: pd.DataFrame) -> pd.DataFrame:
     return sub.dropna(subset=["inflation", "equity", "fixed_income"])[columns]
 
 
+def real_bill_returns(sub: pd.DataFrame) -> pd.DataFrame:
+    """Convert one country's short-term bill rate to a real total return.
+
+    Bills carry ~no price risk, so the nominal yield earned over the year *is* the
+    nominal total return; ``real = (1 + bill_rate) / (1 + inflation) - 1``. Used to
+    profile an *empirical* short-asset alternative to long bonds (see the ``vr``
+    section of ``research_history``). These are *nominal* bills — the real return
+    still inherits the full inflation-surprise term, which is the point.
+    """
+    sub = sub.sort_values("year").copy()
+    sub["inflation"] = sub["cpi"].pct_change(fill_method=None)
+    sub["bills"] = (1 + sub["bill_rate"]) / (1 + sub["inflation"]) - 1
+    columns = ["year", "bills"]
+    return sub.dropna(subset=["inflation", "bills"])[columns]
+
+
 def _as_history(frame: pd.DataFrame, label: str, country_count: int) -> ReturnHistory:
     frame = frame.sort_values("year").dropna(subset=["equity", "fixed_income"])
     if frame.empty:
@@ -259,6 +275,67 @@ def load_pooled_country_returns(
         country_count=len(country_frames),
         segment_ids=segment_ids,
     )
+
+
+def load_world_bills(path: str | None = None) -> tuple[np.ndarray, None]:
+    """Equal-weight world real bill returns and ``None`` segment ids (one series).
+
+    Mirrors :func:`load_world_returns` for the empirical short-asset diagnostic: each
+    calendar year's real bill return is averaged across countries. Returns
+    ``(real_bills, segment_ids)`` so it plugs directly into :func:`variance_ratio`.
+    """
+    frame = load_jst_frame(path)
+    country_frames = []
+    for country in frame["country"].dropna().unique():
+        bills = real_bill_returns(frame[frame["country"] == country])
+        if not bills.empty:
+            country_frames.append(bills)
+    if not country_frames:
+        raise ValueError("no real bill returns available in JST dataset")
+    panel = pd.concat(country_frames, ignore_index=True)
+    world = panel.groupby("year", as_index=False)["bills"].mean()
+    return world["bills"].to_numpy(dtype=float), None
+
+
+def load_pooled_bills(
+    path: str | None = None,
+    *,
+    exclude_countries: list[str] | None = None,
+    exclude_years=None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Pooled per-country real bill returns and matching ``segment_ids``.
+
+    Mirrors :func:`load_pooled_country_returns`'s country/year selection and
+    segmentation so the bill variance ratios are computed on the same observation set
+    and segment boundaries as the bond series. Returns ``(real_bills, segment_ids)``.
+    """
+    frame = load_jst_frame(path)
+    available = [c for c in frame["country"].dropna().unique()]
+    selected = available
+    if exclude_countries:
+        dropped = set(exclude_countries)
+        selected = [c for c in selected if c not in dropped]
+    windows = _normalize_year_windows(exclude_years)
+    country_frames = []
+    for country in selected:
+        bills = real_bill_returns(frame[frame["country"] == country]).copy()
+        if windows:
+            years = bills["year"].to_numpy()
+            drop = np.zeros(len(bills), dtype=bool)
+            for lo, hi in windows:
+                drop |= (years >= lo) & (years <= hi)
+            bills = bills[~drop]
+        if bills.empty:
+            continue
+        bills["country"] = country
+        country_frames.append(bills)
+    if not country_frames:
+        raise ValueError("no real bill returns available for the pooled selection")
+    panel = pd.concat(country_frames, ignore_index=True)
+    segment_ids = _assign_segments(
+        panel["country"].to_numpy(), panel["year"].to_numpy(dtype=int)
+    )
+    return panel["bills"].to_numpy(dtype=float), segment_ids
 
 
 def _affine_to_target(values: np.ndarray, target_mean: float, target_vol: float) -> np.ndarray:

@@ -34,6 +34,9 @@ from .recommender import recommend_glide_path
 DISASTER_COUNTRIES = ["Germany", "Japan"]
 DISASTER_YEARS = ["1914-1923", "1939-1948"]  # WWI + hyperinflation; WWII + aftermath
 
+# Stable six: long, usable series with no hyperinflation, occupation, or market closure.
+STABLE_SIX = ["USA", "UK", "Canada", "Australia", "Switzerland", "Sweden"]
+
 
 def _parse_windows(tokens):
     windows = []
@@ -324,31 +327,70 @@ def run_flat_curves(args):
 
 def run_variance_ratios(args):
     from analysis.shared.jst_history import (
+        load_pooled_bills,
         load_pooled_country_returns,
+        load_world_bills,
         load_world_returns,
         variance_ratio,
     )
 
     print("\n" + "=" * 100)
     print("VARIANCE RATIO  (VR<1 = mean reversion; the mechanism behind block→equity)")
+    print("  bills = empirical short asset: real return on rolling gov bills (nominal,")
+    print("          bill_rate deflated by CPI) — the menu's synthetic VR=1 leg made real")
     print("=" * 100)
     horizons = [1, 2, 5, 10, 15]
+    disaster_windows = _parse_windows(DISASTER_YEARS)
     datasets = [
-        ("world", load_world_returns()),
-        ("pooled", load_pooled_country_returns()),
+        ("world", load_world_returns(), load_world_bills()),
+        ("pooled", load_pooled_country_returns(), load_pooled_bills()),
         ("pooled ex-disasters",
          load_pooled_country_returns(
-             exclude_countries=DISASTER_COUNTRIES, exclude_years=_parse_windows(DISASTER_YEARS))),
+             exclude_countries=DISASTER_COUNTRIES, exclude_years=disaster_windows),
+         load_pooled_bills(
+             exclude_countries=DISASTER_COUNTRIES, exclude_years=disaster_windows)),
     ]
     head = "  ".join(f"q={q:>2}" for q in horizons)
     print(f"\n  {'dataset':<22} {'asset':<7} eq.vol  {head}")
-    for name, history in datasets:
-        for asset, series in (("equity", history.equity), ("bonds", history.fixed_income)):
+    for name, history, bills in datasets:
+        bill_series, bill_segments = bills
+        rows = (
+            ("equity", history.equity, history.segment_ids),
+            ("bonds", history.fixed_income, history.segment_ids),
+            ("bills", bill_series, bill_segments),
+        )
+        for asset, series, segments in rows:
             vols = "  ".join(
-                f"{variance_ratio(series, q, history.segment_ids):>4.2f}" for q in horizons
+                f"{variance_ratio(series, q, segments):>4.2f}" for q in horizons
             )
             vol = f"{series.std() * 100:>5.1f}%"
             print(f"  {name:<22} {asset:<7} {vol}  {vols}")
+
+    # Era / country cuts (pooled basis): does bond mean reversion in any era carry over
+    # to the empirical short asset? The 1990–2020 inflation-targeting cut is the test —
+    # bonds flip to VR<1 there (the secular rate decline), bills do not.
+    from analysis.shared.jst_history import load_jst_frame
+
+    all_countries = [c for c in load_jst_frame()["country"].dropna().unique()]
+    not_stable = [c for c in all_countries if c not in STABLE_SIX]
+    cuts = [
+        ("full 1871-2020", {}),
+        ("post-1950", {"exclude_years": [(1871, 1949)]}),
+        ("ex Germany+Japan", {"exclude_countries": DISASTER_COUNTRIES}),
+        ("stable six", {"exclude_countries": not_stable}),
+        ("1990-2020 infl-target", {"exclude_years": [(1871, 1989)]}),
+    ]
+    print("\n  Era / country cuts — VR(10y), pooled basis (bond reversion vs bill persistence)")
+    print(f"  {'cut':<24} {'eqVR':>5} {'bondVR':>6} {'billVR':>6}   {'billVol':>7}  {'n':>5}")
+    for cut_name, kw in cuts:
+        history = load_pooled_country_returns(**kw)
+        bill_series, bill_segments = load_pooled_bills(**kw)
+        eq_vr = variance_ratio(history.equity, 10, history.segment_ids)
+        bond_vr = variance_ratio(history.fixed_income, 10, history.segment_ids)
+        bill_vr = variance_ratio(bill_series, 10, bill_segments)
+        bill_vol = bill_series.std() * 100
+        print(f"  {cut_name:<24} {eq_vr:>5.2f} {bond_vr:>6.2f} {bill_vr:>6.2f}   "
+              f"{bill_vol:>6.1f}%  {history.observations:>5}")
 
 
 SECTIONS = {
