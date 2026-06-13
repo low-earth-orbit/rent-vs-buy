@@ -559,11 +559,11 @@ an actual short asset — rolling short-term government **bills** (`bill_rate`, 
 so the assumption can be checked against history rather than asserted. The empirical short asset
 is **more** persistent than long bonds, not less:
 
-| Asset (pooled, real)        | vol   | VR(2y) | VR(5y) | VR(10y) | VR(15y) |
-| --------------------------- | ----- | ------ | ------ | ------- | ------- |
-| equity                      | 22.3% | 1.08   | 1.00   | 0.91    | 0.86    |
-| long government bonds       | 11.8% | 1.22   | 1.47   | **1.70**| 1.83    |
-| short government **bills**  | 8.1%  | 1.26   | 1.94   | **2.44**| 2.61    |
+| Asset (pooled, real)       | vol   | VR(2y) | VR(5y) | VR(10y)  | VR(15y) |
+| -------------------------- | ----- | ------ | ------ | -------- | ------- |
+| equity                     | 22.3% | 1.08   | 1.00   | 0.91     | 0.86    |
+| long government bonds      | 11.8% | 1.22   | 1.47   | **1.70** | 1.83    |
+| short government **bills** | 8.1%  | 1.26   | 1.94   | **2.44** | 2.61    |
 
 Bills have ~no _price_ risk, yet their _real_ return carries decade-scale persistence at or above
 long bonds' (VR(10y) 2.44 vs 1.70 pooled; 4.96 vs 3.77 world; 3.75 vs 2.30 ex-disasters — bills
@@ -592,11 +592,11 @@ below bond vol in every cut (8.1% vs 11.8% pooled; 2.4% vs 9.4% in 1990–2020),
 crash. The bills result does **not** say short bonds are a poor holding — it says short alone
 leaves the _persistence_ axis open. The cells stack on these two axes:
 
-| Asset            | amplitude (vol / drawdown) | persistence (VR) |
-| ---------------- | -------------------------- | ---------------- |
-| long nominal     | bad                        | bad              |
-| **short nominal**| **good**                   | still bad        |
-| short + real     | good                       | good (VR≈1)      |
+| Asset             | amplitude (vol / drawdown) | persistence (VR) |
+| ----------------- | -------------------------- | ---------------- |
+| long nominal      | bad                        | bad              |
+| **short nominal** | **good**                   | still bad        |
+| short + real      | good                       | good (VR≈1)      |
 
 So short nominal (a plain GIC/bill ladder) is a genuine upgrade over long nominal bonds — shallower
 and faster-recovering — but a hot-inflation decade still erodes it slowly and one-directionally.
